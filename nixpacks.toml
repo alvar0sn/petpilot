@@ -1,4 +1,5 @@
 [variables]
+NIXPACKS_PHP_VERSION = "8.4"
 NIXPACKS_PHP_EXTENSIONS = "pdo_pgsql,redis,gd,mbstring,xml,curl,zip,intl,tokenizer,ctype,bcmath,fileinfo"
 
 [phases.install]
