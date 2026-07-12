@@ -5,7 +5,7 @@ NIXPACKS_PHP_EXTENSIONS = "pdo_pgsql,redis,gd,mbstring,xml,curl,zip,intl,tokeniz
 [phases.install]
 cmds = [
     "composer install --no-dev --optimize-autoloader --no-interaction",
-    "npm ci --legacy-peer-deps",
+    "npm install --legacy-peer-deps",
     "npm run build"
 ]
 
