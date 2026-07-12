@@ -34,6 +34,19 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+Route::get('/debug-auth', function () {
+    $user = \Illuminate\Support\Facades\DB::table('users')->where('email', 'alvaroiu@gmail.com')->first();
+    if (!$user) return response()->json(['error' => 'USER NOT FOUND']);
+    return response()->json([
+        'found'            => true,
+        'nombre'           => $user->nombre,
+        'role'             => $user->role,
+        'activo'           => $user->activo,
+        'password_matches' => \Illuminate\Support\Facades\Hash::check('PetPilot2026!', $user->password),
+        'password_hash'    => substr($user->password, 0, 10) . '...',
+    ]);
+});
+
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
