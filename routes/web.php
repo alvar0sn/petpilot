@@ -34,21 +34,6 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-Route::get('/debug-auth', function () {
-    $db     = \Illuminate\Support\Facades\DB::connection()->getPdo()->query('SELECT current_database()')->fetchColumn();
-    $host   = config('database.connections.pgsql.host');
-    $total  = \Illuminate\Support\Facades\DB::table('users')->count();
-    $emails = \Illuminate\Support\Facades\DB::table('users')->pluck('email');
-    $user   = \Illuminate\Support\Facades\DB::table('users')->where('email', 'alvaroiu@gmail.com')->first();
-    return response()->json([
-        'db_name'       => $db,
-        'db_host'       => $host,
-        'total_users'   => $total,
-        'emails'        => $emails,
-        'user_found'    => (bool) $user,
-        'password_ok'   => $user ? \Illuminate\Support\Facades\Hash::check('PetPilot2026!', $user->password) : null,
-    ]);
-});
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
