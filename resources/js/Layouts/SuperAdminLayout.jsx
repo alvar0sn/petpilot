@@ -46,7 +46,13 @@ export default function SuperAdminLayout({ children, title }) {
                                 Infraestructura
                             </Link>
                         </div>
-                        <span className="text-indigo-300 text-sm">{auth.user?.email}</span>
+                        <div className="flex items-center gap-3">
+                            <span className="text-indigo-300 text-sm">{auth.user?.email}</span>
+                            <Link href={route('logout')} method="post" as="button"
+                                className="text-xs text-indigo-300 hover:text-white border border-indigo-700 hover:border-indigo-400 px-2 py-1 rounded transition-colors">
+                                Salir
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </nav>
