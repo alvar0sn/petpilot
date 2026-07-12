@@ -1,9 +1,6 @@
 [variables]
 NIXPACKS_PHP_EXTENSIONS = "pdo_pgsql,redis,gd,mbstring,xml,curl,zip,intl,tokenizer,ctype,bcmath,fileinfo"
 
-[phases.setup]
-nixPkgs = ["nodejs_20"]
-
 [phases.install]
 cmds = [
     "composer install --no-dev --optimize-autoloader --no-interaction",
