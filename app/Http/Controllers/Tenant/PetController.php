@@ -12,6 +12,7 @@ use App\Models\Pet;
 use App\Models\WalkBooking;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -174,6 +175,30 @@ class PetController extends Controller
         $pet->update($data);
 
         return back()->with('success', 'Mascota actualizada.');
+    }
+
+    public function storePhoto(Request $request, Pet $pet): RedirectResponse
+    {
+        $request->validate(['foto' => 'required|image|max:5120']);
+
+        if ($pet->foto_url) {
+            Storage::disk('public')->delete($pet->foto_url);
+        }
+
+        $path = $request->file('foto')->store("pets/{$pet->id}", 'public');
+        $pet->update(['foto_url' => $path]);
+
+        return back()->with('success', 'Foto actualizada.');
+    }
+
+    public function destroyPhoto(Pet $pet): RedirectResponse
+    {
+        if ($pet->foto_url) {
+            Storage::disk('public')->delete($pet->foto_url);
+            $pet->update(['foto_url' => null]);
+        }
+
+        return back()->with('success', 'Foto eliminada.');
     }
 
     public function destroy(Pet $pet): RedirectResponse

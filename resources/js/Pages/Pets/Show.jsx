@@ -1,6 +1,6 @@
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Link, router, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { dateKeyInTimezone, formatDate, useTenantTimezone } from '@/lib/datetime';
 
 const agresividadBadge = {
@@ -514,6 +514,54 @@ function RecordatoriosSection({ pet }) {
     );
 }
 
+function PetAvatar({ pet }) {
+    const inputRef = useRef(null);
+    const photoForm = useForm({ foto: null });
+
+    function handleFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        photoForm.setData('foto', file);
+        photoForm.post(route('pets.foto.store', pet.id), {
+            forceFormData: true,
+            onSuccess: () => { photoForm.reset(); },
+        });
+    }
+
+    function deletePhoto() {
+        if (!confirm('¿Eliminar la foto?')) return;
+        router.delete(route('pets.foto.destroy', pet.id), { preserveScroll: true });
+    }
+
+    const url = pet.foto_url ? `/storage/${pet.foto_url}` : null;
+
+    return (
+        <div className="relative group shrink-0">
+            {url ? (
+                <img src={url} alt={pet.nombre}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-zinc-200" />
+            ) : (
+                <div className="w-16 h-16 rounded-full bg-zinc-100 border-2 border-zinc-200 flex items-center justify-center text-3xl">
+                    {tipoBadge[pet.tipo] ?? '🐾'}
+                </div>
+            )}
+            <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-0.5">
+                <button type="button" onClick={() => inputRef.current?.click()}
+                    className="text-white text-[10px] font-medium leading-none">
+                    {url ? 'Cambiar' : 'Subir'}
+                </button>
+                {url && (
+                    <button type="button" onClick={deletePhoto}
+                        className="text-rose-300 text-[10px] font-medium leading-none">
+                        Borrar
+                    </button>
+                )}
+            </div>
+            <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        </div>
+    );
+}
+
 export default function PetShow({ pet, activeMembership, eventTypes, checklistItems, hotelStays, walkBookings }) {
     const tz = useTenantTimezone();
     const [showForm, setShowForm] = useState(false);
@@ -556,7 +604,7 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                 <div className="space-y-3">
                     <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5">
                         <div className="flex items-start gap-3 mb-4">
-                            <span className="text-4xl">{tipoBadge[pet.tipo] ?? '🐾'}</span>
+                            <PetAvatar pet={pet} />
                             <div>
                                 <h2 className="text-xl font-bold text-zinc-900">{pet.nombre}</h2>
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium inline-flex items-center ${agresividadBadge[pet.nivel_agresividad]}`}>

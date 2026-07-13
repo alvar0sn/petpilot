@@ -57,6 +57,8 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::get('pets/{pet}/edit', [PetController::class, 'edit'])->name('pets.edit');
         Route::put('pets/{pet}', [PetController::class, 'update'])->name('pets.update');
         Route::put('pets/{pet}/recordatorios', [PetController::class, 'updateRecordatorios'])->name('pets.recordatorios.update');
+        Route::post('pets/{pet}/foto', [PetController::class, 'storePhoto'])->name('pets.foto.store');
+        Route::delete('pets/{pet}/foto', [PetController::class, 'destroyPhoto'])->name('pets.foto.destroy');
         Route::delete('pets/{pet}', [PetController::class, 'destroy'])->name('pets.destroy');
 
         Route::post('pets/{pet}/events', [EventController::class, 'store'])->name('events.store');
