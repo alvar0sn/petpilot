@@ -501,8 +501,40 @@ function TicketConfigTab({ ticketConfig }) {
     );
 }
 
+const MODULES = [
+    { key: 'crm',          label: 'Clientes / CRM' },
+    { key: 'pos',          label: 'POS' },
+    { key: 'memberships',  label: 'Membresías' },
+    { key: 'hotel',        label: 'Hotel' },
+    { key: 'paseos',       label: 'Paseos' },
+    { key: 'grooming',     label: 'Grooming' },
+    { key: 'veterinaria',  label: 'Veterinaria' },
+];
+
+function ModuleCheckboxes({ permisos, onChange }) {
+    const toggle = (key) => {
+        const next = permisos.includes(key) ? permisos.filter(k => k !== key) : [...permisos, key];
+        onChange(next);
+    };
+    return (
+        <div>
+            <label className="block text-xs font-medium text-zinc-600 mb-2">Acceso a módulos <span className="text-zinc-400 font-normal">(vacío = acceso total)</span></label>
+            <div className="grid grid-cols-2 gap-1.5">
+                {MODULES.map(m => (
+                    <label key={m.key} className="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" className="rounded border-zinc-300"
+                            checked={permisos.includes(m.key)}
+                            onChange={() => toggle(m.key)} />
+                        <span className="text-sm text-zinc-600">{m.label}</span>
+                    </label>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function TeamTab({ teamMembers, currentUserId }) {
-    const newForm = useForm({ nombre: '', apellido: '', email: '', role: 'colaborador', password: '' });
+    const newForm = useForm({ nombre: '', apellido: '', email: '', role: 'colaborador', password: '', permisos_modulos: [] });
     const [editUser, setEditUser] = useState(null);
     const editForm = useForm({});
     const [pwdUser, setPwdUser] = useState(null);
@@ -510,7 +542,7 @@ function TeamTab({ teamMembers, currentUserId }) {
 
     function openEdit(u) {
         setEditUser(u);
-        editForm.setData({ nombre: u.nombre, apellido: u.apellido ?? '', email: u.email, role: u.role, activo: u.activo });
+        editForm.setData({ nombre: u.nombre, apellido: u.apellido ?? '', email: u.email, role: u.role, activo: u.activo, permisos_modulos: u.permisos_modulos ?? [] });
     }
 
     function roleLabel(role) {
@@ -583,6 +615,13 @@ function TeamTab({ teamMembers, currentUserId }) {
                         <input type="password" className="w-full border-gray-300 rounded-lg text-sm" value={newForm.data.password} onChange={e => newForm.setData('password', e.target.value)} />
                         {newForm.errors.password && <p className="text-rose-500 text-xs mt-0.5">{newForm.errors.password}</p>}
                     </div>
+                    {newForm.data.role === 'colaborador' && (
+                        <div className="sm:col-span-2">
+                            <ModuleCheckboxes
+                                permisos={newForm.data.permisos_modulos}
+                                onChange={v => newForm.setData('permisos_modulos', v)} />
+                        </div>
+                    )}
                     <div className="sm:col-span-2">
                         <button type="submit" disabled={newForm.processing}
                             className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
@@ -632,6 +671,11 @@ function TeamTab({ teamMembers, currentUserId }) {
                                     </label>
                                 </div>
                             </div>
+                            {editForm.data.role === 'colaborador' && (
+                                <ModuleCheckboxes
+                                    permisos={editForm.data.permisos_modulos ?? []}
+                                    onChange={v => editForm.setData('permisos_modulos', v)} />
+                            )}
                             <div className="flex gap-2 pt-1">
                                 <button type="button" onClick={() => setEditUser(null)}
                                     className="flex-1 border border-zinc-200 text-zinc-600 py-2 rounded-lg text-sm hover:bg-zinc-50 transition-colors">Cancelar</button>

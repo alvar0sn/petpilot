@@ -43,117 +43,129 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// Tenant CRM
 Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () {
-    Route::resource('owners', OwnerController::class);
-    Route::post('owners/{owner}/sync-ghl', [OwnerController::class, 'syncGhl'])->name('owners.sync-ghl');
-    Route::post('owners/{owner}/portal-access', [OwnerController::class, 'sendPortalAccess'])->name('owners.portal-access');
 
-    Route::get('owners/{owner}/pets/create', [PetController::class, 'create'])->name('pets.create');
-    Route::post('owners/{owner}/pets', [PetController::class, 'store'])->name('pets.store');
-    Route::get('pets/{pet}', [PetController::class, 'show'])->name('pets.show');
-    Route::get('pets/{pet}/edit', [PetController::class, 'edit'])->name('pets.edit');
-    Route::put('pets/{pet}', [PetController::class, 'update'])->name('pets.update');
-    Route::put('pets/{pet}/recordatorios', [PetController::class, 'updateRecordatorios'])->name('pets.recordatorios.update');
-    Route::delete('pets/{pet}', [PetController::class, 'destroy'])->name('pets.destroy');
+    // CRM — owners, pets, events
+    Route::middleware('module:crm')->group(function () {
+        Route::resource('owners', OwnerController::class);
+        Route::post('owners/{owner}/sync-ghl', [OwnerController::class, 'syncGhl'])->name('owners.sync-ghl');
+        Route::post('owners/{owner}/portal-access', [OwnerController::class, 'sendPortalAccess'])->name('owners.portal-access');
 
-    Route::post('pets/{pet}/events', [EventController::class, 'store'])->name('events.store');
-    Route::get('events/{event}/edit', [EventController::class, 'edit'])->name('events.edit');
-    Route::put('events/{event}', [EventController::class, 'update'])->name('events.update');
-    Route::delete('events/{event}', [EventController::class, 'destroy'])->name('events.destroy');
+        Route::get('owners/{owner}/pets/create', [PetController::class, 'create'])->name('pets.create');
+        Route::post('owners/{owner}/pets', [PetController::class, 'store'])->name('pets.store');
+        Route::get('pets/{pet}', [PetController::class, 'show'])->name('pets.show');
+        Route::get('pets/{pet}/edit', [PetController::class, 'edit'])->name('pets.edit');
+        Route::put('pets/{pet}', [PetController::class, 'update'])->name('pets.update');
+        Route::put('pets/{pet}/recordatorios', [PetController::class, 'updateRecordatorios'])->name('pets.recordatorios.update');
+        Route::delete('pets/{pet}', [PetController::class, 'destroy'])->name('pets.destroy');
+
+        Route::post('pets/{pet}/events', [EventController::class, 'store'])->name('events.store');
+        Route::get('events/{event}/edit', [EventController::class, 'edit'])->name('events.edit');
+        Route::put('events/{event}', [EventController::class, 'update'])->name('events.update');
+        Route::delete('events/{event}', [EventController::class, 'destroy'])->name('events.destroy');
+    });
 
     // POS
-    Route::get('pos', [PosTicketController::class, 'index'])->name('pos.index');
-    Route::get('pos/history', [PosTicketController::class, 'history'])->name('pos.history');
-    Route::post('pos/tickets', [PosTicketController::class, 'store'])->name('pos.tickets.store');
-    Route::get('pos/tickets/{ticket}', [PosTicketController::class, 'show'])->name('pos.tickets.show');
-    Route::post('pos/tickets/{ticket}/lines', [PosTicketController::class, 'addLine'])->name('pos.tickets.lines.add');
-    Route::delete('pos/tickets/{ticket}/lines', [PosTicketController::class, 'removeLine'])->name('pos.tickets.lines.remove');
-    Route::post('pos/tickets/{ticket}/discount', [PosTicketController::class, 'applyDiscount'])->name('pos.tickets.discount');
-    Route::post('pos/tickets/{ticket}/owner', [PosTicketController::class, 'setOwner'])->name('pos.tickets.owner');
-    Route::post('pos/tickets/{ticket}/pay', [PosTicketController::class, 'pay'])->name('pos.tickets.pay');
-    Route::post('pos/tickets/{ticket}/cancel', [PosTicketController::class, 'cancel'])->name('pos.tickets.cancel');
+    Route::middleware('module:pos')->group(function () {
+        Route::get('pos', [PosTicketController::class, 'index'])->name('pos.index');
+        Route::get('pos/history', [PosTicketController::class, 'history'])->name('pos.history');
+        Route::post('pos/tickets', [PosTicketController::class, 'store'])->name('pos.tickets.store');
+        Route::get('pos/tickets/{ticket}', [PosTicketController::class, 'show'])->name('pos.tickets.show');
+        Route::post('pos/tickets/{ticket}/lines', [PosTicketController::class, 'addLine'])->name('pos.tickets.lines.add');
+        Route::delete('pos/tickets/{ticket}/lines', [PosTicketController::class, 'removeLine'])->name('pos.tickets.lines.remove');
+        Route::post('pos/tickets/{ticket}/discount', [PosTicketController::class, 'applyDiscount'])->name('pos.tickets.discount');
+        Route::post('pos/tickets/{ticket}/owner', [PosTicketController::class, 'setOwner'])->name('pos.tickets.owner');
+        Route::post('pos/tickets/{ticket}/pay', [PosTicketController::class, 'pay'])->name('pos.tickets.pay');
+        Route::post('pos/tickets/{ticket}/cancel', [PosTicketController::class, 'cancel'])->name('pos.tickets.cancel');
 
-    Route::get('pos/shifts', [PosShiftController::class, 'index'])->name('pos.shift.index');
-    Route::post('pos/shifts', [PosShiftController::class, 'store'])->name('pos.shift.store');
-    Route::post('pos/shifts/{shift}/close', [PosShiftController::class, 'close'])->name('pos.shift.close');
-    Route::post('pos/shifts/{shift}/movement', [PosShiftController::class, 'addMovement'])->name('pos.shift.movement');
+        Route::get('pos/shifts', [PosShiftController::class, 'index'])->name('pos.shift.index');
+        Route::post('pos/shifts', [PosShiftController::class, 'store'])->name('pos.shift.store');
+        Route::post('pos/shifts/{shift}/close', [PosShiftController::class, 'close'])->name('pos.shift.close');
+        Route::post('pos/shifts/{shift}/movement', [PosShiftController::class, 'addMovement'])->name('pos.shift.movement');
+    });
 
     // Membresías
-    Route::get('memberships', [MembershipController::class, 'index'])->name('memberships.index');
-    Route::post('memberships/assign', [MembershipController::class, 'assign'])->name('memberships.assign');
-    Route::get('memberships/{membership}', [MembershipController::class, 'show'])->name('memberships.show');
-    Route::put('memberships/{membership}', [MembershipController::class, 'update'])->name('memberships.update');
-    Route::post('memberships/{membership}/adjust', [MembershipController::class, 'adjust'])->name('memberships.adjust');
-    Route::post('memberships/{membership}/deactivate', [MembershipController::class, 'deactivate'])->name('memberships.deactivate');
-    Route::post('memberships/{membership}/freeze', [MembershipController::class, 'freeze'])->name('memberships.freeze');
-    Route::post('memberships/{membership}/unfreeze', [MembershipController::class, 'unfreeze'])->name('memberships.unfreeze');
-    Route::get('membership-plans', [MembershipController::class, 'plans'])->name('memberships.plans');
-    Route::post('membership-plans', [MembershipController::class, 'storePlan'])->name('memberships.plans.store');
-    Route::put('membership-plans/{plan}', [MembershipController::class, 'updatePlan'])->name('memberships.plans.update');
+    Route::middleware('module:memberships')->group(function () {
+        Route::get('memberships', [MembershipController::class, 'index'])->name('memberships.index');
+        Route::post('memberships/assign', [MembershipController::class, 'assign'])->name('memberships.assign');
+        Route::get('memberships/{membership}', [MembershipController::class, 'show'])->name('memberships.show');
+        Route::put('memberships/{membership}', [MembershipController::class, 'update'])->name('memberships.update');
+        Route::post('memberships/{membership}/adjust', [MembershipController::class, 'adjust'])->name('memberships.adjust');
+        Route::post('memberships/{membership}/deactivate', [MembershipController::class, 'deactivate'])->name('memberships.deactivate');
+        Route::post('memberships/{membership}/freeze', [MembershipController::class, 'freeze'])->name('memberships.freeze');
+        Route::post('memberships/{membership}/unfreeze', [MembershipController::class, 'unfreeze'])->name('memberships.unfreeze');
+        Route::get('membership-plans', [MembershipController::class, 'plans'])->name('memberships.plans');
+        Route::post('membership-plans', [MembershipController::class, 'storePlan'])->name('memberships.plans.store');
+        Route::put('membership-plans/{plan}', [MembershipController::class, 'updatePlan'])->name('memberships.plans.update');
+    });
 
     // Hotel / Guardería
-    Route::get('hotel-config', [HotelController::class, 'config'])->name('hotel.config');
-    Route::post('hotel-config/spaces', [HotelController::class, 'storeSpace'])->name('hotel.spaces.store');
-    Route::put('hotel-config/spaces/{space}', [HotelController::class, 'updateSpace'])->name('hotel.spaces.update');
-    Route::delete('hotel-config/spaces/{space}', [HotelController::class, 'destroySpace'])->name('hotel.spaces.destroy');
-    Route::post('hotel-config/rates', [HotelController::class, 'storeRate'])->name('hotel.rates.store');
-    Route::put('hotel-config/rates/{rate}', [HotelController::class, 'updateRate'])->name('hotel.rates.update');
-    Route::delete('hotel-config/rates/{rate}', [HotelController::class, 'destroyRate'])->name('hotel.rates.destroy');
+    Route::middleware('module:hotel')->group(function () {
+        Route::get('hotel-config', [HotelController::class, 'config'])->name('hotel.config');
+        Route::post('hotel-config/spaces', [HotelController::class, 'storeSpace'])->name('hotel.spaces.store');
+        Route::put('hotel-config/spaces/{space}', [HotelController::class, 'updateSpace'])->name('hotel.spaces.update');
+        Route::delete('hotel-config/spaces/{space}', [HotelController::class, 'destroySpace'])->name('hotel.spaces.destroy');
+        Route::post('hotel-config/rates', [HotelController::class, 'storeRate'])->name('hotel.rates.store');
+        Route::put('hotel-config/rates/{rate}', [HotelController::class, 'updateRate'])->name('hotel.rates.update');
+        Route::delete('hotel-config/rates/{rate}', [HotelController::class, 'destroyRate'])->name('hotel.rates.destroy');
 
-    Route::get('hotel', [HotelController::class, 'index'])->name('hotel.index');
-    Route::post('hotel', [HotelController::class, 'store'])->name('hotel.store');
-    Route::get('hotel/{stay}', [HotelController::class, 'show'])->name('hotel.show');
-    Route::put('hotel/{stay}', [HotelController::class, 'update'])->name('hotel.update');
-    Route::post('hotel/{stay}/checkin', [HotelController::class, 'checkin'])->name('hotel.checkin');
-    Route::post('hotel/{stay}/payments', [HotelController::class, 'storePayment'])->name('hotel.payments.store');
-    Route::post('hotel/{stay}/checkout', [HotelController::class, 'checkout'])->name('hotel.checkout');
-    Route::post('hotel/{stay}/cancel', [HotelController::class, 'cancel'])->name('hotel.cancel');
-    Route::post('hotel/{stay}/photos', [HotelController::class, 'storePhoto'])->name('hotel.photos.store');
-    Route::delete('hotel/{stay}/photos/{photo}', [HotelController::class, 'destroyPhoto'])->name('hotel.photos.destroy');
+        Route::get('hotel', [HotelController::class, 'index'])->name('hotel.index');
+        Route::post('hotel', [HotelController::class, 'store'])->name('hotel.store');
+        Route::get('hotel/{stay}', [HotelController::class, 'show'])->name('hotel.show');
+        Route::put('hotel/{stay}', [HotelController::class, 'update'])->name('hotel.update');
+        Route::post('hotel/{stay}/checkin', [HotelController::class, 'checkin'])->name('hotel.checkin');
+        Route::post('hotel/{stay}/payments', [HotelController::class, 'storePayment'])->name('hotel.payments.store');
+        Route::post('hotel/{stay}/checkout', [HotelController::class, 'checkout'])->name('hotel.checkout');
+        Route::post('hotel/{stay}/cancel', [HotelController::class, 'cancel'])->name('hotel.cancel');
+        Route::post('hotel/{stay}/photos', [HotelController::class, 'storePhoto'])->name('hotel.photos.store');
+        Route::delete('hotel/{stay}/photos/{photo}', [HotelController::class, 'destroyPhoto'])->name('hotel.photos.destroy');
+    });
 
-    // Paseos — slots (FD manage schedule)
-    Route::get('walks', [WalkSlotController::class, 'index'])->name('walks.index');
-    Route::post('walks', [WalkSlotController::class, 'store'])->name('walks.store');
-    Route::get('walks/{walkSlot}', [WalkSlotController::class, 'show'])->name('walks.show');
-    Route::put('walks/{walkSlot}', [WalkSlotController::class, 'update'])->name('walks.update');
-    Route::post('walks/{walkSlot}/complete', [WalkSlotController::class, 'complete'])->name('walks.complete');
-    Route::post('walks/{walkSlot}/cancel', [WalkSlotController::class, 'cancel'])->name('walks.cancel');
-
-    Route::post('walk-recurrences/{walkRecurrence}/extend', [WalkSlotController::class, 'extendRecurrence'])->name('walks.recurrences.extend');
-
-    // Paseos — bookings (FD add/approve/cancel)
-    Route::post('walks/{walkSlot}/bookings', [WalkBookingController::class, 'store'])->name('walks.bookings.store');
-    Route::post('walk-bookings/{walkBooking}/approve', [WalkBookingController::class, 'approve'])->name('walks.bookings.approve');
-    Route::post('walk-bookings/{walkBooking}/cancel', [WalkBookingController::class, 'cancel'])->name('walks.bookings.cancel');
+    // Paseos
+    Route::middleware('module:paseos')->group(function () {
+        Route::get('walks', [WalkSlotController::class, 'index'])->name('walks.index');
+        Route::post('walks', [WalkSlotController::class, 'store'])->name('walks.store');
+        Route::get('walks/{walkSlot}', [WalkSlotController::class, 'show'])->name('walks.show');
+        Route::put('walks/{walkSlot}', [WalkSlotController::class, 'update'])->name('walks.update');
+        Route::post('walks/{walkSlot}/complete', [WalkSlotController::class, 'complete'])->name('walks.complete');
+        Route::post('walks/{walkSlot}/cancel', [WalkSlotController::class, 'cancel'])->name('walks.cancel');
+        Route::post('walk-recurrences/{walkRecurrence}/extend', [WalkSlotController::class, 'extendRecurrence'])->name('walks.recurrences.extend');
+        Route::post('walks/{walkSlot}/bookings', [WalkBookingController::class, 'store'])->name('walks.bookings.store');
+        Route::post('walk-bookings/{walkBooking}/approve', [WalkBookingController::class, 'approve'])->name('walks.bookings.approve');
+        Route::post('walk-bookings/{walkBooking}/cancel', [WalkBookingController::class, 'cancel'])->name('walks.bookings.cancel');
+    });
 
     // Grooming
-    Route::get('grooming', [AppointmentController::class, 'index'])->name('grooming.index');
-    Route::post('grooming', [AppointmentController::class, 'store'])->name('grooming.store');
-    Route::get('grooming/{appointment}', [AppointmentController::class, 'show'])->name('grooming.show');
-    Route::put('grooming/{appointment}', [AppointmentController::class, 'update'])->name('grooming.update');
-    Route::post('grooming/{appointment}/confirm', [AppointmentController::class, 'confirm'])->name('grooming.confirm');
-    Route::post('grooming/{appointment}/complete', [AppointmentController::class, 'complete'])->name('grooming.complete');
-    Route::post('grooming/{appointment}/cancel', [AppointmentController::class, 'cancel'])->name('grooming.cancel');
-    Route::post('grooming/{appointment}/no-show', [AppointmentController::class, 'noShow'])->name('grooming.noShow');
-    Route::post('grooming/{appointment}/recepcion', [AppointmentController::class, 'storeRecepcion'])->name('grooming.recepcion');
-    Route::post('grooming/{appointment}/photos', [AppointmentController::class, 'storePhoto'])->name('grooming.photos.store');
-    Route::delete('grooming/{appointment}/photos/{photo}', [AppointmentController::class, 'destroyPhoto'])->name('grooming.photos.destroy');
+    Route::middleware('module:grooming')->group(function () {
+        Route::get('grooming', [AppointmentController::class, 'index'])->name('grooming.index');
+        Route::post('grooming', [AppointmentController::class, 'store'])->name('grooming.store');
+        Route::get('grooming/{appointment}', [AppointmentController::class, 'show'])->name('grooming.show');
+        Route::put('grooming/{appointment}', [AppointmentController::class, 'update'])->name('grooming.update');
+        Route::post('grooming/{appointment}/confirm', [AppointmentController::class, 'confirm'])->name('grooming.confirm');
+        Route::post('grooming/{appointment}/complete', [AppointmentController::class, 'complete'])->name('grooming.complete');
+        Route::post('grooming/{appointment}/cancel', [AppointmentController::class, 'cancel'])->name('grooming.cancel');
+        Route::post('grooming/{appointment}/no-show', [AppointmentController::class, 'noShow'])->name('grooming.noShow');
+        Route::post('grooming/{appointment}/recepcion', [AppointmentController::class, 'storeRecepcion'])->name('grooming.recepcion');
+        Route::post('grooming/{appointment}/photos', [AppointmentController::class, 'storePhoto'])->name('grooming.photos.store');
+        Route::delete('grooming/{appointment}/photos/{photo}', [AppointmentController::class, 'destroyPhoto'])->name('grooming.photos.destroy');
+    });
 
     // Veterinaria
-    Route::get('veterinaria', [VetController::class, 'index'])->name('vet.index');
-    Route::post('veterinaria', [VetController::class, 'store'])->name('vet.store');
-    Route::get('veterinaria/{appointment}', [VetController::class, 'show'])->name('vet.show');
-    Route::put('veterinaria/{appointment}', [VetController::class, 'update'])->name('vet.update');
-    Route::post('veterinaria/{appointment}/confirm', [VetController::class, 'confirm'])->name('vet.confirm');
-    Route::post('veterinaria/{appointment}/complete', [VetController::class, 'complete'])->name('vet.complete');
-    Route::post('veterinaria/{appointment}/cancel', [VetController::class, 'cancel'])->name('vet.cancel');
-    Route::post('veterinaria/{appointment}/no-show', [VetController::class, 'noShow'])->name('vet.noShow');
-    Route::post('veterinaria/{appointment}/recepcion', [VetController::class, 'storeRecepcion'])->name('vet.recepcion');
-    Route::post('veterinaria/{appointment}/photos', [VetController::class, 'storePhoto'])->name('vet.photos.store');
-    Route::delete('veterinaria/{appointment}/photos/{photo}', [VetController::class, 'destroyPhoto'])->name('vet.photos.destroy');
+    Route::middleware('module:veterinaria')->group(function () {
+        Route::get('veterinaria', [VetController::class, 'index'])->name('vet.index');
+        Route::post('veterinaria', [VetController::class, 'store'])->name('vet.store');
+        Route::get('veterinaria/{appointment}', [VetController::class, 'show'])->name('vet.show');
+        Route::put('veterinaria/{appointment}', [VetController::class, 'update'])->name('vet.update');
+        Route::post('veterinaria/{appointment}/confirm', [VetController::class, 'confirm'])->name('vet.confirm');
+        Route::post('veterinaria/{appointment}/complete', [VetController::class, 'complete'])->name('vet.complete');
+        Route::post('veterinaria/{appointment}/cancel', [VetController::class, 'cancel'])->name('vet.cancel');
+        Route::post('veterinaria/{appointment}/no-show', [VetController::class, 'noShow'])->name('vet.noShow');
+        Route::post('veterinaria/{appointment}/recepcion', [VetController::class, 'storeRecepcion'])->name('vet.recepcion');
+        Route::post('veterinaria/{appointment}/photos', [VetController::class, 'storePhoto'])->name('vet.photos.store');
+        Route::delete('veterinaria/{appointment}/photos/{photo}', [VetController::class, 'destroyPhoto'])->name('vet.photos.destroy');
+    });
 
-    // Settings
+    // Settings — always accessible
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::get('settings/catalog/sample', [SettingsController::class, 'catalogSample'])->name('settings.catalog.sample');
     Route::post('settings/catalog/import', [SettingsController::class, 'importCatalog'])->name('settings.catalog.import');
@@ -183,7 +195,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::delete('settings/team/{user}', [SettingsController::class, 'destroyTeamMember'])->name('settings.team.destroy');
     });
 
-    // Landing editor
+    // Landing editor — always accessible
     Route::get('landing', [LandingController::class, 'editor'])->name('landing.editor');
     Route::post('landing', [LandingController::class, 'update'])->name('landing.update');
 });

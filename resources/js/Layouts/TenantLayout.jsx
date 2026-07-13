@@ -3,16 +3,16 @@ import { useState } from 'react';
 import BacklogFab from '@/Components/BacklogFab';
 
 const nav = [
-    { label: 'Dashboard',       href: 'dashboard',          icon: 'ti-layout-dashboard' },
-    { label: 'Clientes',        href: 'owners.index',       icon: 'ti-users' },
-    { label: 'Grooming',        href: 'grooming.index',     icon: 'ti-scissors' },
-    { label: 'Veterinaria',     href: 'vet.index',          icon: 'ti-stethoscope' },
-    { label: 'Hotel',           href: 'hotel.index',        icon: 'ti-building' },
-    { label: 'Membresías',      href: 'memberships.index',  icon: 'ti-star' },
-    { label: 'Paseos',          href: 'walks.index',        icon: 'ti-dog',   badge: 'walks_pending_count' },
-    { label: 'POS',             href: 'pos.index',          icon: 'ti-shopping-cart' },
-    { label: 'Landing',         href: 'landing.editor',     icon: 'ti-world' },
-    { label: 'Configuración',   href: 'settings.index',     icon: 'ti-settings' },
+    { label: 'Dashboard',       href: 'dashboard',          icon: 'ti-layout-dashboard', module: null },
+    { label: 'Clientes',        href: 'owners.index',       icon: 'ti-users',            module: 'crm' },
+    { label: 'Grooming',        href: 'grooming.index',     icon: 'ti-scissors',         module: 'grooming' },
+    { label: 'Veterinaria',     href: 'vet.index',          icon: 'ti-stethoscope',      module: 'veterinaria' },
+    { label: 'Hotel',           href: 'hotel.index',        icon: 'ti-building',         module: 'hotel' },
+    { label: 'Membresías',      href: 'memberships.index',  icon: 'ti-star',             module: 'memberships' },
+    { label: 'Paseos',          href: 'walks.index',        icon: 'ti-dog',              module: 'paseos', badge: 'walks_pending_count' },
+    { label: 'POS',             href: 'pos.index',          icon: 'ti-shopping-cart',    module: 'pos' },
+    { label: 'Landing',         href: 'landing.editor',     icon: 'ti-world',            module: null },
+    { label: 'Configuración',   href: 'settings.index',     icon: 'ti-settings',         module: null },
 ];
 
 export default function TenantLayout({ children, title, noPadding = false }) {
@@ -20,6 +20,15 @@ export default function TenantLayout({ children, title, noPadding = false }) {
     const badgeCounts = { walks_pending_count };
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const currentRoute = route().current();
+
+    const permisos = auth.user?.permisos_modulos;
+    const isAdmin  = auth.user?.role === 'tenant_admin';
+    const hasModule = (mod) => {
+        if (!mod || isAdmin) return true;
+        if (!permisos || permisos.length === 0) return true;
+        return permisos.includes(mod);
+    };
+    const visibleNav = nav.filter(item => hasModule(item.module));
 
     return (
         <>
@@ -32,7 +41,7 @@ export default function TenantLayout({ children, title, noPadding = false }) {
                     </div>
 
                     <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-                        {nav.map(item => {
+                        {visibleNav.map(item => {
                             const active = item.href && currentRoute?.startsWith(item.href.split('.')[0]);
                             const badge = item.badge ? (badgeCounts[item.badge] || 0) : 0;
                             return (

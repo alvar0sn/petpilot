@@ -50,27 +50,30 @@ class SettingsController extends Controller
             'teamMembers' => User::where('tenant_id', app('current_tenant')->id)
                 ->whereIn('role', ['tenant_admin', 'colaborador'])
                 ->orderBy('nombre')
-                ->get(['id', 'nombre', 'apellido', 'email', 'role', 'activo']),
+                ->get(['id', 'nombre', 'apellido', 'email', 'role', 'activo', 'permisos_modulos']),
         ]);
     }
 
     public function storeTeamMember(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'nombre'   => 'required|string|max:255',
-            'apellido' => 'nullable|string|max:255',
-            'email'    => 'required|email|unique:users,email',
-            'role'     => 'required|in:tenant_admin,colaborador',
-            'password' => ['required', Password::min(8)],
+            'nombre'            => 'required|string|max:255',
+            'apellido'          => 'nullable|string|max:255',
+            'email'             => 'required|email|unique:users,email',
+            'role'              => 'required|in:tenant_admin,colaborador',
+            'password'          => ['required', Password::min(8)],
+            'permisos_modulos'  => 'nullable|array',
+            'permisos_modulos.*'=> 'in:crm,pos,memberships,hotel,paseos,grooming,veterinaria',
         ]);
 
         app('current_tenant')->users()->create([
-            'nombre'   => $data['nombre'],
-            'apellido' => $data['apellido'] ?? null,
-            'email'    => $data['email'],
-            'role'     => $data['role'],
-            'password' => Hash::make($data['password']),
-            'activo'   => true,
+            'nombre'           => $data['nombre'],
+            'apellido'         => $data['apellido'] ?? null,
+            'email'            => $data['email'],
+            'role'             => $data['role'],
+            'password'         => Hash::make($data['password']),
+            'activo'           => true,
+            'permisos_modulos' => $data['role'] === 'colaborador' ? ($data['permisos_modulos'] ?? null) : null,
         ]);
 
         return back()->with('success', 'Usuario creado.');
@@ -81,18 +84,23 @@ class SettingsController extends Controller
         abort_unless($user->tenant_id === app('current_tenant')->id, 404);
 
         $data = $request->validate([
-            'nombre'   => 'required|string|max:255',
-            'apellido' => 'nullable|string|max:255',
-            'email'    => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
-            'role'     => 'required|in:tenant_admin,colaborador',
-            'activo'   => 'boolean',
+            'nombre'            => 'required|string|max:255',
+            'apellido'          => 'nullable|string|max:255',
+            'email'             => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
+            'role'              => 'required|in:tenant_admin,colaborador',
+            'activo'            => 'boolean',
+            'permisos_modulos'  => 'nullable|array',
+            'permisos_modulos.*'=> 'in:crm,pos,memberships,hotel,paseos,grooming,veterinaria',
         ]);
 
         if (! ($data['activo'] ?? true) || $data['role'] !== 'tenant_admin') {
             $this->guardLastTenantAdmin($user);
         }
 
-        $user->update($data);
+        $user->update([
+            ...$data,
+            'permisos_modulos' => $data['role'] === 'colaborador' ? ($data['permisos_modulos'] ?? null) : null,
+        ]);
 
         return back()->with('success', 'Usuario actualizado.');
     }
