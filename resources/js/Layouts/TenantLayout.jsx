@@ -65,7 +65,7 @@ export default function TenantLayout({ children, title, noPadding = false }) {
 
                     <div className="px-4 py-3 border-t border-zinc-800">
                         <p className="text-xs text-zinc-400 truncate mb-1">{auth.user?.nombre} {auth.user?.apellido}</p>
-                        <Link href={route('logout')} method="post" as="button"
+                        <Link href={tenant?.slug ? route('tenant.logout', tenant.slug) : route('logout')} method="post" as="button"
                             className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-100 transition-colors text-xs">
                             <i className="ti ti-logout" style={{ fontSize: '13px' }} />
                             Cerrar sesión

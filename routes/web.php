@@ -11,6 +11,7 @@ use App\Http\Controllers\Tenant\AppointmentController;
 use App\Http\Controllers\Tenant\VetController;
 use App\Http\Controllers\Tenant\WalkSlotController;
 use App\Http\Controllers\Tenant\WalkBookingController;
+use App\Http\Controllers\Auth\TenantAuthController;
 use App\Http\Controllers\Portal\OwnerAuthController;
 use App\Http\Controllers\Portal\OwnerPortalController;
 use App\Http\Controllers\Tenant\PosShiftController;
@@ -252,11 +253,18 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
 
 require __DIR__.'/auth.php';
 
+// Tenant staff login (one per tenant)
+Route::prefix('{tenant:slug}')->name('tenant.')->group(function () {
+    Route::get('login', [TenantAuthController::class, 'showLogin'])->name('login');
+    Route::post('login', [TenantAuthController::class, 'login'])->name('login.post');
+    Route::post('logout', [TenantAuthController::class, 'logout'])->name('logout');
+});
+
 // Owner Portal
 Route::prefix('{tenant:slug}')->name('portal.')->group(function () {
-    Route::get('login', [OwnerAuthController::class, 'showLogin'])->name('login');
-    Route::post('login', [OwnerAuthController::class, 'login'])->name('login.post');
-    Route::post('logout', [OwnerAuthController::class, 'logout'])->name('logout');
+    Route::get('portal', [OwnerAuthController::class, 'showLogin'])->name('login');
+    Route::post('portal', [OwnerAuthController::class, 'login'])->name('login.post');
+    Route::post('portal/salir', [OwnerAuthController::class, 'logout'])->name('logout');
     Route::get('olvide-contrasena', [OwnerAuthController::class, 'showForgotPassword'])->name('forgot-password');
     Route::post('olvide-contrasena', [OwnerAuthController::class, 'sendResetLink'])->name('forgot-password.post')->middleware('throttle:3,1');
     Route::get('nueva-contrasena/{token}', [OwnerAuthController::class, 'showResetPassword'])->name('reset-password');
