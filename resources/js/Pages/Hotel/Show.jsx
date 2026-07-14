@@ -1,4 +1,5 @@
 import TenantLayout from '@/Layouts/TenantLayout';
+import Lightbox from '@/Components/Lightbox';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { dateKeyInTimezone, formatDate, isSameDayInTimezone, useTenantTimezone } from '@/lib/datetime';
@@ -508,6 +509,7 @@ function CareForm({ stay, spaces }) {
 function PhotoGallery({ stay }) {
     const form = useForm({ foto: null, etiqueta: '' });
     const [preview, setPreview] = useState(null);
+    const [lightboxIndex, setLightboxIndex] = useState(null);
     const photos = stay.photos ?? [];
 
     function selectFile(e) {
@@ -539,9 +541,11 @@ function PhotoGallery({ stay }) {
 
             {photos.length > 0 && (
                 <div className="grid grid-cols-3 gap-2">
-                    {photos.map(p => (
+                    {photos.map((p, i) => (
                         <div key={p.id} className="relative group">
-                            <img src={p.url} alt={p.etiqueta ?? 'Foto de la estancia'} className="w-full h-24 object-cover rounded-lg border" />
+                            <img src={p.url} alt={p.etiqueta ?? 'Foto de la estancia'}
+                                className="w-full h-24 object-cover rounded-lg border cursor-zoom-in"
+                                onClick={() => setLightboxIndex(i)} />
                             {p.etiqueta && <p className="text-xs text-zinc-400 mt-0.5 truncate">{p.etiqueta}</p>}
                             <button type="button" onClick={() => destroy(p.id)} title="Eliminar foto"
                                 className="absolute top-1 right-1 bg-black/50 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -550,6 +554,16 @@ function PhotoGallery({ stay }) {
                         </div>
                     ))}
                 </div>
+            )}
+
+            {lightboxIndex !== null && (
+                <Lightbox
+                    photos={photos}
+                    index={lightboxIndex}
+                    onClose={() => setLightboxIndex(null)}
+                    onPrev={() => setLightboxIndex(i => i - 1)}
+                    onNext={() => setLightboxIndex(i => i + 1)}
+                />
             )}
 
             {photos.length < 3 ? (

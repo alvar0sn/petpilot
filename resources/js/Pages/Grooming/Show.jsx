@@ -1,4 +1,5 @@
 import AppointmentTimePicker from '@/Components/AppointmentTimePicker';
+import Lightbox from '@/Components/Lightbox';
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
@@ -107,6 +108,7 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
     const fileRef = useRef();
     const resultPhotoForm = useForm({ foto: null, descripcion: '' });
     const resultFileRef = useRef();
+    const [lightbox, setLightbox] = useState(null);
 
     function uploadPhoto(tipo) {
         return function(e) {
@@ -357,20 +359,25 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
 
                     <div className="border-t border-zinc-100 pt-4">
                         <p className="text-xs font-semibold text-zinc-400 mb-3 uppercase tracking-wide">Fotos de recepción</p>
-                        {appt.photos?.filter(p => p.tipo === 'recepcion').length > 0 ? (
-                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
-                                {appt.photos.filter(p => p.tipo === 'recepcion').map(photo => (
-                                    <div key={photo.id} className="relative group rounded-lg overflow-hidden bg-zinc-100 aspect-square">
-                                        <img src={photo.url} alt={photo.descripcion ?? ''} className="w-full h-full object-cover" />
-                                        {photo.descripcion && (
-                                            <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] px-1.5 py-0.5 truncate">{photo.descripcion}</div>
-                                        )}
-                                        <button onClick={() => deletePhoto(photo.id)}
-                                            className="absolute top-1 right-1 bg-zinc-900 text-white rounded-full w-5 h-5 text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">✕</button>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
+                        {appt.photos?.filter(p => p.tipo === 'recepcion').length > 0 ? (() => {
+                            const rec = appt.photos.filter(p => p.tipo === 'recepcion');
+                            return (
+                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
+                                    {rec.map((photo, i) => (
+                                        <div key={photo.id} className="relative group rounded-lg overflow-hidden bg-zinc-100 aspect-square">
+                                            <img src={photo.url} alt={photo.descripcion ?? ''}
+                                                className="w-full h-full object-cover cursor-zoom-in"
+                                                onClick={() => setLightbox({ photos: rec, index: i })} />
+                                            {photo.descripcion && (
+                                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] px-1.5 py-0.5 truncate">{photo.descripcion}</div>
+                                            )}
+                                            <button onClick={() => deletePhoto(photo.id)}
+                                                className="absolute top-1 right-1 bg-zinc-900 text-white rounded-full w-5 h-5 text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">✕</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })() : (
                             <p className="text-sm text-zinc-400 mb-3">Sin fotos de recepción.</p>
                         )}
                         <form onSubmit={uploadPhoto('recepcion')} className="flex flex-wrap gap-2 items-end">
@@ -437,20 +444,25 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
 
                     <div className="border-t border-zinc-100 pt-4">
                         <p className="text-xs font-semibold text-zinc-400 mb-3 uppercase tracking-wide">Fotos del resultado</p>
-                        {appt.photos?.filter(p => p.tipo === 'resultado').length > 0 ? (
-                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
-                                {appt.photos.filter(p => p.tipo === 'resultado').map(photo => (
-                                    <div key={photo.id} className="relative group rounded-lg overflow-hidden bg-zinc-100 aspect-square">
-                                        <img src={photo.url} alt={photo.descripcion ?? ''} className="w-full h-full object-cover" />
-                                        {photo.descripcion && (
-                                            <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] px-1.5 py-0.5 truncate">{photo.descripcion}</div>
-                                        )}
-                                        <button onClick={() => deletePhoto(photo.id)}
-                                            className="absolute top-1 right-1 bg-zinc-900 text-white rounded-full w-5 h-5 text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">✕</button>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
+                        {appt.photos?.filter(p => p.tipo === 'resultado').length > 0 ? (() => {
+                            const res = appt.photos.filter(p => p.tipo === 'resultado');
+                            return (
+                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
+                                    {res.map((photo, i) => (
+                                        <div key={photo.id} className="relative group rounded-lg overflow-hidden bg-zinc-100 aspect-square">
+                                            <img src={photo.url} alt={photo.descripcion ?? ''}
+                                                className="w-full h-full object-cover cursor-zoom-in"
+                                                onClick={() => setLightbox({ photos: res, index: i })} />
+                                            {photo.descripcion && (
+                                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] px-1.5 py-0.5 truncate">{photo.descripcion}</div>
+                                            )}
+                                            <button onClick={() => deletePhoto(photo.id)}
+                                                className="absolute top-1 right-1 bg-zinc-900 text-white rounded-full w-5 h-5 text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">✕</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })() : (
                             <p className="text-sm text-zinc-400 mb-3">Sin fotos del resultado.</p>
                         )}
                         <form onSubmit={uploadPhoto('resultado')} className="flex flex-wrap gap-2 items-end">
@@ -476,6 +488,15 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                     )}
                 </div>
             </div>
+            {lightbox && (
+                <Lightbox
+                    photos={lightbox.photos}
+                    index={lightbox.index}
+                    onClose={() => setLightbox(null)}
+                    onPrev={() => setLightbox(lb => ({ ...lb, index: lb.index - 1 }))}
+                    onNext={() => setLightbox(lb => ({ ...lb, index: lb.index + 1 }))}
+                />
+            )}
         </TenantLayout>
     );
 }
