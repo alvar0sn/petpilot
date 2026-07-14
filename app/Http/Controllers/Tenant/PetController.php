@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppointmentPhoto;
 use App\Models\ChecklistItem;
 use App\Models\EventType;
 use App\Models\HotelStay;
+use App\Models\HotelStayPhoto;
 use App\Models\Membership;
 use App\Models\Owner;
 use App\Models\Pet;
+use App\Models\PetFile;
 use App\Models\Raza;
 use App\Models\WalkBooking;
 use Illuminate\Http\RedirectResponse;
@@ -90,6 +93,64 @@ class PetController extends Controller
         $eventTypes = EventType::orderBy('nombre')->get(['id', 'nombre']);
         $checklistItems = ChecklistItem::where('activo', true)->orderBy('orden')->get(['id', 'nombre']);
 
+        // Build media gallery
+        $media = [];
+
+        if ($pet->foto_url) {
+            $media[] = [
+                'id'          => 'perfil',
+                'url'         => Storage::disk(media_disk())->url($pet->foto_url),
+                'tipo'        => 'perfil',
+                'fecha'       => null,
+                'descripcion' => 'Foto de perfil',
+            ];
+        }
+
+        $apptPhotos = AppointmentPhoto::whereHas('appointment', fn($q) => $q->where('pet_id', $pet->id))
+            ->with('appointment:id,fecha')
+            ->orderByDesc('id')
+            ->get();
+        foreach ($apptPhotos as $p) {
+            $media[] = [
+                'id'          => 'appt-' . $p->id,
+                'url'         => Storage::disk(media_disk())->url($p->ruta),
+                'tipo'        => 'grooming',
+                'fecha'       => $p->appointment?->fecha?->toDateString(),
+                'descripcion' => $p->descripcion,
+            ];
+        }
+
+        $hotelPhotos = HotelStayPhoto::whereHas('stay', fn($q) => $q->where('pet_id', $pet->id))
+            ->with('stay:id,fecha_entrada')
+            ->orderByDesc('id')
+            ->get();
+        foreach ($hotelPhotos as $p) {
+            $media[] = [
+                'id'          => 'hotel-' . $p->id,
+                'url'         => Storage::disk(media_disk())->url($p->url),
+                'tipo'        => 'hotel',
+                'fecha'       => $p->stay?->fecha_entrada?->toDateString(),
+                'descripcion' => $p->etiqueta,
+            ];
+        }
+
+        $petFiles = PetFile::where('pet_id', $pet->id)
+            ->where('tipo_mime', 'like', 'image/%')
+            ->with('event:id,fecha')
+            ->orderByDesc('id')
+            ->get();
+        foreach ($petFiles as $f) {
+            $media[] = [
+                'id'          => 'file-' . $f->id,
+                'url'         => Storage::disk(media_disk())->url($f->archivo_url),
+                'tipo'        => 'consulta',
+                'fecha'       => $f->event?->fecha?->toDateString(),
+                'descripcion' => $f->nombre,
+            ];
+        }
+
+        usort($media, fn($a, $b) => strcmp($b['fecha'] ?? '', $a['fecha'] ?? ''));
+
         $mapMembership = fn($m) => $m ? [
             'id' => $m->id,
             'plan' => $m->plan ? ['id' => $m->plan->id, 'nombre' => $m->plan->nombre] : null,
@@ -134,6 +195,7 @@ class PetController extends Controller
                 'hora_inicio' => $b->slot?->hora_inicio,
                 'slot_id' => $b->slot_id,
             ]),
+            'media' => $media,
         ]);
     }
 

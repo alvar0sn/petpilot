@@ -1,3 +1,4 @@
+import Lightbox from '@/Components/Lightbox';
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState, useRef } from 'react';
@@ -412,7 +413,95 @@ const FILTROS = [
     { key: 'hotel',   label: 'Hotel / Guardería' },
     { key: 'estetica', label: 'Estética' },
     { key: 'paseo',   label: 'Paseos' },
+    { key: 'fotos',   label: 'Fotos' },
 ];
+
+const MEDIA_TIPOS = [
+    { key: 'todos',    label: 'Todas' },
+    { key: 'perfil',   label: 'Perfil' },
+    { key: 'grooming', label: 'Grooming' },
+    { key: 'hotel',    label: 'Hotel' },
+    { key: 'consulta', label: 'Consultas' },
+];
+
+const MEDIA_TIPO_BADGE = {
+    perfil:   'bg-zinc-100 text-zinc-600',
+    grooming: 'bg-purple-100 text-purple-700',
+    hotel:    'bg-blue-100 text-blue-700',
+    consulta: 'bg-teal-100 text-teal-700',
+};
+
+function MediaGallery({ media }) {
+    const [tipoFiltro, setTipoFiltro] = useState('todos');
+    const [lightbox, setLightbox] = useState(null);
+
+    const filtered = tipoFiltro === 'todos' ? media : media.filter(p => p.tipo === tipoFiltro);
+
+    return (
+        <div className="space-y-3">
+            <div className="flex flex-wrap gap-1.5">
+                {MEDIA_TIPOS.map(t => (
+                    <button key={t.key} onClick={() => setTipoFiltro(t.key)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                            tipoFiltro === t.key
+                                ? 'bg-zinc-900 text-white border-zinc-900'
+                                : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'
+                        }`}>
+                        {t.label}
+                    </button>
+                ))}
+            </div>
+
+            {filtered.length === 0 ? (
+                <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-8 text-center text-zinc-400 text-sm">
+                    Sin fotos para este filtro.
+                </div>
+            ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {filtered.map((photo, i) => (
+                        <div key={photo.id} className="relative group rounded-lg overflow-hidden bg-zinc-100 aspect-square">
+                            <img
+                                src={photo.url}
+                                alt={photo.descripcion ?? ''}
+                                className="w-full h-full object-cover cursor-zoom-in"
+                                onClick={() => setLightbox({ photos: filtered, index: i })}
+                            />
+                            <div className="absolute top-1.5 left-1.5">
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${MEDIA_TIPO_BADGE[photo.tipo]}`}>
+                                    {photo.tipo}
+                                </span>
+                            </div>
+                            {photo.fecha && (
+                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] px-1.5 py-0.5 text-right">
+                                    {photo.fecha}
+                                </div>
+                            )}
+                            <a
+                                href={photo.url}
+                                download
+                                onClick={e => e.stopPropagation()}
+                                className="absolute top-1.5 right-1.5 bg-black/50 hover:bg-black/70 text-white rounded w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Descargar"
+                            >
+                                ↓
+                            </a>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {lightbox && (
+                <Lightbox
+                    photos={lightbox.photos}
+                    index={lightbox.index}
+                    onClose={() => setLightbox(null)}
+                    onPrev={() => setLightbox(lb => ({ ...lb, index: lb.index - 1 }))}
+                    onNext={() => setLightbox(lb => ({ ...lb, index: lb.index + 1 }))}
+                />
+            )}
+        </div>
+    );
+}
 
 const MEDICO_TIPOS = ['Vacuna', 'Desparasitación', 'Consulta'];
 
@@ -562,7 +651,7 @@ function PetAvatar({ pet }) {
     );
 }
 
-export default function PetShow({ pet, activeMembership, eventTypes, checklistItems, hotelStays, walkBookings }) {
+export default function PetShow({ pet, activeMembership, eventTypes, checklistItems, hotelStays, walkBookings, media = [] }) {
     const tz = useTenantTimezone();
     const [showForm, setShowForm] = useState(false);
     const [filtro, setFiltro] = useState('todos');
@@ -675,17 +764,19 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                 <div className="lg:col-span-2 space-y-3">
                     <div className="flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-zinc-700 uppercase tracking-wide">
-                            Historial ({totalCount})
+                            {filtro === 'fotos' ? `Fotos (${media.length})` : `Historial (${totalCount})`}
                         </h3>
-                        <button
-                            onClick={() => setShowForm(f => !f)}
-                            className="bg-zinc-900 text-white px-4 py-2 rounded-lg hover:bg-zinc-700 text-sm font-medium transition-colors"
-                        >
-                            {showForm ? 'Cancelar' : '+ Nuevo evento'}
-                        </button>
+                        {filtro !== 'fotos' && (
+                            <button
+                                onClick={() => setShowForm(f => !f)}
+                                className="bg-zinc-900 text-white px-4 py-2 rounded-lg hover:bg-zinc-700 text-sm font-medium transition-colors"
+                            >
+                                {showForm ? 'Cancelar' : '+ Nuevo evento'}
+                            </button>
+                        )}
                     </div>
 
-                    {showForm && (
+                    {showForm && filtro !== 'fotos' && (
                         <NewEventForm
                             petId={pet.id}
                             eventTypes={eventTypes}
@@ -711,20 +802,26 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                         ))}
                     </div>
 
-                    {filtered.length === 0 && !showForm && (
-                        <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-8 text-center text-zinc-400 text-sm">
-                            {filtro === 'todos' ? 'Sin registros en la bitácora.' : 'Sin registros para este filtro.'}
-                        </div>
-                    )}
+                    {filtro === 'fotos' ? (
+                        <MediaGallery media={media} />
+                    ) : (
+                        <>
+                            {filtered.length === 0 && !showForm && (
+                                <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-8 text-center text-zinc-400 text-sm">
+                                    {filtro === 'todos' ? 'Sin registros en la bitácora.' : 'Sin registros para este filtro.'}
+                                </div>
+                            )}
 
-                    <div className="space-y-2">
-                        {filtered.map(item => {
-                            if (item._kind === 'event') return <EventCard key={`e-${item.id}`} event={item} />;
-                            if (item._kind === 'hotel') return <HotelCard key={`h-${item.id}`} stay={item} />;
-                            if (item._kind === 'paseo') return <PaseoCard key={`p-${item.id}`} booking={item} />;
-                            return null;
-                        })}
-                    </div>
+                            <div className="space-y-2">
+                                {filtered.map(item => {
+                                    if (item._kind === 'event') return <EventCard key={`e-${item.id}`} event={item} />;
+                                    if (item._kind === 'hotel') return <HotelCard key={`h-${item.id}`} stay={item} />;
+                                    if (item._kind === 'paseo') return <PaseoCard key={`p-${item.id}`} booking={item} />;
+                                    return null;
+                                })}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         </TenantLayout>
