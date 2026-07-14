@@ -27,13 +27,15 @@ class GhlService
             return false;
         }
 
-        $payload = [
-            'firstName' => $owner->nombre,
-            'lastName' => $owner->apellidos,
-            'phone' => $owner->telefono,
-            'email' => $owner->email,
+        $phone = $owner->telefono ? $this->normalizePhone($owner->telefono) : null;
+
+        $payload = array_filter([
+            'firstName'  => $owner->nombre,
+            'lastName'   => $owner->apellidos ?? '',
+            'phone'      => $phone,
+            'email'      => $owner->email ?: null,
             'locationId' => $config->location_id,
-        ];
+        ], fn($v) => $v !== null && $v !== '');
 
         try {
             $http = Http::withToken($config->api_key)
@@ -86,6 +88,23 @@ class GhlService
 
             return false;
         }
+    }
+
+    private function normalizePhone(string $phone): string
+    {
+        $digits = preg_replace('/\D/', '', $phone);
+
+        if (str_starts_with($digits, '521') && strlen($digits) === 13) {
+            return '+' . $digits;
+        }
+        if (str_starts_with($digits, '52') && strlen($digits) === 12) {
+            return '+' . $digits;
+        }
+        if (strlen($digits) === 10) {
+            return '+52' . $digits;
+        }
+
+        return '+' . $digits;
     }
 
     public function sendWebhook(int $tenantId, string $type, array $payload): bool
