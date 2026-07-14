@@ -22,7 +22,7 @@ class SuperAdminOwnersController extends Controller
         $owners = Owner::withoutGlobalScopes()
             ->with([
                 'tenant:id,nombre,slug',
-                'pets:id,owner_id,nombre,especie',
+                'pets:id,owner_id,nombre,tipo',
             ])
             ->when($search, fn($q) => $q->where(function ($q) use ($search) {
                 $q->where('nombre', 'like', "%{$search}%")
@@ -48,7 +48,7 @@ class SuperAdminOwnersController extends Controller
                 'ghl_contact_id'  => $o->ghl_contact_id,
                 'ghl_sync_status' => $o->ghl_sync_status,
                 'tenant'          => $o->tenant ? ['id' => $o->tenant->id, 'nombre' => $o->tenant->nombre] : null,
-                'pets'            => $o->pets->map(fn($p) => ['nombre' => $p->nombre, 'especie' => $p->especie]),
+                'pets'            => $o->pets->map(fn($p) => ['nombre' => $p->nombre, 'especie' => $p->tipo]),
             ]);
 
         return Inertia::render('SuperAdmin/Owners', [
