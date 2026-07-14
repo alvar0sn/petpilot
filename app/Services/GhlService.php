@@ -28,12 +28,24 @@ class GhlService
         }
 
         $phone = $owner->telefono ? $this->normalizePhone($owner->telefono) : null;
+        $email = $owner->email ?: null;
+
+        if (! $phone && ! $email) {
+            GhlContactLog::withoutGlobalScopes()->create([
+                'tenant_id'     => $tenantId,
+                'owner_id'      => $owner->id,
+                'action'        => 'sync',
+                'status'        => 'skipped',
+                'error_message' => 'Sin teléfono ni email — GHL requiere al menos uno',
+            ]);
+            return false;
+        }
 
         $payload = array_filter([
             'firstName'  => $owner->nombre,
-            'lastName'   => $owner->apellidos ?? '',
+            'lastName'   => $owner->apellidos ?: null,
             'phone'      => $phone,
-            'email'      => $owner->email ?: null,
+            'email'      => $email,
             'locationId' => $config->location_id,
         ], fn($v) => $v !== null && $v !== '');
 
