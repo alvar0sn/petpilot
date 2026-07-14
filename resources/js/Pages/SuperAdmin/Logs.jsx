@@ -73,6 +73,7 @@ export default function Logs({ contactLogs, webhookLogs, tenants, filters }) {
                                 <th className="px-4 py-3 text-left">Acción</th>
                                 <th className="px-4 py-3 text-left">Estado</th>
                                 <th className="px-4 py-3 text-left">HTTP</th>
+                                <th className="px-4 py-3 text-left">Error</th>
                                 <th className="px-4 py-3 text-left">Fecha</th>
                             </tr>
                         </thead>
@@ -84,11 +85,12 @@ export default function Logs({ contactLogs, webhookLogs, tenants, filters }) {
                                     <td className="px-4 py-2 font-mono">{log.action}</td>
                                     <td className="px-4 py-2"><LogBadge status={log.status} /></td>
                                     <td className="px-4 py-2 text-gray-500">{log.http_code}</td>
+                                    <td className="px-4 py-2 text-red-500 font-mono text-[10px] max-w-xs truncate" title={log.error_message ?? ''}>{log.error_message ?? '—'}</td>
                                     <td className="px-4 py-2 text-gray-400">{log.created_at}</td>
                                 </tr>
                             ))}
                             {contactLogs.data.length === 0 && (
-                                <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">Sin logs.</td></tr>
+                                <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-400">Sin logs.</td></tr>
                             )}
                         </tbody>
                     </table>
