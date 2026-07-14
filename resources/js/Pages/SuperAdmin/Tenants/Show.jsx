@@ -514,9 +514,17 @@ function GhlTab({ tenant, ghlContactLogs, ghlWebhookLogs, errors }) {
                     <div className="space-y-2">
                         {ghlContactLogs.length === 0 && <p className="text-xs text-gray-400">Sin logs.</p>}
                         {ghlContactLogs.map(log => (
-                            <div key={log.id} className="flex items-center justify-between text-xs">
-                                <span className="text-gray-600">{log.action} — {log.owner?.nombre_completo ?? 'N/A'}</span>
-                                <LogBadge status={log.status} />
+                            <div key={log.id} className="text-xs space-y-0.5 border-b border-gray-50 pb-1.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-600">{log.action} — {log.owner?.nombre_completo ?? 'N/A'}</span>
+                                    <div className="flex items-center gap-2">
+                                        {log.http_code && <span className="text-gray-400">HTTP {log.http_code}</span>}
+                                        <LogBadge status={log.status} />
+                                    </div>
+                                </div>
+                                {log.error_message && (
+                                    <p className="text-red-500 font-mono text-[10px] break-all">{log.error_message}</p>
+                                )}
                             </div>
                         ))}
                     </div>
