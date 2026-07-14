@@ -63,6 +63,28 @@ class GhlService
 
             $success = $response->successful();
 
+            // Duplicate: GHL returns 400 with the existing contactId in meta
+            if (! $success && $response->status() === 400 && $action === 'create') {
+                $existingId = $response->json('meta.contactId');
+                if ($existingId) {
+                    $owner->withoutGlobalScopes()->where('id', $owner->id)->update([
+                        'ghl_contact_id'  => $existingId,
+                        'ghl_sync_status' => 'synced',
+                    ]);
+                    GhlContactLog::withoutGlobalScopes()->create([
+                        'tenant_id'      => $tenantId,
+                        'owner_id'       => $owner->id,
+                        'action'         => 'link_existing',
+                        'status'         => 'success',
+                        'ghl_contact_id' => $existingId,
+                        'http_code'      => $response->status(),
+                        'error_message'  => null,
+                        'payload_sent'   => $payload,
+                    ]);
+                    return true;
+                }
+            }
+
             if ($success && $action === 'create') {
                 $owner->withoutGlobalScopes()->where('id', $owner->id)->update([
                     'ghl_contact_id' => $response->json('contact.id'),
