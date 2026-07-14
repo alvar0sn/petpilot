@@ -21,35 +21,23 @@ export default function SuperAdminLayout({ children, title }) {
             )}
 
             <nav className="bg-indigo-900 text-white shadow">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-14">
+                <div className="px-4 sm:px-6 lg:px-8 overflow-x-auto">
+                    <div className="flex items-center justify-between h-14 min-w-max">
                         <div className="flex items-center gap-6">
-                            <Link href={route('super-admin.index')} className="text-lg font-bold tracking-tight">
+                            <Link href={route('super-admin.index')} className="text-lg font-bold tracking-tight whitespace-nowrap">
                                 VETRKT <span className="text-indigo-300 text-sm font-normal">Super Admin</span>
                             </Link>
-                            <Link href={route('super-admin.index')} className="text-sm text-indigo-200 hover:text-white">
-                                Tenants
-                            </Link>
-                            <Link href={route('super-admin.owners.index')} className="text-sm text-indigo-200 hover:text-white">
-                                Clientes
-                            </Link>
-                            <Link href={route('super-admin.logs')} className="text-sm text-indigo-200 hover:text-white">
-                                Logs
-                            </Link>
-                            <Link href={route('super-admin.backlog.index')} className="text-sm text-indigo-200 hover:text-white">
-                                Backlog
-                            </Link>
-                            <Link href={route('super-admin.agency-users.index')} className="text-sm text-indigo-200 hover:text-white">
-                                Equipo
-                            </Link>
-                            <Link href={route('super-admin.system-settings.index')} className="text-sm text-indigo-200 hover:text-white">
-                                Infraestructura
-                            </Link>
+                            <Link href={route('super-admin.index')} className="text-sm text-indigo-200 hover:text-white whitespace-nowrap">Tenants</Link>
+                            <Link href={route('super-admin.owners.index')} className="text-sm text-indigo-200 hover:text-white whitespace-nowrap">Clientes</Link>
+                            <Link href={route('super-admin.logs')} className="text-sm text-indigo-200 hover:text-white whitespace-nowrap">Logs</Link>
+                            <Link href={route('super-admin.backlog.index')} className="text-sm text-indigo-200 hover:text-white whitespace-nowrap">Backlog</Link>
+                            <Link href={route('super-admin.agency-users.index')} className="text-sm text-indigo-200 hover:text-white whitespace-nowrap">Equipo</Link>
+                            <Link href={route('super-admin.system-settings.index')} className="text-sm text-indigo-200 hover:text-white whitespace-nowrap">Infraestructura</Link>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <span className="text-indigo-300 text-sm">{auth.user?.email}</span>
+                        <div className="flex items-center gap-3 pl-6">
+                            <span className="text-indigo-300 text-sm whitespace-nowrap">{auth.user?.email}</span>
                             <Link href={route('logout')} method="post" as="button"
-                                className="text-xs text-indigo-300 hover:text-white border border-indigo-700 hover:border-indigo-400 px-2 py-1 rounded transition-colors">
+                                className="text-xs text-indigo-300 hover:text-white border border-indigo-700 hover:border-indigo-400 px-2 py-1 rounded transition-colors whitespace-nowrap">
                                 Salir
                             </Link>
                         </div>
