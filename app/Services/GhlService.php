@@ -36,13 +36,14 @@ class GhlService
         ];
 
         try {
+            $http = Http::withToken($config->api_key)
+                ->withHeaders(['Version' => '2021-07-28']);
+
             if ($owner->ghl_contact_id) {
-                $response = Http::withToken($config->api_key)
-                    ->put("https://services.leadconnectorhq.com/contacts/{$owner->ghl_contact_id}", $payload);
+                $response = $http->put("https://services.leadconnectorhq.com/contacts/{$owner->ghl_contact_id}", $payload);
                 $action = 'update';
             } else {
-                $response = Http::withToken($config->api_key)
-                    ->post('https://services.leadconnectorhq.com/contacts/', $payload);
+                $response = $http->post('https://services.leadconnectorhq.com/contacts/', $payload);
                 $action = 'create';
             }
 
