@@ -54,7 +54,8 @@ class GhlService
                 ->withHeaders(['Version' => '2021-07-28']);
 
             if ($owner->ghl_contact_id) {
-                $response = $http->put("https://services.leadconnectorhq.com/contacts/{$owner->ghl_contact_id}", $payload);
+                $updatePayload = array_diff_key($payload, ['locationId' => null]);
+                $response = $http->put("https://services.leadconnectorhq.com/contacts/{$owner->ghl_contact_id}", $updatePayload);
                 $action = 'update';
             } else {
                 $response = $http->post('https://services.leadconnectorhq.com/contacts/', $payload);
