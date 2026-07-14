@@ -86,7 +86,7 @@ export default function Logs({ contactLogs, webhookLogs, tenants, filters }) {
                                     <td className="px-4 py-2"><LogBadge status={log.status} /></td>
                                     <td className="px-4 py-2 text-gray-500">{log.http_code}</td>
                                     <td className="px-4 py-2 text-red-500 font-mono text-[10px] max-w-xs truncate" title={log.error_message ?? ''}>{log.error_message ?? '—'}</td>
-                                    <td className="px-4 py-2 text-gray-400">{log.created_at}</td>
+                                    <td className="px-4 py-2 text-gray-400">{new Date(log.created_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</td>
                                 </tr>
                             ))}
                             {contactLogs.data.length === 0 && (
@@ -118,7 +118,7 @@ export default function Logs({ contactLogs, webhookLogs, tenants, filters }) {
                                     <td className="px-4 py-2"><LogBadge status={log.status} /></td>
                                     <td className="px-4 py-2 text-gray-500">{log.http_code}</td>
                                     <td className="px-4 py-2 text-red-500 max-w-xs truncate">{log.error_message}</td>
-                                    <td className="px-4 py-2 text-gray-400">{log.created_at}</td>
+                                    <td className="px-4 py-2 text-gray-400">{new Date(log.created_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</td>
                                 </tr>
                             ))}
                             {webhookLogs.data.length === 0 && (
