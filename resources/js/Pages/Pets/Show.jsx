@@ -533,7 +533,7 @@ function PetAvatar({ pet }) {
         router.delete(route('pets.foto.destroy', pet.id), { preserveScroll: true });
     }
 
-    const url = pet.foto_url ? `/storage/${pet.foto_url}` : null;
+    const url = pet.foto_url ?? null;
 
     return (
         <div className="relative group shrink-0">

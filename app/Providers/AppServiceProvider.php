@@ -40,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
                     'visibility'              => 'public',
                     'throw'                   => false,
                 ]]);
+                app()->instance('media_disk', 'r2');
             }
 
             if (! empty($s['resend_api_key'])) {

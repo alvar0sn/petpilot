@@ -38,7 +38,7 @@ class SettingsController extends Controller
             'stations'      => GroomingStation::orderBy('orden')->orderBy('nombre')->get(['id', 'nombre', 'activo', 'orden']),
             'checklistItems'=> ChecklistItem::orderBy('orden')->orderBy('nombre')->get(['id', 'nombre', 'activo', 'orden']),
             'ticketConfig'  => [
-                'logo_url'       => $ticketConfig?->logo_path ? Storage::url($ticketConfig->logo_path) : null,
+                'logo_url'       => $ticketConfig?->logo_path ? Storage::disk(media_disk())->url($ticketConfig->logo_path) : null,
                 'color_primario' => $ticketConfig?->color_primario ?? '#4f46e5',
                 'color_texto'    => $ticketConfig?->color_texto    ?? '#1f2937',
                 'color_fondo'    => $ticketConfig?->color_fondo    ?? '#ffffff',
@@ -182,11 +182,11 @@ class SettingsController extends Controller
 
         if ($request->hasFile('logo')) {
             if ($config->logo_path) {
-                Storage::disk('public')->delete($config->logo_path);
+                Storage::disk(media_disk())->delete($config->logo_path);
             }
             $config->logo_path = $request->file('logo')->store(
                 'ticket-logos/' . currentTenant()->id,
-                'public'
+                media_disk()
             );
         }
 

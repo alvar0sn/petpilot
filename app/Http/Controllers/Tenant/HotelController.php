@@ -307,7 +307,7 @@ class HotelController extends Controller
         $stay->setRelation('photos', $stay->photos->map(fn(HotelStayPhoto $p) => [
             'id' => $p->id,
             'etiqueta' => $p->etiqueta,
-            'url' => Storage::disk('public')->url($p->url),
+            'url' => Storage::disk(media_disk())->url($p->url),
         ]));
 
         return Inertia::render('Hotel/Show', [
@@ -576,7 +576,7 @@ class HotelController extends Controller
             'etiqueta' => 'nullable|string|max:100',
         ]);
 
-        $path = $request->file('foto')->store("hotel-stays/{$stay->id}", 'public');
+        $path = $request->file('foto')->store("hotel-stays/{$stay->id}", media_disk());
 
         HotelStayPhoto::create([
             'stay_id' => $stay->id,
@@ -589,7 +589,7 @@ class HotelController extends Controller
 
     public function destroyPhoto(HotelStay $stay, HotelStayPhoto $photo): RedirectResponse
     {
-        Storage::disk('public')->delete($photo->url);
+        Storage::disk(media_disk())->delete($photo->url);
         $photo->delete();
 
         return back()->with('success', 'Foto eliminada.');

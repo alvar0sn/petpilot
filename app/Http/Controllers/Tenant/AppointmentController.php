@@ -210,7 +210,7 @@ class AppointmentController extends Controller
                 ]),
                 'photos' => $appointment->photos->map(fn($p) => [
                     'id'          => $p->id,
-                    'url'         => Storage::disk('public')->url($p->ruta),
+                    'url'         => Storage::disk(media_disk())->url($p->ruta),
                     'tipo'        => $p->tipo,
                     'descripcion' => $p->descripcion,
                 ]),
@@ -465,7 +465,7 @@ class AppointmentController extends Controller
             'tipo'        => 'nullable|in:recepcion,resultado',
         ]);
 
-        $path = $request->file('foto')->store("grooming/{$appointment->id}", 'public');
+        $path = $request->file('foto')->store("grooming/{$appointment->id}", media_disk());
 
         AppointmentPhoto::create([
             'appointment_id' => $appointment->id,
@@ -479,7 +479,7 @@ class AppointmentController extends Controller
 
     public function destroyPhoto(Appointment $appointment, AppointmentPhoto $photo): RedirectResponse
     {
-        Storage::disk('public')->delete($photo->ruta);
+        Storage::disk(media_disk())->delete($photo->ruta);
         $photo->delete();
 
         return back()->with('success', 'Foto eliminada.');

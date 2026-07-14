@@ -106,6 +106,7 @@ class PetController extends Controller
 
         return Inertia::render('Pets/Show', [
             'pet' => array_merge($pet->toArray(), [
+                'foto_url'              => $pet->foto_url ? Storage::disk(media_disk())->url($pet->foto_url) : null,
                 'recordatorio_vacuna'   => $pet->recordatorio_vacuna?->toDateString(),
                 'recordatorio_despa'    => $pet->recordatorio_despa?->toDateString(),
                 'recordatorio_consulta' => $pet->recordatorio_consulta?->toDateString(),
@@ -187,10 +188,10 @@ class PetController extends Controller
         $request->validate(['foto' => 'required|image|max:5120']);
 
         if ($pet->foto_url) {
-            Storage::disk('public')->delete($pet->foto_url);
+            Storage::disk(media_disk())->delete($pet->foto_url);
         }
 
-        $path = $request->file('foto')->store("pets/{$pet->id}", 'public');
+        $path = $request->file('foto')->store("pets/{$pet->id}", media_disk());
         $pet->update(['foto_url' => $path]);
 
         return back()->with('success', 'Foto actualizada.');
@@ -199,7 +200,7 @@ class PetController extends Controller
     public function destroyPhoto(Pet $pet): RedirectResponse
     {
         if ($pet->foto_url) {
-            Storage::disk('public')->delete($pet->foto_url);
+            Storage::disk(media_disk())->delete($pet->foto_url);
             $pet->update(['foto_url' => null]);
         }
 

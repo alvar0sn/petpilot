@@ -12,6 +12,7 @@ use App\Models\WalkBooking;
 use App\Models\WalkSlot;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -43,7 +44,7 @@ class OwnerPortalController extends Controller
             'nombre' => $p->nombre,
             'tipo' => $p->tipo,
             'raza' => $p->raza,
-            'foto_url' => $p->foto_url,
+            'foto_url' => $p->foto_url ? Storage::disk(media_disk())->url($p->foto_url) : null,
             'estado' => $p->estado,
             'recordatorio_vacuna'   => $p->recordatorio_vacuna?->toDateString(),
             'recordatorio_despa'    => $p->recordatorio_despa?->toDateString(),
@@ -138,7 +139,7 @@ class OwnerPortalController extends Controller
                 'peso' => $pet->peso,
                 'nivel_agresividad' => $pet->nivel_agresividad,
                 'estado' => $pet->estado,
-                'foto_url' => $pet->foto_url,
+                'foto_url' => $pet->foto_url ? Storage::disk(media_disk())->url($pet->foto_url) : null,
                 'alergias' => $pet->alergias,
                 'padecimientos' => $pet->padecimientos,
                 'obs_comportamiento' => $pet->obs_comportamiento,
