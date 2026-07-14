@@ -454,9 +454,9 @@ function GhlTab({ tenant, ghlContactLogs, ghlWebhookLogs, errors }) {
                         <TextInput className="mt-1 w-full font-mono text-xs"
                             value={ghlForm.data.api_key}
                             onChange={e => ghlForm.setData('api_key', e.target.value)}
-                            placeholder={tenant.ghl_config?.api_key ? '(conservar actual)' : 'eyJ...'} />
+                            placeholder={tenant.ghl_config?.api_key_preview ? '(dejar vacío para conservar)' : 'eyJ...'} />
                         {tenant.ghl_config?.api_key_preview && (
-                            <p className="text-xs text-gray-400 mt-1">Actual: {tenant.ghl_config.api_key_preview}</p>
+                            <p className="text-xs text-gray-400 mt-1">Guardada: {tenant.ghl_config.api_key_preview}</p>
                         )}
                     </div>
                     <div>

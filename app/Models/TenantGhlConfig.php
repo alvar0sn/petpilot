@@ -23,6 +23,8 @@ class TenantGhlConfig extends Model
 
     protected $hidden = ['api_key'];
 
+    protected $appends = ['api_key_preview'];
+
     protected $casts = [
         'activo' => 'boolean',
     ];
