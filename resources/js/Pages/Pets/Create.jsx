@@ -1,7 +1,8 @@
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Link, useForm } from '@inertiajs/react';
+import BreedCombobox from '@/Components/BreedCombobox';
 
-export default function PetCreate({ owner }) {
+export default function PetCreate({ owner, razasCustom = [] }) {
     const { data, setData, post, processing, errors } = useForm({
         nombre: '',
         tipo: 'perro',
@@ -66,11 +67,7 @@ export default function PetCreate({ owner }) {
 
                         <div className="col-span-2">
                             <label className="block text-sm font-medium text-zinc-700 mb-1">Raza</label>
-                            <input
-                                className="w-full border-gray-300 rounded-lg text-sm"
-                                value={data.raza}
-                                onChange={e => setData('raza', e.target.value)}
-                            />
+                            <BreedCombobox value={data.raza} onChange={v => setData('raza', v)} tipo={data.tipo} razasCustom={razasCustom} />
                         </div>
 
                         <div>

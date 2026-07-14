@@ -533,6 +533,64 @@ function ModuleCheckboxes({ permisos, onChange }) {
     );
 }
 
+const TIPO_LABELS = {
+    perro:   'Perro',
+    gato:    'Gato',
+    roedor:  'Roedor',
+    reptil:  'Reptil',
+    otro:    'Otro',
+};
+
+const TIPO_COLORS = {
+    perro:  'bg-amber-50 text-amber-700 ring-amber-200',
+    gato:   'bg-sky-50 text-sky-700 ring-sky-200',
+    roedor: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+    reptil: 'bg-lime-50 text-lime-700 ring-lime-200',
+    otro:   'bg-zinc-100 text-zinc-500 ring-zinc-200',
+};
+
+function RazasSection({ razas }) {
+    const form = useForm({ nombre: '', tipo: 'perro' });
+
+    return (
+        <div className="max-w-md bg-white border border-zinc-100 shadow-sm rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-zinc-100">
+                <h3 className="font-semibold text-zinc-700">Razas personalizadas</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">Se mostrarán junto a las razas comunes al registrar mascotas, filtradas por especie</p>
+            </div>
+            <div className="divide-y divide-zinc-50">
+                {razas.map(r => (
+                    <div key={r.id} className="px-4 py-3 flex items-center gap-3 text-sm">
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ring-1 shrink-0 ${TIPO_COLORS[r.tipo] ?? TIPO_COLORS.otro}`}>
+                            {TIPO_LABELS[r.tipo] ?? r.tipo}
+                        </span>
+                        <span className="flex-1 text-zinc-800">{r.nombre}</span>
+                        <button
+                            onClick={() => { if (confirm(`¿Eliminar "${r.nombre}"?`)) router.delete(route('settings.razas.destroy', r.id)); }}
+                            className="text-xs text-rose-500 hover:text-rose-700 transition-colors">
+                            eliminar
+                        </button>
+                    </div>
+                ))}
+                {razas.length === 0 && <p className="px-4 py-3 text-sm text-zinc-400">Sin razas personalizadas.</p>}
+            </div>
+            <div className="px-4 py-3 border-t border-zinc-100 bg-zinc-50">
+                <form onSubmit={e => { e.preventDefault(); form.post(route('settings.razas.store'), { onSuccess: () => form.reset() }); }} className="flex gap-2">
+                    <select className="border-gray-300 rounded-lg text-sm" value={form.data.tipo} onChange={e => form.setData('tipo', e.target.value)}>
+                        <option value="perro">Perro</option>
+                        <option value="gato">Gato</option>
+                        <option value="roedor">Roedor</option>
+                        <option value="reptil">Reptil</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                    <input className="flex-1 border-gray-300 rounded-lg text-sm" placeholder="Ej: Criollo Pitbull" value={form.data.nombre} onChange={e => form.setData('nombre', e.target.value)} />
+                    <button type="submit" disabled={form.processing} className="bg-zinc-900 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-zinc-700 disabled:opacity-50 transition-colors">+ Agregar</button>
+                </form>
+            </div>
+        </div>
+    );
+}
+
 function TeamTab({ teamMembers, currentUserId }) {
     const newForm = useForm({ nombre: '', apellido: '', email: '', role: 'colaborador', password: '', permisos_modulos: [] });
     const [editUser, setEditUser] = useState(null);
@@ -718,12 +776,13 @@ function TeamTab({ teamMembers, currentUserId }) {
     );
 }
 
-export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, walkConfig, teamMembers }) {
+export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, walkConfig, teamMembers, razas }) {
     const { auth } = usePage().props;
     const [tab, setTab] = useState('catalog');
 
     const tabs = [
         { id: 'catalog', label: 'Catálogo' },
+        { id: 'crm', label: 'CRM' },
         { id: 'grooming', label: 'Grooming' },
         { id: 'payments', label: 'Métodos de pago' },
         { id: 'ticket', label: 'Ticket' },
@@ -743,6 +802,7 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
             </div>
 
             {tab === 'catalog' && <CatalogTab categories={categories} items={items} />}
+            {tab === 'crm' && <RazasSection razas={razas ?? []} />}
             {tab === 'grooming' && <GroomingTab stations={stations ?? []} checklistItems={checklistItems ?? []} />}
             {tab === 'payments' && <PaymentMethodsTab paymentMethods={paymentMethods} />}
             {tab === 'ticket' && <TicketConfigTab ticketConfig={ticketConfig ?? { color_primario: '#18181b', color_texto: '#1f2937', color_fondo: '#ffffff', mensaje_pie: '', logo_url: null }} />}

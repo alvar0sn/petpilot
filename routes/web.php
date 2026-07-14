@@ -189,12 +189,15 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
     Route::post('settings/ticket-config', [SettingsController::class, 'updateTicketConfig'])->name('settings.ticket.update');
     Route::post('settings/walk-config', [SettingsController::class, 'updateWalkConfig'])->name('settings.walk.update');
 
-    // Team management — tenant_admin only
+    // Team management & razas — tenant_admin only
     Route::middleware('role:tenant_admin')->group(function () {
         Route::post('settings/team', [SettingsController::class, 'storeTeamMember'])->name('settings.team.store');
         Route::put('settings/team/{user}', [SettingsController::class, 'updateTeamMember'])->name('settings.team.update');
         Route::put('settings/team/{user}/password', [SettingsController::class, 'updateTeamMemberPassword'])->name('settings.team.password');
         Route::delete('settings/team/{user}', [SettingsController::class, 'destroyTeamMember'])->name('settings.team.destroy');
+
+        Route::post('settings/razas', [SettingsController::class, 'storeRaza'])->name('settings.razas.store');
+        Route::delete('settings/razas/{raza}', [SettingsController::class, 'destroyRaza'])->name('settings.razas.destroy');
     });
 
     // Landing editor — always accessible

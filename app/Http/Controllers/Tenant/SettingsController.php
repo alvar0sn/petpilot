@@ -9,6 +9,7 @@ use App\Models\PosCategory;
 use App\Models\PosCatalogItem;
 use App\Models\PosPaymentMethod;
 use App\Models\PosTicketConfig;
+use App\Models\Raza;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,7 +52,31 @@ class SettingsController extends Controller
                 ->whereIn('role', ['tenant_admin', 'colaborador'])
                 ->orderBy('nombre')
                 ->get(['id', 'nombre', 'apellido', 'email', 'role', 'activo', 'permisos_modulos']),
+            'razas' => Raza::orderBy('tipo')->orderBy('nombre')->get(['id', 'nombre', 'tipo']),
         ]);
+    }
+
+    public function storeRaza(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'nombre' => 'required|string|max:100',
+            'tipo'   => 'required|in:perro,gato,roedor,reptil,otro',
+        ]);
+
+        Raza::firstOrCreate([
+            'nombre'    => $data['nombre'],
+            'tipo'      => $data['tipo'],
+            'tenant_id' => app('current_tenant')->id,
+        ]);
+
+        return back()->with('success', 'Raza agregada.');
+    }
+
+    public function destroyRaza(Raza $raza): RedirectResponse
+    {
+        abort_unless($raza->tenant_id === app('current_tenant')->id, 404);
+        $raza->delete();
+        return back()->with('success', 'Raza eliminada.');
     }
 
     public function storeTeamMember(Request $request): RedirectResponse

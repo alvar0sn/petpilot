@@ -9,6 +9,7 @@ use App\Models\HotelStay;
 use App\Models\Membership;
 use App\Models\Owner;
 use App\Models\Pet;
+use App\Models\Raza;
 use App\Models\WalkBooking;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,12 +21,15 @@ class PetController extends Controller
 {
     public function create(Owner $owner): Response
     {
-        return Inertia::render('Pets/Create', ['owner' => [
-            'id' => $owner->id,
-            'nombre' => $owner->nombre,
-            'apellidos' => $owner->apellidos,
-            'nombre_completo' => $owner->nombre_completo,
-        ]]);
+        return Inertia::render('Pets/Create', [
+            'owner' => [
+                'id' => $owner->id,
+                'nombre' => $owner->nombre,
+                'apellidos' => $owner->apellidos,
+                'nombre_completo' => $owner->nombre_completo,
+            ],
+            'razasCustom' => Raza::orderBy('nombre')->get(['nombre', 'tipo']),
+        ]);
     }
 
     public function store(Request $request, Owner $owner): RedirectResponse
@@ -149,7 +153,8 @@ class PetController extends Controller
     public function edit(Pet $pet): Response
     {
         return Inertia::render('Pets/Edit', [
-            'pet' => $pet->load('owner:id,nombre,apellidos'),
+            'pet'         => $pet->load('owner:id,nombre,apellidos'),
+            'razasCustom' => Raza::orderBy('nombre')->get(['nombre', 'tipo']),
         ]);
     }
 
