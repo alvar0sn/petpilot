@@ -74,11 +74,11 @@ class GhlService
                     GhlContactLog::withoutGlobalScopes()->create([
                         'tenant_id'      => $tenantId,
                         'owner_id'       => $owner->id,
-                        'action'         => 'link_existing',
+                        'action'         => 'create',
                         'status'         => 'success',
                         'ghl_contact_id' => $existingId,
                         'http_code'      => $response->status(),
-                        'error_message'  => null,
+                        'error_message'  => 'Contacto duplicado — vinculado a existente',
                         'payload_sent'   => $payload,
                     ]);
                     return true;
