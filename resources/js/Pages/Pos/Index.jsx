@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 function fmt(n) {
-    return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+    return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 // ─── Owner search ────────────────────────────────────────────────────────────
@@ -272,7 +272,16 @@ function MobileCart({ ticket, paymentMethods, discounts, onRefresh, onClear, onB
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
-                    <h2 className="font-semibold text-gray-900">Carrito</h2>
+                    <h2 className="font-semibold text-gray-900 flex-1">Carrito</h2>
+                    <button onClick={() => {
+                        if (confirm('¿Cancelar este ticket?')) {
+                            router.post(route('pos.tickets.cancel', ticket.id), {}, {
+                                onSuccess: () => onClear(),
+                            });
+                        }
+                    }} className="text-xs text-red-400 hover:text-red-600">
+                        Eliminar ticket
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
