@@ -322,7 +322,7 @@ function MobileCart({ ticket, paymentMethods, discounts, onRefresh, onClear, onB
                                             className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-40">
                                             −
                                         </button>
-                                        <span className="text-sm font-medium w-5 text-center">{line.cantidad}</span>
+                                        <span className="text-sm font-medium w-5 text-center">{Math.round(line.cantidad)}</span>
                                         <button onClick={() => changeQty(line.id, 1)} disabled={processing}
                                             className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-40">
                                             +
@@ -481,7 +481,7 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
                     <div key={line.id} className="flex items-center gap-2 text-sm">
                         <div className="flex-1">
                             <span className="text-gray-800">{line.nombre_snapshot}</span>
-                            <span className="text-gray-400 text-xs ml-1">×{line.cantidad}</span>
+                            <span className="text-gray-400 text-xs ml-1">×{Math.round(line.cantidad)}</span>
                         </div>
                         <span className="font-mono text-gray-700">{fmt(line.subtotal)}</span>
                         <button onClick={() => removeLine(line.id)} className="text-gray-300 hover:text-red-400 text-xs">✕</button>
