@@ -76,6 +76,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::get('pos/tickets/{ticket}', [PosTicketController::class, 'show'])->name('pos.tickets.show');
         Route::post('pos/tickets/{ticket}/lines', [PosTicketController::class, 'addLine'])->name('pos.tickets.lines.add');
         Route::delete('pos/tickets/{ticket}/lines', [PosTicketController::class, 'removeLine'])->name('pos.tickets.lines.remove');
+        Route::patch('pos/tickets/{ticket}/lines', [PosTicketController::class, 'updateLine'])->name('pos.tickets.lines.update');
         Route::post('pos/tickets/{ticket}/discount', [PosTicketController::class, 'applyDiscount'])->name('pos.tickets.discount');
         Route::post('pos/tickets/{ticket}/owner', [PosTicketController::class, 'setOwner'])->name('pos.tickets.owner');
         Route::post('pos/tickets/{ticket}/pay', [PosTicketController::class, 'pay'])->name('pos.tickets.pay');

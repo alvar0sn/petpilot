@@ -132,6 +132,26 @@ class PosTicketController extends Controller
         return response()->json($this->ticketResponse($ticket));
     }
 
+    public function updateLine(Request $request, PosTicket $ticket): JsonResponse
+    {
+        $this->authorize_ticket($ticket);
+
+        $data = $request->validate([
+            'line_id'  => 'required|exists:pos_ticket_lines,id',
+            'cantidad' => 'required|integer|min:1',
+        ]);
+
+        $line = PosTicketLine::where('id', $data['line_id'])->where('ticket_id', $ticket->id)->firstOrFail();
+        $line->update([
+            'cantidad' => $data['cantidad'],
+            'subtotal' => $line->precio_snapshot * $data['cantidad'],
+        ]);
+
+        $this->recalculate($ticket);
+
+        return response()->json($this->ticketResponse($ticket));
+    }
+
     public function applyDiscount(Request $request, PosTicket $ticket): JsonResponse
     {
         $this->authorize_ticket($ticket);
