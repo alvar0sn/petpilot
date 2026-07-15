@@ -78,4 +78,9 @@ class User extends Authenticatable
     {
         return trim($this->nombre . ' ' . $this->apellido);
     }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new \App\Notifications\UserPasswordReset($token));
+    }
 }
