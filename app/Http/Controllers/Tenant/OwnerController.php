@@ -39,6 +39,7 @@ class OwnerController extends Controller
                 'nombre_completo' => $o->nombre_completo,
                 'telefono' => $o->telefono,
                 'email' => $o->email,
+                'direccion' => $o->direccion,
                 'ghl_sync_status' => $o->ghl_sync_status,
                 'pets_count' => $o->pets->count(),
                 'pets' => $o->pets->take(3)->map(function ($p) {

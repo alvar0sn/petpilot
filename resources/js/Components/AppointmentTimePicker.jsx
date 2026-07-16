@@ -13,6 +13,7 @@ const DURATIONS = [
     { label: '2 hrs',  value: 120 },
     { label: '2½ hrs', value: 150 },
     { label: '3 hrs',  value: 180 },
+    { label: '4 hrs',  value: 240 },
 ];
 
 function pad(n) { return String(n).padStart(2, '0'); }

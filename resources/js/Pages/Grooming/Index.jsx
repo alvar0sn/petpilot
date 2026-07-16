@@ -42,6 +42,7 @@ function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, def
         pet_id: '', tipo_servicio_id: eventTypes[0]?.id ?? '', fecha: defaultDate,
         hora_inicio: '', hora_fin: '', groomer_id: '', station_id: '',
         notas_internas: '', cobro_membresia: false, membership_id: '', items: [],
+        servicio_domicilio: false, direccion_entrega: '',
     });
     const [duracion, setDuracion] = useState(null);
     const [petSearch, setPetSearch] = useState('');
@@ -55,6 +56,7 @@ function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, def
         const owners = r.data?.props?.owners?.data ?? [];
         const pets = owners.flatMap(o => (o.pets ?? []).map(p => ({
             id: p.id, nombre: p.nombre, owner: o.nombre_completo,
+            owner_direccion: o.direccion ?? '',
             membership_id: p.membership_id ?? null, creditos_estetica: p.creditos_estetica ?? 0,
         })));
         setPetResults(pets.slice(0, 8));
@@ -63,7 +65,13 @@ function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, def
     function selectPet(pet) {
         setSelectedPet(pet);
         setPetResults([]);
-        form.setData(d => ({ ...d, pet_id: pet.id, cobro_membresia: false, membership_id: pet.membership_id ?? '' }));
+        form.setData(d => ({
+            ...d,
+            pet_id: pet.id,
+            cobro_membresia: false,
+            membership_id: pet.membership_id ?? '',
+            direccion_entrega: pet.owner_direccion ?? '',
+        }));
     }
 
     const [itemDraft, setItemDraft] = useState({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1' });
@@ -124,12 +132,26 @@ function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, def
                         </div>
                     )}
 
-                    <div className="col-span-2">
-                        <label className="block text-xs font-medium text-zinc-600 mb-1">Tipo de servicio *</label>
-                        <select className="w-full border-gray-300 rounded-lg text-sm" value={form.data.tipo_servicio_id} onChange={e => form.setData('tipo_servicio_id', e.target.value)} required>
-                            {eventTypes.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                        </select>
-                    </div>
+                    {selectedPet && (
+                        <div className="col-span-2">
+                            <label className="flex items-center justify-between cursor-pointer px-3 py-2.5 border border-zinc-200 rounded-lg hover:border-zinc-300 transition-colors">
+                                <span className="flex items-center gap-2 text-sm font-medium text-zinc-700">
+                                    🛵 Servicio a domicilio
+                                </span>
+                                <button type="button"
+                                    onClick={() => form.setData('servicio_domicilio', !form.data.servicio_domicilio)}
+                                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${form.data.servicio_domicilio ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${form.data.servicio_domicilio ? 'translate-x-5' : 'translate-x-0'}`} />
+                                </button>
+                            </label>
+                            {form.data.servicio_domicilio && (
+                                <textarea className="w-full border-gray-300 rounded-lg text-sm mt-1.5 resize-none" rows={2}
+                                    placeholder="Dirección de entrega"
+                                    value={form.data.direccion_entrega}
+                                    onChange={e => form.setData('direccion_entrega', e.target.value)} />
+                            )}
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-xs font-medium text-zinc-600 mb-1">Fecha *</label>

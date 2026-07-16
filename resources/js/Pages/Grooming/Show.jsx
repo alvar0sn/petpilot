@@ -35,6 +35,8 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
         groomer_id: appt.groomer?.id ?? '',
         station_id: appt.station?.id ?? '',
         notas_internas: appt.notas_internas ?? '',
+        servicio_domicilio: appt.servicio_domicilio ?? false,
+        direccion_entrega: appt.direccion_entrega ?? '',
         items: appt.items ?? [],
     });
     const [editing, setEditing] = useState(false);
@@ -268,6 +270,23 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                             <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2} value={form.data.notas_internas} onChange={e => form.setData('notas_internas', e.target.value)} />
                         </div>
 
+                        <div>
+                            <label className="flex items-center justify-between cursor-pointer px-3 py-2.5 border border-zinc-200 rounded-lg">
+                                <span className="flex items-center gap-2 text-sm font-medium text-zinc-700">🛵 Servicio a domicilio</span>
+                                <button type="button"
+                                    onClick={() => form.setData('servicio_domicilio', !form.data.servicio_domicilio)}
+                                    className={`relative w-11 h-6 rounded-full transition-colors ${form.data.servicio_domicilio ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.data.servicio_domicilio ? 'translate-x-5' : 'translate-x-0'}`} />
+                                </button>
+                            </label>
+                            {form.data.servicio_domicilio && (
+                                <textarea className="w-full border-gray-300 rounded-lg text-sm mt-1.5 resize-none" rows={2}
+                                    placeholder="Dirección de entrega"
+                                    value={form.data.direccion_entrega}
+                                    onChange={e => form.setData('direccion_entrega', e.target.value)} />
+                            )}
+                        </div>
+
                         <div className="flex gap-2">
                             <button type="button" onClick={() => setEditing(false)} className="flex-1 bg-white border border-zinc-200 text-zinc-600 py-1.5 rounded-lg text-sm hover:bg-zinc-50 transition-colors">Cancelar</button>
                             <button type="submit" disabled={form.processing} className="flex-1 bg-zinc-900 text-white py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">Guardar</button>
@@ -293,6 +312,12 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                             </div>
                         ) : (
                             <p className="text-zinc-400 text-xs">Sin servicios registrados.</p>
+                        )}
+                        {appt.servicio_domicilio && (
+                            <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                                <p className="text-xs font-medium text-blue-700 mb-0.5">🛵 Servicio a domicilio</p>
+                                {appt.direccion_entrega && <p className="text-zinc-700 text-xs">{appt.direccion_entrega}</p>}
+                            </div>
                         )}
                         {appt.notas_internas && (
                             <div>

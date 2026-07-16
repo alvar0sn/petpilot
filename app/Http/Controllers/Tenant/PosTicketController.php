@@ -177,23 +177,6 @@ class PosTicketController extends Controller
         return response()->json($this->ticketResponse($ticket));
     }
 
-    public function updateDomicilio(Request $request, PosTicket $ticket): JsonResponse
-    {
-        $this->authorize_ticket($ticket);
-
-        $data = $request->validate([
-            'servicio_domicilio' => 'required|boolean',
-            'direccion_entrega'  => 'nullable|string|max:500',
-        ]);
-
-        $ticket->update([
-            'servicio_domicilio' => $data['servicio_domicilio'],
-            'direccion_entrega'  => $data['servicio_domicilio'] ? ($data['direccion_entrega'] ?? null) : null,
-        ]);
-
-        return response()->json($this->ticketResponse($ticket));
-    }
-
     public function pay(Request $request, PosTicket $ticket): JsonResponse
     {
         $this->authorize_ticket($ticket);
@@ -339,7 +322,7 @@ class PosTicketController extends Controller
 
     private function ticketResponse(PosTicket $ticket): array
     {
-        return ['ticket' => $ticket->fresh()->load(['owner:id,nombre,apellidos,telefono,direccion', 'lines.item', 'discount'])];
+        return ['ticket' => $ticket->fresh()->load(['owner:id,nombre,apellidos,telefono', 'lines.item', 'discount'])];
     }
 
     private function authorize_ticket(PosTicket $ticket): void
