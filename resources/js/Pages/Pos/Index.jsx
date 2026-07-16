@@ -209,6 +209,33 @@ function MobileCart({ ticket, paymentMethods, discounts, onRefresh, onClear, onB
     const [notes, setNotes] = useState(ticket.notas ?? '');
     const [showPayment, setShowPayment] = useState(false);
     const [paidState, setPaidState] = useState(null);
+    const [domicilio, setDomicilio] = useState(ticket.servicio_domicilio ?? false);
+    const [direccion, setDireccion] = useState(ticket.direccion_entrega ?? ticket.owner?.direccion ?? '');
+
+    async function toggleDomicilio(val) {
+        setDomicilio(val);
+        if (val && !direccion && ticket.owner?.direccion) setDireccion(ticket.owner.direccion);
+        setProcessing(true);
+        try {
+            const r = await axios.patch(route('pos.tickets.domicilio', ticket.id), {
+                servicio_domicilio: val,
+                direccion_entrega: val ? (direccion || ticket.owner?.direccion || '') : null,
+            });
+            onRefresh(r.data.ticket);
+        } finally { setProcessing(false); }
+    }
+
+    async function saveDireccion() {
+        if (!domicilio) return;
+        setProcessing(true);
+        try {
+            const r = await axios.patch(route('pos.tickets.domicilio', ticket.id), {
+                servicio_domicilio: true,
+                direccion_entrega: direccion,
+            });
+            onRefresh(r.data.ticket);
+        } finally { setProcessing(false); }
+    }
 
     async function assignOwner(owner) {
         setSearchingOwner(false);
@@ -355,6 +382,32 @@ function MobileCart({ ticket, paymentMethods, discounts, onRefresh, onClear, onB
                             <span className="text-xl font-bold text-gray-900">{fmt(ticket.total)}</span>
                         </div>
 
+                        {/* Servicio a domicilio */}
+                        {ticket.owner && (
+                            <div className="border border-gray-100 rounded-2xl p-4 space-y-3 bg-gray-50">
+                                <label className="flex items-center justify-between cursor-pointer">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-lg">🛵</span>
+                                        <span className="text-sm font-medium text-gray-800">Servicio a domicilio</span>
+                                    </div>
+                                    <button onClick={() => toggleDomicilio(!domicilio)} disabled={processing}
+                                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${domicilio ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${domicilio ? 'translate-x-5' : 'translate-x-0'}`} />
+                                    </button>
+                                </label>
+                                {domicilio && (
+                                    <textarea
+                                        className="w-full border-gray-200 rounded-xl text-sm bg-white py-2.5 px-3 resize-none"
+                                        rows={2}
+                                        placeholder="Dirección de entrega"
+                                        value={direccion}
+                                        onChange={e => setDireccion(e.target.value)}
+                                        onBlur={saveDireccion}
+                                    />
+                                )}
+                            </div>
+                        )}
+
                         {/* Notes */}
                         <input className="w-full border-gray-200 rounded-xl text-sm bg-gray-50 py-3 px-4"
                             placeholder="Notas (opcional)" value={notes}
@@ -395,6 +448,33 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
     const [cancelComment, setCancelComment] = useState('');
     const [paidState, setPaidState] = useState(null);
     const [searchingOwner, setSearchingOwner] = useState(false);
+    const [domicilio, setDomicilio] = useState(ticket.servicio_domicilio ?? false);
+    const [direccion, setDireccion] = useState(ticket.direccion_entrega ?? ticket.owner?.direccion ?? '');
+
+    async function toggleDomicilio(val) {
+        setDomicilio(val);
+        if (val && !direccion && ticket.owner?.direccion) setDireccion(ticket.owner.direccion);
+        setProcessing(true);
+        try {
+            const r = await axios.patch(route('pos.tickets.domicilio', ticket.id), {
+                servicio_domicilio: val,
+                direccion_entrega: val ? (direccion || ticket.owner?.direccion || '') : null,
+            });
+            onRefresh(r.data.ticket);
+        } finally { setProcessing(false); }
+    }
+
+    async function saveDireccion() {
+        if (!domicilio) return;
+        setProcessing(true);
+        try {
+            const r = await axios.patch(route('pos.tickets.domicilio', ticket.id), {
+                servicio_domicilio: true,
+                direccion_entrega: direccion,
+            });
+            onRefresh(r.data.ticket);
+        } finally { setProcessing(false); }
+    }
 
     async function assignOwner(owner) {
         setSearchingOwner(false);
@@ -516,6 +596,27 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
                     <span>Total</span><span className="font-mono">{fmt(ticket.total)}</span>
                 </div>
             </div>
+
+            {ticket.owner && (
+                <div className="px-3 pb-3 space-y-1.5">
+                    <label className="flex items-center justify-between cursor-pointer">
+                        <span className="text-xs text-gray-600 flex items-center gap-1.5">
+                            <span>🛵</span> Servicio a domicilio
+                        </span>
+                        <button onClick={() => toggleDomicilio(!domicilio)} disabled={processing}
+                            className={`relative w-9 h-5 rounded-full transition-colors ${domicilio ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                            <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${domicilio ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </button>
+                    </label>
+                    {domicilio && (
+                        <textarea rows={2} className="w-full border-gray-200 rounded-lg text-xs bg-gray-50 py-1.5 px-2 resize-none"
+                            placeholder="Dirección de entrega"
+                            value={direccion}
+                            onChange={e => setDireccion(e.target.value)}
+                            onBlur={saveDireccion} />
+                    )}
+                </div>
+            )}
 
             {paidState ? (
                 <div className="px-4 pb-4 space-y-3 text-center">
