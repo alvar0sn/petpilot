@@ -22,7 +22,7 @@ export default function SuperAdminLayout({ children, title }) {
                     <span>👁 Estás viendo el panel de <strong>{tenant.nombre}</strong></span>
                     <Link
                         href={route('super-admin.impersonate.stop')}
-                        method="delete"
+                        method="post"
                         as="button"
                         className="bg-white text-amber-700 px-3 py-1 rounded text-xs font-bold hover:bg-amber-100"
                     >

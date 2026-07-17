@@ -222,7 +222,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
     Route::delete('tenants/{tenant}/users/{user}', [TenantUserController::class, 'destroy'])->name('tenants.users.destroy');
 
     Route::post('tenants/{tenant}/impersonate', [ImpersonationController::class, 'start'])->name('impersonate.start');
-    Route::delete('impersonate', [ImpersonationController::class, 'stop'])->name('impersonate.stop');
+    Route::post('impersonate/stop', [ImpersonationController::class, 'stop'])->name('impersonate.stop');
 
     Route::get('tenants/{tenant}/import', [CsvImportController::class, 'show'])->name('import.show');
     Route::post('tenants/{tenant}/import/preview', [CsvImportController::class, 'preview'])->name('import.preview');

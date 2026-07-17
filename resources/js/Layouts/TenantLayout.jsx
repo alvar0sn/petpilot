@@ -82,7 +82,7 @@ export default function TenantLayout({ children, title, noPadding = false }) {
                     {impersonating && tenant && (
                         <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between text-sm font-medium sticky top-0 z-30">
                             <span>Viendo <strong>{tenant.nombre}</strong> como super admin</span>
-                            <Link href={route('super-admin.impersonate.stop')} method="delete" as="button"
+                            <Link href={route('super-admin.impersonate.stop')} method="post" as="button"
                                 className="bg-white text-amber-700 px-3 py-1 rounded-md text-xs font-semibold hover:bg-amber-50 transition-colors">
                                 Salir
                             </Link>
