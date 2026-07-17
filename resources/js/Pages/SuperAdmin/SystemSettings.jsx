@@ -68,7 +68,7 @@ export default function SystemSettings({ r2, resend }) {
                             </Field>
                             <Field label="Bucket" error={r2Form.errors.r2_bucket}>
                                 <input className="w-full border-gray-300 rounded-lg text-sm font-mono"
-                                    placeholder="vetrkt-media"
+                                    placeholder="petpilot-media"
                                     value={r2Form.data.r2_bucket}
                                     onChange={e => r2Form.setData('r2_bucket', e.target.value)} />
                             </Field>
@@ -134,7 +134,7 @@ export default function SystemSettings({ r2, resend }) {
                             </Field>
                             <Field label="Nombre remitente" error={resendForm.errors.resend_from_name}>
                                 <input className="w-full border-gray-300 rounded-lg text-sm"
-                                    placeholder="VETRKT"
+                                    placeholder="Petpilot"
                                     value={resendForm.data.resend_from_name}
                                     onChange={e => resendForm.setData('resend_from_name', e.target.value)} />
                             </Field>

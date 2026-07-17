@@ -57,7 +57,7 @@ export default function TenantCreate() {
                                 required pattern="[a-z0-9-]+"
                             />
                             <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                                .vetrkt.com
+                                .petpilot.mx
                             </span>
                         </div>
                         <InputError message={errors.slug} className="mt-1" />

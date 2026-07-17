@@ -298,7 +298,7 @@
 </section>
 
 <footer class="bg-black text-white text-center py-6 text-xs">
-    <p>{{ $tenant->nombre }} · Powered by <span class="opacity-60">Vetrkt</span></p>
+    <p>{{ $tenant->nombre }} · Powered by <span class="opacity-60">Petpilot</span></p>
 </footer>
 
 </body>

@@ -36,7 +36,7 @@ export default function TenantLayout({ children, title, noPadding = false }) {
                 {/* Sidebar */}
                 <aside className={`fixed inset-y-0 left-0 z-50 w-56 bg-zinc-950 flex flex-col transform transition-transform lg:translate-x-0 lg:static lg:inset-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                     <div className="px-4 py-4 border-b border-zinc-800">
-                        <span className="text-base font-semibold tracking-tight text-zinc-100">VETRKT</span>
+                        <span className="text-base font-semibold tracking-tight text-zinc-100">Petpilot</span>
                         {tenant && <p className="text-zinc-500 text-xs mt-0.5 truncate">{tenant.nombre}</p>}
                     </div>
 
