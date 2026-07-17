@@ -10,7 +10,12 @@ const nav = [
     { label: 'Hotel',           href: 'hotel.index',        icon: 'ti-building',         module: 'hotel' },
     { label: 'Membresías',      href: 'memberships.index',  icon: 'ti-star',             module: 'memberships' },
     { label: 'Paseos',          href: 'walks.index',        icon: 'ti-dog',              module: 'paseos', badge: 'walks_pending_count' },
-    { label: 'POS',             href: 'pos.index',          icon: 'ti-shopping-cart',    module: 'pos' },
+    { label: 'POS',             href: 'pos.index',          icon: 'ti-shopping-cart',    module: 'pos', children: [
+        { label: 'Historial',   href: 'pos.history' },
+        { label: 'Turnos',      href: 'pos.shift.index' },
+        { label: 'Catálogo',    href: 'pos.catalog' },
+        { label: 'Descuentos',  href: 'pos.discounts.index' },
+    ]},
     { label: 'Landing',         href: 'landing.editor',     icon: 'ti-world',            module: null },
     { label: 'Configuración',   href: 'settings.index',     icon: 'ti-settings',         module: null },
 ];
@@ -44,21 +49,39 @@ export default function TenantLayout({ children, title, noPadding = false }) {
                         {visibleNav.map(item => {
                             const active = item.href && currentRoute?.startsWith(item.href.split('.')[0]);
                             const badge = item.badge ? (badgeCounts[item.badge] || 0) : 0;
+                            const expanded = active && item.children;
                             return (
-                                <Link
-                                    key={item.href}
-                                    href={route(item.href)}
-                                    className={`flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors ${active ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-100 hover:bg-zinc-900'}`}
-                                    style={{ fontSize: '13px' }}
-                                >
-                                    <i className={`ti ${item.icon}`} style={{ fontSize: '15px' }} />
-                                    <span className="flex-1">{item.label}</span>
-                                    {badge > 0 && (
-                                        <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">
-                                            {badge > 9 ? '9+' : badge}
-                                        </span>
+                                <div key={item.href}>
+                                    <Link
+                                        href={route(item.href)}
+                                        className={`flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors ${active ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-100 hover:bg-zinc-900'}`}
+                                        style={{ fontSize: '13px' }}
+                                    >
+                                        <i className={`ti ${item.icon}`} style={{ fontSize: '15px' }} />
+                                        <span className="flex-1">{item.label}</span>
+                                        {badge > 0 && (
+                                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">
+                                                {badge > 9 ? '9+' : badge}
+                                            </span>
+                                        )}
+                                    </Link>
+                                    {expanded && (
+                                        <div className="mt-0.5 space-y-0.5">
+                                            {item.children.map(child => {
+                                                const childActive = currentRoute?.startsWith(child.href.replace('.index', ''));
+                                                return (
+                                                    <Link key={child.href} href={route(child.href)}
+                                                        className={`flex items-center gap-2 pl-9 pr-3 py-1.5 rounded-md transition-colors ${childActive ? 'text-white bg-zinc-700' : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900'}`}
+                                                        style={{ fontSize: '12px' }}
+                                                    >
+                                                        <i className="ti ti-chevron-right" style={{ fontSize: '10px', opacity: 0.5 }} />
+                                                        {child.label}
+                                                    </Link>
+                                                );
+                                            })}
+                                        </div>
                                     )}
-                                </Link>
+                                </div>
                             );
                         })}
                     </nav>

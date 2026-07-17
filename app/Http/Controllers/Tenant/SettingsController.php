@@ -56,6 +56,14 @@ class SettingsController extends Controller
         ]);
     }
 
+    public function catalog(): Response
+    {
+        return Inertia::render('Pos/Catalog', [
+            'categories' => PosCategory::orderBy('orden')->get(),
+            'items'      => PosCatalogItem::with('categoria:id,nombre')->orderBy('nombre')->get(),
+        ]);
+    }
+
     public function storeRaza(Request $request): RedirectResponse
     {
         $data = $request->validate([

@@ -14,6 +14,7 @@ use App\Http\Controllers\Tenant\WalkBookingController;
 use App\Http\Controllers\Auth\TenantAuthController;
 use App\Http\Controllers\Portal\OwnerAuthController;
 use App\Http\Controllers\Portal\OwnerPortalController;
+use App\Http\Controllers\Tenant\PosDiscountController;
 use App\Http\Controllers\Tenant\PosShiftController;
 use App\Http\Controllers\Tenant\PosTicketController;
 use App\Http\Controllers\Tenant\SettingsController;
@@ -86,6 +87,13 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('pos/shifts', [PosShiftController::class, 'store'])->name('pos.shift.store');
         Route::post('pos/shifts/{shift}/close', [PosShiftController::class, 'close'])->name('pos.shift.close');
         Route::post('pos/shifts/{shift}/movement', [PosShiftController::class, 'addMovement'])->name('pos.shift.movement');
+
+        Route::get('pos/catalog', [SettingsController::class, 'catalog'])->name('pos.catalog');
+
+        Route::get('pos/discounts', [PosDiscountController::class, 'index'])->name('pos.discounts.index');
+        Route::post('pos/discounts', [PosDiscountController::class, 'store'])->name('pos.discounts.store');
+        Route::put('pos/discounts/{discount}', [PosDiscountController::class, 'update'])->name('pos.discounts.update');
+        Route::delete('pos/discounts/{discount}', [PosDiscountController::class, 'destroy'])->name('pos.discounts.destroy');
     });
 
     // Membresías
