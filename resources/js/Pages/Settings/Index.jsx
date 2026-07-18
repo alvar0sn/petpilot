@@ -786,8 +786,63 @@ function TeamTab({ teamMembers, currentUserId }) {
     );
 }
 
+function LinksTab({ slug }) {
+    const [copied, setCopied] = useState(null);
+
+    function copy(key, url) {
+        navigator.clipboard.writeText(url);
+        setCopied(key);
+        setTimeout(() => setCopied(null), 2000);
+    }
+
+    const links = [
+        {
+            key: 'staff',
+            label: 'Login de staff',
+            description: 'Acceso para colaboradores y admins del negocio',
+            url: route('tenant.login', slug),
+        },
+        {
+            key: 'portal',
+            label: 'Portal de clientes',
+            description: 'Acceso para dueños de mascotas a su historial y citas',
+            url: route('portal.login', slug),
+        },
+        {
+            key: 'landing',
+            label: 'Página pública',
+            description: 'Tu página de presentación visible para cualquier visitante',
+            url: route('studio.landing', slug),
+        },
+    ];
+
+    return (
+        <div className="max-w-xl space-y-3">
+            {links.map(l => (
+                <div key={l.key} className="bg-white border border-zinc-100 shadow-sm rounded-xl px-5 py-4 flex items-center gap-4">
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-zinc-800">{l.label}</p>
+                        <p className="text-xs text-zinc-400 mt-0.5">{l.description}</p>
+                        <p className="text-xs font-mono text-zinc-500 mt-1 truncate">{l.url}</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                        <a href={l.url} target="_blank" rel="noreferrer"
+                            className="text-xs border border-zinc-200 text-zinc-600 px-3 py-1.5 rounded-lg hover:bg-zinc-50 transition-colors">
+                            Abrir
+                        </a>
+                        <button onClick={() => copy(l.key, l.url)}
+                            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${copied === l.key ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50'}`}>
+                            {copied === l.key ? 'Copiado' : 'Copiar'}
+                        </button>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, walkConfig, teamMembers, razas }) {
-    const { auth } = usePage().props;
+    const { auth, tenant } = usePage().props;
     const [tab, setTab] = useState('catalog');
 
     const tabs = [
@@ -798,6 +853,7 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
         { id: 'ticket', label: 'Ticket' },
         { id: 'walks', label: 'Paseos' },
         { id: 'team', label: 'Equipo' },
+        { id: 'links', label: 'Links' },
     ];
 
     return (
@@ -818,6 +874,7 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
             {tab === 'ticket' && <TicketConfigTab ticketConfig={ticketConfig ?? { color_primario: '#18181b', color_texto: '#1f2937', color_fondo: '#ffffff', mensaje_pie: '', logo_url: null }} />}
             {tab === 'walks' && <WalksConfigTab walkConfig={walkConfig ?? { horas_anticipacion: 2, dias_adelante: 14 }} />}
             {tab === 'team' && <TeamTab teamMembers={teamMembers ?? []} currentUserId={auth.user?.id} />}
+            {tab === 'links' && <LinksTab slug={tenant?.slug} />}
         </TenantLayout>
     );
 }
