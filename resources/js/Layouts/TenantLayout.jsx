@@ -26,6 +26,15 @@ export default function TenantLayout({ children, title, noPadding = false }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const currentRoute = route().current();
 
+    const [expanded, setExpanded] = useState(() => {
+        const init = {};
+        nav.forEach(item => {
+            if (item.children) init[item.href] = currentRoute?.startsWith(item.href.split('.')[0]) ?? false;
+        });
+        return init;
+    });
+    const toggleSection = (href) => setExpanded(prev => ({ ...prev, [href]: !prev[href] }));
+
     const permisos = auth.user?.permisos_modulos;
     const isAdmin  = auth.user?.role === 'tenant_admin';
     const hasModule = (mod) => {
@@ -49,23 +58,32 @@ export default function TenantLayout({ children, title, noPadding = false }) {
                         {visibleNav.map(item => {
                             const active = item.href && currentRoute?.startsWith(item.href.split('.')[0]);
                             const badge = item.badge ? (badgeCounts[item.badge] || 0) : 0;
-                            const expanded = active && item.children;
+                            const isOpen = item.children ? expanded[item.href] : false;
                             return (
                                 <div key={item.href}>
-                                    <Link
-                                        href={route(item.href)}
-                                        className={`flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors ${active ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-100 hover:bg-zinc-900'}`}
-                                        style={{ fontSize: '13px' }}
-                                    >
-                                        <i className={`ti ${item.icon}`} style={{ fontSize: '15px' }} />
-                                        <span className="flex-1">{item.label}</span>
-                                        {badge > 0 && (
-                                            <span className="ml-auto bg-rose-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">
-                                                {badge > 9 ? '9+' : badge}
-                                            </span>
+                                    <div className={`flex items-center rounded-md transition-colors ${active ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-100 hover:bg-zinc-900'}`}>
+                                        <Link
+                                            href={route(item.href)}
+                                            className="flex items-center gap-2.5 flex-1 px-3 py-2"
+                                            style={{ fontSize: '13px' }}
+                                        >
+                                            <i className={`ti ${item.icon}`} style={{ fontSize: '15px' }} />
+                                            <span className="flex-1">{item.label}</span>
+                                            {badge > 0 && (
+                                                <span className="bg-rose-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">
+                                                    {badge > 9 ? '9+' : badge}
+                                                </span>
+                                            )}
+                                        </Link>
+                                        {item.children && (
+                                            <button onClick={() => toggleSection(item.href)}
+                                                className="px-2 py-2 hover:text-zinc-100 transition-colors"
+                                                title={isOpen ? 'Colapsar' : 'Expandir'}>
+                                                <i className={`ti ti-chevron-down transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} style={{ fontSize: '12px' }} />
+                                            </button>
                                         )}
-                                    </Link>
-                                    {expanded && (
+                                    </div>
+                                    {isOpen && item.children && (
                                         <div className="mt-0.5 space-y-0.5">
                                             {item.children.map(child => {
                                                 const childActive = currentRoute?.startsWith(child.href.replace('.index', ''));

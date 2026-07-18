@@ -575,6 +575,13 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
     const [processing, setProcessing] = useState(false);
     const [mobileView, setMobileView] = useState('catalog'); // 'catalog' | 'cart'
 
+    // Ref mirrors currentTicket so queued async calls always see fresh value
+    const ticketRef = useRef(null);
+    function updateTicket(t) { ticketRef.current = t; setCurrentTicket(t); }
+
+    // Serial queue: rapid clicks are chained, never concurrent
+    const addQueue = useRef(Promise.resolve());
+
     useEffect(() => {
         if (openTicketId) loadTicket(openTicketId);
     }, [openTicketId]);
@@ -583,34 +590,36 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
         setProcessing(true);
         try {
             const r = await axios.post(route('pos.tickets.store'));
-            setCurrentTicket(r.data.ticket);
+            updateTicket(r.data.ticket);
             setMobileView('cart');
         } finally { setProcessing(false); }
     }
 
     async function loadTicket(id) {
         const r = await axios.get(route('pos.tickets.show', id));
-        setCurrentTicket(r.data.ticket);
+        updateTicket(r.data.ticket);
         setMobileView('cart');
     }
 
-    async function addItem(item) {
-        if (!currentTicket) {
-            // Auto-create ticket on first item add (mobile)
-            setProcessing(true);
+    function addItem(item) {
+        addQueue.current = addQueue.current.then(async () => {
+            const ticket = ticketRef.current;
+            if (!ticket) {
+                setProcessing(true);
+                try {
+                    const cr = await axios.post(route('pos.tickets.store'));
+                    const newT = cr.data.ticket;
+                    const r = await axios.post(route('pos.tickets.lines.add', newT.id), { item_id: item.id, cantidad: 1 });
+                    updateTicket(r.data.ticket);
+                    setMobileView('cart');
+                } finally { setProcessing(false); }
+                return;
+            }
             try {
-                const cr = await axios.post(route('pos.tickets.store'));
-                const ticket = cr.data.ticket;
                 const r = await axios.post(route('pos.tickets.lines.add', ticket.id), { item_id: item.id, cantidad: 1 });
-                setCurrentTicket(r.data.ticket);
-            } finally { setProcessing(false); }
-            return;
-        }
-        setProcessing(true);
-        try {
-            const r = await axios.post(route('pos.tickets.lines.add', currentTicket.id), { item_id: item.id, cantidad: 1 });
-            setCurrentTicket(r.data.ticket);
-        } finally { setProcessing(false); }
+                updateTicket(r.data.ticket);
+            } catch (e) { console.error('addItem error', e); }
+        });
     }
 
     const cartItemCount = currentTicket?.lines?.reduce((s, l) => s + l.cantidad, 0) ?? 0;
@@ -677,8 +686,8 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                                 ticket={currentTicket}
                                 paymentMethods={paymentMethods}
                                 discounts={discounts}
-                                onRefresh={setCurrentTicket}
-                                onClear={() => { setCurrentTicket(null); setMobileView('catalog'); }}
+                                onRefresh={updateTicket}
+                                onClear={() => { updateTicket(null); setMobileView('catalog'); }}
                                 onBack={() => setMobileView('catalog')}
                             />
                         )}
@@ -725,7 +734,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                 <div className="w-80 shrink-0 p-4 bg-gray-50 border-l overflow-hidden">
                     {currentTicket ? (
                         <TicketPanel ticket={currentTicket} paymentMethods={paymentMethods} discounts={discounts}
-                            onRefresh={setCurrentTicket} onClear={() => setCurrentTicket(null)} />
+                            onRefresh={updateTicket} onClear={() => updateTicket(null)} />
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
                             <p className="text-sm">Crea un nuevo ticket o selecciona uno abierto</p>

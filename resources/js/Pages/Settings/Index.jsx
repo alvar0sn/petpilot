@@ -136,7 +136,11 @@ function CatalogTab({ categories, items }) {
                                 <span className="font-medium text-zinc-800">{i.nombre}</span>
                                 <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ring-1 ${i.tipo === 'servicio' ? 'bg-sky-50 text-sky-700 ring-sky-200' : 'bg-amber-50 text-amber-700 ring-amber-200'}`}>{i.tipo}</span>
                                 {!i.activo && <span className="ml-1 text-xs bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded-full">inactivo</span>}
-                                <div className="text-xs text-zinc-500 mt-0.5">{i.categoria?.nombre} · {fmt(i.precio)}{i.tipo === 'producto' ? ` · stock: ${i.stock}` : ''}</div>
+                                <div className="text-xs text-zinc-500 mt-0.5">
+                                    {i.categoria?.nombre} · {fmt(i.precio)}
+                                    {i.sku ? ` · SKU: ${i.sku}` : ''}
+                                    {i.tipo === 'producto' ? ` · stock: ${i.stock ?? 0}` : ''}
+                                </div>
                             </div>
                             <button onClick={() => openEditItem(i)} className="text-xs text-zinc-500 hover:text-zinc-700 transition-colors">editar</button>
                             <button onClick={() => { if (confirm('¿Eliminar?')) router.delete(route('settings.catalog.items.destroy', i.id)); }} className="text-xs text-rose-500 hover:text-rose-700 transition-colors">eliminar</button>
@@ -183,7 +187,13 @@ function CatalogTab({ categories, items }) {
                     <form onSubmit={e => { e.preventDefault(); editItemForm.put(route('settings.catalog.items.update', editItem.id), { onSuccess: () => setEditItem(null) }); }} className="bg-white border border-zinc-200 rounded-xl shadow-lg p-6 w-80 space-y-3">
                         <h3 className="font-semibold text-zinc-800">Editar artículo</h3>
                         <input className="w-full border-gray-300 rounded-lg text-sm" placeholder="Nombre" value={editItemForm.data.nombre ?? ''} onChange={e => editItemForm.setData('nombre', e.target.value)} />
-                        <input type="number" step="0.01" className="w-full border-gray-300 rounded-lg text-sm" placeholder="Precio" value={editItemForm.data.precio ?? ''} onChange={e => editItemForm.setData('precio', e.target.value)} />
+                        <div className="grid grid-cols-2 gap-2">
+                            <input type="number" step="0.01" className="border-gray-300 rounded-lg text-sm" placeholder="Precio" value={editItemForm.data.precio ?? ''} onChange={e => editItemForm.setData('precio', e.target.value)} />
+                            <input className="border-gray-300 rounded-lg text-sm font-mono" placeholder="SKU" value={editItemForm.data.sku ?? ''} onChange={e => editItemForm.setData('sku', e.target.value)} />
+                        </div>
+                        {editItem?.tipo === 'producto' && (
+                            <input type="number" className="w-full border-gray-300 rounded-lg text-sm" placeholder="Stock" value={editItemForm.data.stock ?? ''} onChange={e => editItemForm.setData('stock', e.target.value)} />
+                        )}
                         <label className="flex gap-2 text-sm items-center"><input type="checkbox" checked={!!editItemForm.data.activo} onChange={e => editItemForm.setData('activo', e.target.checked)} /> Activo</label>
                         <div className="flex gap-2">
                             <button type="button" onClick={() => setEditItem(null)} className="flex-1 bg-white border border-zinc-200 text-zinc-600 py-2 rounded-lg text-sm hover:bg-zinc-50 transition-colors">Cancelar</button>
