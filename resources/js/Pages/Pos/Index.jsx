@@ -597,6 +597,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
         try {
             const r = await axios.post(route('pos.tickets.store'));
             updateTicket(r.data.ticket);
+            router.reload({ only: ['openTickets'] });
         } catch (e) {
             console.error('newTicket:', e);
         } finally { setProcessing(false); }
@@ -693,7 +694,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                                 paymentMethods={paymentMethods}
                                 discounts={discounts}
                                 onRefresh={updateTicket}
-                                onClear={() => { updateTicket(null); setMobileView('catalog'); }}
+                                onClear={() => { updateTicket(null); setMobileView('catalog'); router.reload({ only: ['openTickets'] }); }}
                                 onBack={() => setMobileView('catalog')}
                             />
                         )}
@@ -740,7 +741,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                 <div className="w-80 shrink-0 p-4 bg-gray-50 border-l overflow-hidden">
                     {currentTicket ? (
                         <TicketPanel ticket={currentTicket} paymentMethods={paymentMethods} discounts={discounts}
-                            onRefresh={updateTicket} onClear={() => updateTicket(null)} />
+                            onRefresh={updateTicket} onClear={() => { updateTicket(null); router.reload({ only: ['openTickets'] }); }} />
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
                             <p className="text-sm">Crea un nuevo ticket o selecciona uno abierto</p>
