@@ -25,7 +25,7 @@ export default function TenantLogin({ tenant, status }) {
                         </div>
                     )}
                     <h1 className="text-2xl font-bold text-zinc-900">{tenant.nombre}</h1>
-                    <p className="text-zinc-500 text-sm mt-1">Acceso para personal</p>
+                    <p className="text-zinc-500 text-sm mt-1">Iniciar sesión</p>
                 </div>
 
                 {status && (
@@ -45,7 +45,13 @@ export default function TenantLogin({ tenant, status }) {
                             {form.errors.email && <p className="text-red-500 text-xs mt-0.5">{form.errors.email}</p>}
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-zinc-600 mb-1">Contraseña</label>
+                            <div className="flex items-center justify-between mb-1">
+                                <label className="block text-xs font-medium text-zinc-600">Contraseña</label>
+                                <Link href={route('portal.forgot-password', tenant.slug)}
+                                    className="text-xs text-zinc-500 hover:text-zinc-700">
+                                    ¿Olvidaste tu contraseña?
+                                </Link>
+                            </div>
                             <input type="password" autoComplete="current-password"
                                 className="w-full border-zinc-300 rounded-lg text-sm py-2"
                                 value={form.data.password}
@@ -65,13 +71,6 @@ export default function TenantLogin({ tenant, status }) {
                         </button>
                     </form>
                 </div>
-
-                <p className="text-center text-xs text-zinc-400 mt-6">
-                    ¿Eres cliente?{' '}
-                    <Link href={route('portal.login', tenant.slug)} className="underline hover:text-zinc-600">
-                        Accede al portal
-                    </Link>
-                </p>
             </div>
         </div>
     );

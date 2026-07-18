@@ -7,6 +7,8 @@ use App\Models\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,6 +21,10 @@ class TenantAuthController extends Controller
 
         if (Auth::guard('web')->check()) {
             return redirect()->route('dashboard');
+        }
+
+        if (Auth::guard('owner')->check()) {
+            return redirect()->route('portal.dashboard', $tenant->slug);
         }
 
         $branding = $tenant->getSetting('branding', []);
@@ -38,37 +44,59 @@ class TenantAuthController extends Controller
     {
         abort_if($tenant->estado !== 'activo', 404);
 
-        $credentials = $request->validate([
+        $request->validate([
             'email'    => 'required|email',
             'password' => 'required|string',
         ]);
 
-        if (!Auth::guard('web')->attempt($credentials, $request->boolean('remember'))) {
+        $throttleKey = Str::lower($request->input('email')) . '|' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
             throw ValidationException::withMessages([
-                'email' => __('auth.failed'),
+                'email' => "Demasiados intentos fallidos. Intenta de nuevo en {$seconds} segundos.",
             ]);
         }
 
-        $user = Auth::guard('web')->user();
+        // Try staff auth first
+        if (Auth::guard('web')->attempt([
+            'email'    => $request->input('email'),
+            'password' => $request->input('password'),
+        ], $request->boolean('remember'))) {
+            $user = Auth::guard('web')->user();
 
-        if ($user->tenant_id !== $tenant->id || !in_array($user->role, ['tenant_admin', 'colaborador'])) {
+            if ($user->tenant_id === $tenant->id && in_array($user->role, ['tenant_admin', 'colaborador'])) {
+                if (! $user->activo) {
+                    Auth::guard('web')->logout();
+                    throw ValidationException::withMessages([
+                        'email' => 'Tu cuenta está desactivada.',
+                    ]);
+                }
+
+                RateLimiter::clear($throttleKey);
+                $request->session()->regenerate();
+                $request->session()->put('tenant_slug', $tenant->slug);
+                return redirect()->intended(route('dashboard'));
+            }
+
             Auth::guard('web')->logout();
-            throw ValidationException::withMessages([
-                'email' => __('auth.failed'),
-            ]);
         }
 
-        if (!$user->activo) {
-            Auth::guard('web')->logout();
-            throw ValidationException::withMessages([
-                'email' => 'Tu cuenta está desactivada.',
-            ]);
+        // Try owner/client auth
+        if (Auth::guard('owner')->attempt([
+            'email'     => $request->input('email'),
+            'password'  => $request->input('password'),
+            'tenant_id' => $tenant->id,
+        ], $request->boolean('remember'))) {
+            RateLimiter::clear($throttleKey);
+            $request->session()->regenerate();
+            return redirect()->route('portal.dashboard', $tenant->slug);
         }
 
-        $request->session()->regenerate();
-        $request->session()->put('tenant_slug', $tenant->slug);
-
-        return redirect()->intended(route('dashboard'));
+        RateLimiter::hit($throttleKey, 60);
+        throw ValidationException::withMessages([
+            'email' => 'Las credenciales no son correctas.',
+        ]);
     }
 
     public function logout(Request $request): RedirectResponse

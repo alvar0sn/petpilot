@@ -797,16 +797,10 @@ function LinksTab({ slug }) {
 
     const links = [
         {
-            key: 'staff',
-            label: 'Login de staff',
-            description: 'Acceso para colaboradores y admins del negocio',
+            key: 'login',
+            label: 'Inicio de sesión',
+            description: 'URL única para staff y clientes — cada uno es redirigido a su área',
             url: route('tenant.login', slug),
-        },
-        {
-            key: 'portal',
-            label: 'Portal de clientes',
-            description: 'Acceso para dueños de mascotas a su historial y citas',
-            url: route('portal.login', slug),
         },
         {
             key: 'landing',
