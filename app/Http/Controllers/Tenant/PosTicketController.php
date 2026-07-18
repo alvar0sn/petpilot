@@ -86,51 +86,38 @@ class PosTicketController extends Controller
 
     public function addLine(Request $request, PosTicket $ticket): JsonResponse
     {
-        try {
-            $this->authorize_ticket($ticket);
+        $this->authorize_ticket($ticket);
 
-            $data = $request->validate([
-                'item_id' => 'required|exists:pos_catalog_items,id',
-                'cantidad' => 'required|integer|min:1',
+        $data = $request->validate([
+            'item_id' => 'required|exists:pos_catalog_items,id',
+            'cantidad' => 'required|integer|min:1',
+        ]);
+
+        $item = PosCatalogItem::findOrFail($data['item_id']);
+
+        $existing = PosTicketLine::where('ticket_id', $ticket->id)->where('item_id', $item->id)->first();
+
+        if ($existing) {
+            $newCantidad = (float) $existing->cantidad + (int) $data['cantidad'];
+            $existing->update([
+                'cantidad' => $newCantidad,
+                'subtotal' => round((float) $existing->precio_snapshot * $newCantidad, 2),
             ]);
-
-            $item = PosCatalogItem::findOrFail($data['item_id']);
-
-            $existing = PosTicketLine::where('ticket_id', $ticket->id)->where('item_id', $item->id)->first();
-
-            if ($existing) {
-                $existing->update([
-                    'cantidad' => DB::raw("cantidad + {$data['cantidad']}"),
-                    'subtotal' => DB::raw("subtotal + " . ($item->precio * $data['cantidad'])),
-                ]);
-            } else {
-                PosTicketLine::create([
-                    'ticket_id'       => $ticket->id,
-                    'item_id'         => $item->id,
-                    'nombre_snapshot' => $item->nombre,
-                    'precio_snapshot' => $item->precio,
-                    'costo_snapshot'  => $item->costo ?? 0,
-                    'cantidad'        => $data['cantidad'],
-                    'subtotal'        => $item->precio * $data['cantidad'],
-                ]);
-            }
-
-            $this->recalculate($ticket);
-
-            return response()->json($this->ticketResponse($ticket));
-        } catch (\Illuminate\Validation\ValidationException|\Symfony\Component\HttpKernel\Exception\HttpException $e) {
-            throw $e;
-        } catch (\Throwable $e) {
-            \Log::error('addLine error', [
-                'message' => $e->getMessage(),
-                'file'    => $e->getFile() . ':' . $e->getLine(),
-                'ticket'  => $ticket->id,
+        } else {
+            PosTicketLine::create([
+                'ticket_id'       => $ticket->id,
+                'item_id'         => $item->id,
+                'nombre_snapshot' => $item->nombre,
+                'precio_snapshot' => $item->precio,
+                'costo_snapshot'  => $item->costo ?? 0,
+                'cantidad'        => $data['cantidad'],
+                'subtotal'        => round((float) $item->precio * $data['cantidad'], 2),
             ]);
-            return response()->json([
-                'error'   => $e->getMessage(),
-                'at'      => basename($e->getFile()) . ':' . $e->getLine(),
-            ], 500);
         }
+
+        $this->recalculate($ticket);
+
+        return response()->json($this->ticketResponse($ticket));
     }
 
     public function removeLine(Request $request, PosTicket $ticket): JsonResponse
@@ -158,7 +145,7 @@ class PosTicketController extends Controller
         $line = PosTicketLine::where('id', $data['line_id'])->where('ticket_id', $ticket->id)->firstOrFail();
         $line->update([
             'cantidad' => $data['cantidad'],
-            'subtotal' => $line->precio_snapshot * $data['cantidad'],
+            'subtotal' => round((float) $line->precio_snapshot * $data['cantidad'], 2),
         ]);
 
         $this->recalculate($ticket);

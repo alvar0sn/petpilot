@@ -648,9 +648,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
             const r = await axios.post(route('pos.tickets.lines.add', ticket.id), { item_id: item.id, cantidad: 1 });
             updateTicket(r.data.ticket);
         } catch (e) {
-            const d = e.response?.data;
-            console.error('addLine err:', d?.error ?? d?.message ?? '(sin msg)', '| at:', d?.at ?? '?');
-            console.error('addLine raw:', JSON.stringify(d));
+            console.error('addLine error:', e.response?.data ?? e.message);
         }
     }
 
