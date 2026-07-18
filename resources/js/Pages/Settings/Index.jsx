@@ -843,10 +843,9 @@ function LinksTab({ slug }) {
 
 export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, walkConfig, teamMembers, razas }) {
     const { auth, tenant } = usePage().props;
-    const [tab, setTab] = useState('catalog');
+    const [tab, setTab] = useState('crm');
 
     const tabs = [
-        { id: 'catalog', label: 'Catálogo' },
         { id: 'crm', label: 'CRM' },
         { id: 'grooming', label: 'Grooming' },
         { id: 'payments', label: 'Métodos de pago' },
@@ -867,7 +866,6 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
                 ))}
             </div>
 
-            {tab === 'catalog' && <CatalogTab categories={categories} items={items} />}
             {tab === 'crm' && <RazasSection razas={razas ?? []} />}
             {tab === 'grooming' && <GroomingTab stations={stations ?? []} checklistItems={checklistItems ?? []} />}
             {tab === 'payments' && <PaymentMethodsTab paymentMethods={paymentMethods} />}
