@@ -153,11 +153,21 @@ class VetController extends Controller
                 'notas_internas'  => $appointment->notas_internas,
                 'recepcion'       => $appointment->recepcion,
                 'created_via'     => $appointment->created_via,
-                'pet'             => [
-                    'id'     => $appointment->pet?->id,
-                    'nombre' => $appointment->pet?->nombre,
-                    'peso'   => $appointment->pet?->peso,
-                ],
+                'pet'             => $appointment->pet ? [
+                    'id'                => $appointment->pet->id,
+                    'nombre'            => $appointment->pet->nombre,
+                    'tipo'              => $appointment->pet->tipo,
+                    'raza'              => $appointment->pet->raza,
+                    'sexo'              => $appointment->pet->sexo,
+                    'esterilizado'      => $appointment->pet->esterilizado,
+                    'tamanio'           => $appointment->pet->tamanio,
+                    'peso'              => $appointment->pet->peso,
+                    'fecha_nacimiento'  => $appointment->pet->fecha_nacimiento?->toDateString(),
+                    'nivel_agresividad' => $appointment->pet->nivel_agresividad,
+                    'alergias'          => $appointment->pet->alergias,
+                    'padecimientos'     => $appointment->pet->padecimientos,
+                    'obs_comportamiento'=> $appointment->pet->obs_comportamiento,
+                ] : null,
                 'owner' => $appointment->pet?->owner ? [
                     'id'       => $appointment->pet->owner->id,
                     'nombre'   => $appointment->pet->owner->nombre_completo,
@@ -246,6 +256,10 @@ class VetController extends Controller
     {
         $data = $request->validate([
             'peso'               => 'nullable|numeric|min:0|max:999',
+            'temperatura'        => 'nullable|numeric|min:0|max:50',
+            'motivo'             => 'nullable|string|max:500',
+            'diagnostico'        => 'nullable|string|max:2000',
+            'medicamentos'       => 'nullable|string|max:2000',
             'notas'              => 'nullable|string|max:2000',
             'vacuna'             => 'boolean',
             'vacuna_nombre'      => 'nullable|string|max:100',

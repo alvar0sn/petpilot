@@ -231,8 +231,12 @@ function EventCard({ event }) {
                     </div>
                 </div>
                 <div className="flex gap-1">
-                    <Link href={route('events.edit', event.id)} className="text-xs underline opacity-70 hover:opacity-100">editar</Link>
-                    <span className="opacity-40">·</span>
+                    {!MEDICO_TIPOS.includes(typeName) && (
+                        <>
+                            <Link href={route('events.edit', event.id)} className="text-xs underline opacity-70 hover:opacity-100">editar</Link>
+                            <span className="opacity-40">·</span>
+                        </>
+                    )}
                     <button onClick={handleDelete} className="text-xs underline opacity-70 hover:opacity-100">eliminar</button>
                 </div>
             </div>
@@ -250,7 +254,12 @@ function EventCard({ event }) {
             {event.notas && <p className="text-xs mt-1 opacity-70 italic">{event.notas}</p>}
             {typeName === 'Estética' && event.appointment_id && (
                 <Link href={route('grooming.show', event.appointment_id)} className="text-xs underline opacity-70 hover:opacity-100 block mt-1">
-                    Ver ficha completa (recepción + salida) →
+                    Ver ficha completa →
+                </Link>
+            )}
+            {typeName === 'Consulta' && event.appointment_id && (
+                <Link href={route('vet.show', event.appointment_id)} className="text-xs underline opacity-70 hover:opacity-100 block mt-1">
+                    Ver ficha de consulta →
                 </Link>
             )}
 

@@ -65,6 +65,10 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
     const rec = appt.recepcion ?? {};
     const recForm = useForm({
         peso:               rec.peso               ?? '',
+        temperatura:        rec.temperatura        ?? '',
+        motivo:             rec.motivo             ?? '',
+        diagnostico:        rec.diagnostico        ?? '',
+        medicamentos:       rec.medicamentos       ?? '',
         notas:              rec.notas              ?? '',
         vacuna:             rec.vacuna             ?? false,
         vacuna_nombre:      rec.vacuna_nombre      ?? '',
@@ -111,7 +115,11 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                 <div className="flex flex-wrap items-start gap-4">
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                            <h1 className="text-xl font-semibold text-zinc-900">{appt.pet?.nombre}</h1>
+                            <h1 className="text-xl font-semibold text-zinc-900">
+                                <Link href={route('pets.show', appt.pet?.id)} className="hover:underline">
+                                    {appt.pet?.nombre}
+                                </Link>
+                            </h1>
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium inline-flex items-center ${estadoBadge[appt.estado] ?? 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200'}`}>
                                 {estadoLabel[appt.estado] ?? appt.estado}
                             </span>
@@ -122,11 +130,32 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                                 {appt.owner.telefono && <span className="ml-2">{appt.owner.telefono}</span>}
                             </p>
                         )}
+                        {appt.pet && (
+                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-500">
+                                {appt.pet.tipo && <span className="capitalize">{appt.pet.tipo}</span>}
+                                {appt.pet.raza && <span>{appt.pet.raza}</span>}
+                                {appt.pet.sexo && <span className="capitalize">{appt.pet.sexo}{appt.pet.esterilizado ? ' · esterilizado/a' : ''}</span>}
+                                {appt.pet.tamanio && <span className="capitalize">{appt.pet.tamanio}</span>}
+                                {appt.pet.peso && <span>{appt.pet.peso} kg</span>}
+                                {appt.pet.fecha_nacimiento && <span>Nac. {appt.pet.fecha_nacimiento}</span>}
+                                {appt.pet.nivel_agresividad && appt.pet.nivel_agresividad !== 'tranquilo' && (
+                                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${appt.pet.nivel_agresividad === 'agresivo' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+                                        {appt.pet.nivel_agresividad}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                        {(appt.pet?.alergias || appt.pet?.padecimientos || appt.pet?.obs_comportamiento) && (
+                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
+                                {appt.pet.alergias && <span><span className="font-medium text-zinc-600">Alergias:</span> {appt.pet.alergias}</span>}
+                                {appt.pet.padecimientos && <span><span className="font-medium text-zinc-600">Padecimientos:</span> {appt.pet.padecimientos}</span>}
+                                {appt.pet.obs_comportamiento && <span><span className="font-medium text-zinc-600">Comportamiento:</span> {appt.pet.obs_comportamiento}</span>}
+                            </div>
+                        )}
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600">
                             <span><span className="font-medium">Fecha:</span> {appt.fecha}</span>
                             {appt.hora_inicio && <span><span className="font-medium">Hora:</span> {appt.hora_inicio.slice(0,5)}{appt.hora_fin ? ` – ${appt.hora_fin.slice(0,5)}` : ''}</span>}
                             {appt.veterinario && <span><span className="font-medium">Veterinario:</span> {appt.veterinario.nombre}</span>}
-                            {appt.pet?.peso && <span><span className="font-medium">Peso previo:</span> {appt.pet.peso} kg</span>}
                         </div>
                     </div>
                     <div className="flex flex-wrap gap-2 shrink-0">
@@ -331,10 +360,39 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                             value={recForm.data.consulta_proxima} onChange={e => recForm.setData('consulta_proxima', e.target.value)} />
                     </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">Temperatura (°C)</label>
+                            <input type="number" step="0.1" min="0" max="50" className="w-32 border-gray-300 rounded-lg text-sm"
+                                placeholder="Ej. 38.5" value={recForm.data.temperatura} onChange={e => recForm.setData('temperatura', e.target.value)} />
+                        </div>
+                    </div>
+
                     <div>
-                        <label className="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">Notas generales</label>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">Motivo de consulta</label>
+                        <input className="w-full border-gray-300 rounded-lg text-sm"
+                            placeholder="Motivo por el que asiste el paciente..."
+                            value={recForm.data.motivo} onChange={e => recForm.setData('motivo', e.target.value)} />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">Diagnóstico</label>
                         <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={3}
-                            placeholder="Diagnóstico, observaciones, recomendaciones..."
+                            placeholder="Diagnóstico del veterinario..."
+                            value={recForm.data.diagnostico} onChange={e => recForm.setData('diagnostico', e.target.value)} />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">Medicamentos</label>
+                        <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2}
+                            placeholder="Medicamentos recetados, dosis..."
+                            value={recForm.data.medicamentos} onChange={e => recForm.setData('medicamentos', e.target.value)} />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">Notas adicionales</label>
+                        <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2}
+                            placeholder="Observaciones, recomendaciones..."
                             value={recForm.data.notas} onChange={e => recForm.setData('notas', e.target.value)} />
                     </div>
 
