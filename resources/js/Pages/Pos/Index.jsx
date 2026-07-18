@@ -230,13 +230,14 @@ function MobileCart({ ticket, paymentMethods, discounts, onRefresh, onClear, onB
     async function changeQty(lineId, delta) {
         const line = ticket.lines.find(l => l.id === lineId);
         if (!line) return;
-        const newQty = line.cantidad + delta;
+        const newQty = Math.round(line.cantidad) + delta;
         if (newQty <= 0) { removeLine(lineId); return; }
         setProcessing(true);
         try {
             const r = await axios.patch(route('pos.tickets.lines.update', ticket.id), { line_id: lineId, cantidad: newQty });
             onRefresh(r.data.ticket);
-        } finally { setProcessing(false); }
+        } catch (e) { console.error('changeQty:', e); }
+        finally { setProcessing(false); }
     }
 
     async function applyDiscount(discountId) {
@@ -418,7 +419,21 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
         try {
             const r = await axios.delete(route('pos.tickets.lines.remove', ticket.id), { data: { line_id: lineId } });
             onRefresh(r.data.ticket);
-        } finally { setProcessing(false); }
+        } catch (e) { console.error('removeLine:', e); }
+        finally { setProcessing(false); }
+    }
+
+    async function changeQty(lineId, delta) {
+        const line = ticket.lines.find(l => l.id === lineId);
+        if (!line) return;
+        const newQty = Math.round(line.cantidad) + delta;
+        if (newQty <= 0) { removeLine(lineId); return; }
+        setProcessing(true);
+        try {
+            const r = await axios.patch(route('pos.tickets.lines.update', ticket.id), { line_id: lineId, cantidad: newQty });
+            onRefresh(r.data.ticket);
+        } catch (e) { console.error('changeQty:', e); }
+        finally { setProcessing(false); }
     }
 
     async function applyDiscount(discountId) {
@@ -426,7 +441,8 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
         try {
             const r = await axios.post(route('pos.tickets.discount', ticket.id), { discount_id: discountId || null });
             onRefresh(r.data.ticket);
-        } finally { setProcessing(false); }
+        } catch (e) { console.error('applyDiscount:', e); }
+        finally { setProcessing(false); }
     }
 
     async function pay() {
@@ -434,7 +450,8 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
         try {
             const r = await axios.post(route('pos.tickets.pay', ticket.id), { payments });
             setPaidState({ folio: r.data.folio, waSent: r.data.wa_sent });
-        } finally { setProcessing(false); }
+        } catch (e) { console.error('pay:', e); }
+        finally { setProcessing(false); }
     }
 
     const remainingToPay = ticket.total - payments.reduce((s, p) => s + Number(p.monto || 0), 0);
@@ -476,15 +493,26 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
                 )}
             </div>
 
-            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
+            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
                 {ticket.lines?.map(line => (
                     <div key={line.id} className="flex items-center gap-2 text-sm">
-                        <div className="flex-1">
-                            <span className="text-gray-800">{line.nombre_snapshot}</span>
-                            <span className="text-gray-400 text-xs ml-1">×{Math.round(line.cantidad)}</span>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-gray-800 leading-tight truncate">{line.nombre_snapshot}</p>
+                            <p className="text-gray-400 text-xs">{fmt(line.precio_snapshot)}</p>
                         </div>
-                        <span className="font-mono text-gray-700">{fmt(line.subtotal)}</span>
-                        <button onClick={() => removeLine(line.id)} className="text-gray-300 hover:text-red-400 text-xs">✕</button>
+                        <div className="flex items-center gap-1 shrink-0">
+                            <button onClick={() => changeQty(line.id, -1)} disabled={processing}
+                                className="w-6 h-6 rounded border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-30 text-xs">
+                                −
+                            </button>
+                            <span className="w-6 text-center text-xs font-medium">{Math.round(line.cantidad)}</span>
+                            <button onClick={() => changeQty(line.id, 1)} disabled={processing}
+                                className="w-6 h-6 rounded border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-30 text-xs">
+                                +
+                            </button>
+                        </div>
+                        <span className="font-mono text-gray-700 text-xs w-14 text-right">{fmt(line.subtotal)}</span>
+                        <button onClick={() => removeLine(line.id)} disabled={processing} className="text-gray-300 hover:text-red-400 text-xs disabled:opacity-30">✕</button>
                     </div>
                 ))}
                 {(!ticket.lines || ticket.lines.length === 0) && (
@@ -575,12 +603,9 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
     const [processing, setProcessing] = useState(false);
     const [mobileView, setMobileView] = useState('catalog'); // 'catalog' | 'cart'
 
-    // Ref mirrors currentTicket so queued async calls always see fresh value
+    // Ref mirrors currentTicket state so callbacks always see the latest value
     const ticketRef = useRef(null);
     function updateTicket(t) { ticketRef.current = t; setCurrentTicket(t); }
-
-    // Serial queue: rapid clicks are chained, never concurrent
-    const addQueue = useRef(Promise.resolve());
 
     useEffect(() => {
         if (openTicketId) loadTicket(openTicketId);
@@ -592,6 +617,8 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
             const r = await axios.post(route('pos.tickets.store'));
             updateTicket(r.data.ticket);
             setMobileView('cart');
+        } catch (e) {
+            console.error('newTicket:', e);
         } finally { setProcessing(false); }
     }
 
@@ -601,32 +628,28 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
         setMobileView('cart');
     }
 
-    function addItem(item) {
-        addQueue.current = addQueue.current.then(async () => {
-            const ticket = ticketRef.current;
-            if (!ticket) {
-                setProcessing(true);
-                try {
-                    const cr = await axios.post(route('pos.tickets.store'));
-                    const newT = cr.data.ticket;
-                    const r = await axios.post(route('pos.tickets.lines.add', newT.id), { item_id: item.id, cantidad: 1 });
-                    updateTicket(r.data.ticket);
-                    setMobileView('cart');
-                } catch (e) {
-                    console.error('addItem (new ticket):', e);
-                } finally {
-                    setProcessing(false);
-                }
+    async function addItem(item) {
+        let ticket = ticketRef.current;
+        if (!ticket) {
+            setProcessing(true);
+            try {
+                const cr = await axios.post(route('pos.tickets.store'));
+                ticket = cr.data.ticket;
+                updateTicket(ticket);
+                setMobileView('cart');
+            } catch (e) {
+                console.error('addItem (create ticket):', e);
+                setProcessing(false);
                 return;
             }
-            try {
-                const r = await axios.post(route('pos.tickets.lines.add', ticket.id), { item_id: item.id, cantidad: 1 });
-                updateTicket(r.data.ticket);
-            } catch (e) {
-                console.error('addItem:', e);
-            }
-        // Recovery: if a previous entry rejected somehow, keep the queue alive
-        }, () => {});
+            setProcessing(false);
+        }
+        try {
+            const r = await axios.post(route('pos.tickets.lines.add', ticket.id), { item_id: item.id, cantidad: 1 });
+            updateTicket(r.data.ticket);
+        } catch (e) {
+            console.error('addItem (add line):', e);
+        }
     }
 
     const cartItemCount = currentTicket?.lines?.reduce((s, l) => s + l.cantidad, 0) ?? 0;
