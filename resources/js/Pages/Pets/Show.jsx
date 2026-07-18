@@ -1,5 +1,6 @@
 import Lightbox from '@/Components/Lightbox';
 import TenantLayout from '@/Layouts/TenantLayout';
+import { compressImage } from '@/utils/compressImage';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import { dateKeyInTimezone, formatDate, useTenantTimezone } from '@/lib/datetime';
@@ -615,15 +616,22 @@ function RecordatoriosSection({ pet }) {
 function PetAvatar({ pet }) {
     const inputRef = useRef(null);
     const photoForm = useForm({ foto: null });
+    const [compressing, setCompressing] = useState(false);
 
-    function handleFile(e) {
+    async function handleFile(e) {
         const file = e.target.files[0];
         if (!file) return;
-        photoForm.setData('foto', file);
-        photoForm.post(route('pets.foto.store', pet.id), {
-            forceFormData: true,
-            onSuccess: () => { photoForm.reset(); },
-        });
+        setCompressing(true);
+        try {
+            const compressed = await compressImage(file);
+            photoForm.setData('foto', compressed);
+            photoForm.post(route('pets.foto.store', pet.id), {
+                forceFormData: true,
+                onSuccess: () => { photoForm.reset(); },
+            });
+        } finally {
+            setCompressing(false);
+        }
     }
 
     function deletePhoto() {

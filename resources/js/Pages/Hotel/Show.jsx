@@ -1,5 +1,6 @@
 import TenantLayout from '@/Layouts/TenantLayout';
 import Lightbox from '@/Components/Lightbox';
+import { compressImage } from '@/utils/compressImage';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { dateKeyInTimezone, formatDate, isSameDayInTimezone, useTenantTimezone } from '@/lib/datetime';
@@ -510,12 +511,20 @@ function PhotoGallery({ stay }) {
     const form = useForm({ foto: null, etiqueta: '' });
     const [preview, setPreview] = useState(null);
     const [lightboxIndex, setLightboxIndex] = useState(null);
+    const [compressing, setCompressing] = useState(false);
     const photos = stay.photos ?? [];
 
-    function selectFile(e) {
+    async function selectFile(e) {
         const file = e.target.files[0] ?? null;
-        form.setData('foto', file);
-        setPreview(file ? URL.createObjectURL(file) : null);
+        if (!file) { form.setData('foto', null); setPreview(null); return; }
+        setCompressing(true);
+        try {
+            const compressed = await compressImage(file);
+            form.setData('foto', compressed);
+            setPreview(URL.createObjectURL(compressed));
+        } finally {
+            setCompressing(false);
+        }
     }
 
     function submit(e) {
@@ -578,9 +587,9 @@ function PhotoGallery({ stay }) {
                         <label className="block text-xs font-medium text-zinc-600 mb-1">Descripción (opcional)</label>
                         <input className="w-full border-gray-300 rounded-lg text-sm py-1.5" placeholder="Ej: Juguete favorito, correa, cobija..." value={form.data.etiqueta} onChange={e => form.setData('etiqueta', e.target.value)} />
                     </div>
-                    <button type="submit" disabled={!form.data.foto || form.processing}
+                    <button type="submit" disabled={!form.data.foto || form.processing || compressing}
                         className="w-full bg-zinc-900 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors disabled:opacity-50">
-                        {form.processing ? 'Subiendo...' : 'Agregar foto'}
+                        {compressing ? 'Comprimiendo...' : form.processing ? 'Subiendo...' : 'Agregar foto'}
                     </button>
                 </form>
             ) : (

@@ -1,6 +1,7 @@
 import AppointmentTimePicker from '@/Components/AppointmentTimePicker';
 import Lightbox from '@/Components/Lightbox';
 import TenantLayout from '@/Layouts/TenantLayout';
+import { compressImage } from '@/utils/compressImage';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 
@@ -111,6 +112,18 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
     const resultPhotoForm = useForm({ foto: null, descripcion: '' });
     const resultFileRef = useRef();
     const [lightbox, setLightbox] = useState(null);
+    const [compressing, setCompressing] = useState(false);
+
+    async function handlePhotoSelect(e, formObj) {
+        const file = e.target.files[0] ?? null;
+        if (!file) { formObj.setData('foto', null); return; }
+        setCompressing(true);
+        try {
+            formObj.setData('foto', await compressImage(file));
+        } finally {
+            setCompressing(false);
+        }
+    }
 
     const hasRecepcionData = Object.values(rec).some(v => v) || appt.accesorios || appt.photos?.some(p => p.tipo === 'recepcion');
     const [recepcionOpen, setRecepcionOpen] = useState(hasRecepcionData || canEdit);
@@ -417,12 +430,12 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                         <form onSubmit={uploadPhoto('recepcion')} className="flex flex-wrap gap-2 items-end">
                             <input ref={fileRef} type="file" accept="image/*"
                                 className="text-sm text-zinc-600 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-zinc-100 file:text-zinc-700"
-                                onChange={e => photoForm.setData('foto', e.target.files[0] ?? null)} />
+                                onChange={e => handlePhotoSelect(e, photoForm)} />
                             <input className="border-gray-300 rounded-lg text-sm w-44" placeholder="Descripción (opcional)"
                                 value={photoForm.data.descripcion} onChange={e => photoForm.setData('descripcion', e.target.value)} />
-                            <button type="submit" disabled={!photoForm.data.foto || photoForm.processing}
+                            <button type="submit" disabled={!photoForm.data.foto || photoForm.processing || compressing}
                                 className="bg-zinc-900 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 shrink-0 transition-colors">
-                                {photoForm.processing ? 'Subiendo...' : 'Subir foto'}
+                                {compressing ? 'Comprimiendo...' : photoForm.processing ? 'Subiendo...' : 'Subir foto'}
                             </button>
                         </form>
                         {photoForm.errors.foto && <p className="text-rose-500 text-xs mt-1">{photoForm.errors.foto}</p>}
@@ -507,12 +520,12 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                         <form onSubmit={uploadPhoto('resultado')} className="flex flex-wrap gap-2 items-end">
                             <input ref={resultFileRef} type="file" accept="image/*"
                                 className="text-sm text-zinc-600 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-zinc-100 file:text-zinc-700"
-                                onChange={e => resultPhotoForm.setData('foto', e.target.files[0] ?? null)} />
+                                onChange={e => handlePhotoSelect(e, resultPhotoForm)} />
                             <input className="border-gray-300 rounded-lg text-sm w-44" placeholder="Descripción (opcional)"
                                 value={resultPhotoForm.data.descripcion} onChange={e => resultPhotoForm.setData('descripcion', e.target.value)} />
-                            <button type="submit" disabled={!resultPhotoForm.data.foto || resultPhotoForm.processing}
+                            <button type="submit" disabled={!resultPhotoForm.data.foto || resultPhotoForm.processing || compressing}
                                 className="bg-zinc-900 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 shrink-0 transition-colors">
-                                {resultPhotoForm.processing ? 'Subiendo...' : 'Subir foto'}
+                                {compressing ? 'Comprimiendo...' : resultPhotoForm.processing ? 'Subiendo...' : 'Subir foto'}
                             </button>
                         </form>
                         {resultPhotoForm.errors.foto && <p className="text-rose-500 text-xs mt-1">{resultPhotoForm.errors.foto}</p>}
