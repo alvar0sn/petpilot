@@ -650,7 +650,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
     return (
         <TenantLayout title="POS" noPadding>
             {/* ── MOBILE ── */}
-            <div className="md:hidden flex flex-col h-[calc(100dvh-56px)]">
+            <div className="md:hidden flex flex-col h-[calc(100dvh-116px)]">
                 {mobileView === 'catalog' ? (
                     <>
                         <div className="flex-1 overflow-hidden px-4 pt-4 flex flex-col">

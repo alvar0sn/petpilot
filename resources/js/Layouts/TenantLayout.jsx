@@ -58,7 +58,7 @@ function QuickNav({ hasModule }) {
                     <i className="ti ti-login-2" style={{ fontSize: '20px' }} />
                     <span className="text-[10px] font-medium">Check-in</span>
                 </button>
-                <Link href={route('owners.index')}
+                <Link href={route('owners.create')}
                     className="flex flex-col items-center gap-1 py-3 text-zinc-500 hover:text-zinc-900 active:bg-zinc-50 transition-colors">
                     <i className="ti ti-user-plus" style={{ fontSize: '20px' }} />
                     <span className="text-[10px] font-medium">Nuevo cliente</span>
@@ -206,7 +206,7 @@ export default function TenantLayout({ children, title, noPadding = false }) {
                 </div>
             </div>
             <BacklogFab />
-            {auth.user?.role !== 'super_admin' && !noPadding && (
+            {auth.user?.role !== 'super_admin' && (
                 <QuickNav hasModule={hasModule} />
             )}
         </>
