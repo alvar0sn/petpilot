@@ -612,14 +612,21 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                     const r = await axios.post(route('pos.tickets.lines.add', newT.id), { item_id: item.id, cantidad: 1 });
                     updateTicket(r.data.ticket);
                     setMobileView('cart');
-                } finally { setProcessing(false); }
+                } catch (e) {
+                    console.error('addItem (new ticket):', e);
+                } finally {
+                    setProcessing(false);
+                }
                 return;
             }
             try {
                 const r = await axios.post(route('pos.tickets.lines.add', ticket.id), { item_id: item.id, cantidad: 1 });
                 updateTicket(r.data.ticket);
-            } catch (e) { console.error('addItem error', e); }
-        });
+            } catch (e) {
+                console.error('addItem:', e);
+            }
+        // Recovery: if a previous entry rejected somehow, keep the queue alive
+        }, () => {});
     }
 
     const cartItemCount = currentTicket?.lines?.reduce((s, l) => s + l.cantidad, 0) ?? 0;
@@ -722,7 +729,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                     )}
                     <div className="flex-1 overflow-hidden">
                         {catalog.length > 0 ? (
-                            <CatalogPanel catalog={catalog} onAdd={currentTicket ? addItem : null} />
+                            <CatalogPanel catalog={catalog} onAdd={addItem} />
                         ) : (
                             <div className="flex items-center justify-center h-full text-gray-400 text-sm">
                                 Sin artículos. <Link href={route('settings.index')} className="ml-1 text-indigo-600 underline">Configurar catálogo</Link>
