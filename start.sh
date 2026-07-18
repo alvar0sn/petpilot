@@ -10,4 +10,4 @@ php artisan view:cache
 php artisan schedule:work &
 php artisan queue:work --sleep=3 --tries=3 &
 
-php -S 0.0.0.0:$PORT -t public
+php -d upload_max_filesize=25M -d post_max_size=30M -S 0.0.0.0:$PORT -t public
