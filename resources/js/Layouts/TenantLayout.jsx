@@ -20,6 +20,54 @@ const nav = [
     { label: 'Configuración',   href: 'settings.index',     icon: 'ti-settings',         module: null },
 ];
 
+function QuickNav({ hasModule }) {
+    const [checkinOpen, setCheckinOpen] = useState(false);
+
+    const checkinModules = [
+        { label: 'Grooming',     href: 'grooming.index', icon: 'ti-scissors',    module: 'grooming' },
+        { label: 'Hotel',        href: 'hotel.index',    icon: 'ti-building',    module: 'hotel' },
+        { label: 'Veterinaria',  href: 'vet.index',      icon: 'ti-stethoscope', module: 'veterinaria' },
+    ].filter(m => hasModule(m.module));
+
+    return (
+        <>
+            {checkinOpen && (
+                <div className="fixed inset-0 z-40" onClick={() => setCheckinOpen(false)}>
+                    <div className="absolute bottom-16 left-1/3 -translate-x-1/2 bg-white rounded-xl shadow-lg border border-zinc-200 overflow-hidden min-w-44"
+                        onClick={e => e.stopPropagation()}>
+                        {checkinModules.map(m => (
+                            <Link key={m.href} href={route(m.href)}
+                                onClick={() => setCheckinOpen(false)}
+                                className="flex items-center gap-3 px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50 border-b border-zinc-100 last:border-0">
+                                <i className={`ti ${m.icon} text-zinc-400`} style={{ fontSize: '16px' }} />
+                                {m.label}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className="fixed bottom-0 left-0 right-0 z-30 md:hidden bg-white border-t border-zinc-200 grid grid-cols-3">
+                <Link href={route('pos.index')}
+                    className="flex flex-col items-center gap-1 py-3 text-zinc-500 hover:text-zinc-900 active:bg-zinc-50 transition-colors">
+                    <i className="ti ti-shopping-cart" style={{ fontSize: '20px' }} />
+                    <span className="text-[10px] font-medium">Nueva venta</span>
+                </Link>
+                <button onClick={() => setCheckinOpen(o => !o)}
+                    className={`flex flex-col items-center gap-1 py-3 transition-colors ${checkinOpen ? 'text-indigo-600' : 'text-zinc-500 hover:text-zinc-900 active:bg-zinc-50'}`}>
+                    <i className="ti ti-login-2" style={{ fontSize: '20px' }} />
+                    <span className="text-[10px] font-medium">Check-in</span>
+                </button>
+                <Link href={route('owners.index')}
+                    className="flex flex-col items-center gap-1 py-3 text-zinc-500 hover:text-zinc-900 active:bg-zinc-50 transition-colors">
+                    <i className="ti ti-user-plus" style={{ fontSize: '20px' }} />
+                    <span className="text-[10px] font-medium">Nuevo cliente</span>
+                </Link>
+            </div>
+        </>
+    );
+}
+
 export default function TenantLayout({ children, title, noPadding = false }) {
     const { auth, tenant, impersonating, flash, walks_pending_count } = usePage().props;
     const badgeCounts = { walks_pending_count };
@@ -137,7 +185,7 @@ export default function TenantLayout({ children, title, noPadding = false }) {
                         {title && <h1 className="text-xl font-semibold text-zinc-900 tracking-tight">{title}</h1>}
                     </header>
 
-                    <main className={`flex-1 ${noPadding ? 'overflow-hidden' : 'px-6 py-6'}`}>
+                    <main className={`flex-1 ${noPadding ? 'overflow-hidden' : 'px-6 py-6 md:pb-6 pb-20'}`}>
                         {!noPadding && flash?.success && (
                             <div className="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-sm">
                                 {flash.success}
@@ -158,6 +206,9 @@ export default function TenantLayout({ children, title, noPadding = false }) {
                 </div>
             </div>
             <BacklogFab />
+            {auth.user?.role !== 'super_admin' && !noPadding && (
+                <QuickNav hasModule={hasModule} />
+            )}
         </>
     );
 }
