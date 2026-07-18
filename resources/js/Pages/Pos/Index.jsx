@@ -392,8 +392,6 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
     const [payMode, setPayMode] = useState(false);
     const [payments, setPayments] = useState([{ payment_method_id: paymentMethods[0]?.id ?? '', monto: '' }]);
     const [processing, setProcessing] = useState(false);
-    const [cancelMode, setCancelMode] = useState(false);
-    const [cancelComment, setCancelComment] = useState('');
     const [paidState, setPaidState] = useState(null);
     const [searchingOwner, setSearchingOwner] = useState(false);
 
@@ -407,11 +405,8 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
     }
 
     function cancelTicket() {
-        setProcessing(true);
-        router.post(route('pos.tickets.cancel', ticket.id), { comentario_cancelacion: cancelComment }, {
-            onSuccess: () => onClear(),
-            onFinish: () => setProcessing(false),
-        });
+        if (!confirm(`¿Cancelar ticket #${ticket.folio}?`)) return;
+        router.post(route('pos.tickets.cancel', ticket.id), {}, { onSuccess: () => onClear() });
     }
 
     async function removeLine(lineId) {
@@ -461,24 +456,10 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
             <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
                 <span className="font-mono text-sm font-bold text-gray-800">#{ticket.folio}</span>
                 <div className="flex items-center gap-3">
-                    <button onClick={() => { setCancelMode(m => !m); setPayMode(false); }} className="text-xs text-red-400 hover:text-red-600">Cancelar ticket</button>
+                    <button onClick={cancelTicket} className="text-xs text-red-400 hover:text-red-600">Cancelar ticket</button>
                     <button onClick={onClear} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
                 </div>
             </div>
-
-            {cancelMode && (
-                <div className="px-4 py-3 bg-red-50 border-b border-red-100 space-y-2">
-                    <p className="text-xs font-medium text-red-700">¿Cancelar ticket #{ticket.folio}?</p>
-                    <input type="text" className="w-full border-red-200 rounded-lg text-xs py-1.5 bg-white"
-                        placeholder="Motivo (opcional)" value={cancelComment} onChange={e => setCancelComment(e.target.value)} />
-                    <div className="flex gap-2">
-                        <button onClick={() => setCancelMode(false)} className="flex-1 border border-gray-300 py-1.5 rounded-lg text-xs text-gray-600">No cancelar</button>
-                        <button onClick={cancelTicket} disabled={processing} className="flex-1 bg-red-600 text-white py-1.5 rounded-lg text-xs font-medium disabled:opacity-40">
-                            {processing ? 'Cancelando...' : 'Sí, cancelar'}
-                        </button>
-                    </div>
-                </div>
-            )}
 
             <div className="px-3 py-2 border-b bg-white">
                 {ticket.owner && !searchingOwner ? (

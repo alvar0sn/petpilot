@@ -283,12 +283,7 @@ class PosTicketController extends Controller
 
     public function cancel(Request $request, PosTicket $ticket): RedirectResponse
     {
-        $data = $request->validate(['comentario_cancelacion' => 'nullable|string|max:500']);
-
-        $ticket->update([
-            'estado' => 'cancelado',
-            'comentario_cancelacion' => $data['comentario_cancelacion'],
-        ]);
+        $ticket->update(['estado' => 'cancelado']);
 
         return redirect()->route('pos.index')->with('success', "Ticket #{$ticket->folio} cancelado.");
     }
