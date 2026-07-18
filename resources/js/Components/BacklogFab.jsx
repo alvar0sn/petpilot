@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 const TYPES = {
@@ -8,7 +8,10 @@ const TYPES = {
 };
 
 export default function BacklogFab() {
+    const { auth } = usePage().props;
     const [open, setOpen] = useState(false);
+
+    if (auth?.user?.role !== 'super_admin') return null;
 
     const form = useForm({
         title:       '',
