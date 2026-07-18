@@ -597,7 +597,6 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
         try {
             const r = await axios.post(route('pos.tickets.store'));
             updateTicket(r.data.ticket);
-            setMobileView('cart');
         } catch (e) {
             console.error('newTicket:', e);
         } finally { setProcessing(false); }
@@ -617,7 +616,6 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                 const cr = await axios.post(route('pos.tickets.store'));
                 ticket = cr.data.ticket;
                 updateTicket(ticket);
-                setMobileView('cart');
             } catch (e) {
                 console.error('addItem (create ticket):', e);
                 setProcessing(false);
@@ -653,43 +651,35 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
             {/* ── MOBILE ── */}
             <div className="md:hidden flex flex-col h-[calc(100dvh-56px)]">
                 {mobileView === 'catalog' ? (
-                    <>
-                        <div className="flex-1 overflow-hidden px-4 pt-4 flex flex-col">
-                            {/* Open tickets */}
-                            {openTickets.length > 0 && (
-                                <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-hide">
-                                    {openTickets.map(t => (
-                                        <button key={t.id} onClick={() => loadTicket(t.id)}
-                                            className={`shrink-0 border rounded-lg px-3 py-1.5 text-xs ${currentTicket?.id === t.id ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-gray-200 text-gray-600'}`}>
-                                            #{t.folio} {t.owner ?? ''}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                            <MobileCatalog catalog={catalog} onAdd={addItem} />
-                        </div>
+                    <div className="flex-1 overflow-hidden px-4 pt-4 flex flex-col">
+                        {/* Open tickets chips */}
+                        {openTickets.length > 0 && (
+                            <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-hide">
+                                {openTickets.map(t => (
+                                    <button key={t.id} onClick={() => loadTicket(t.id)}
+                                        className={`shrink-0 border rounded-lg px-3 py-1.5 text-xs ${currentTicket?.id === t.id ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-gray-200 text-gray-600'}`}>
+                                        #{t.folio} {t.owner ?? ''}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
 
-                        {/* Sticky cart button */}
-                        <div className="p-4 bg-white border-t">
-                            {currentTicket ? (
-                                <button onClick={() => setMobileView('cart')}
-                                    className="w-full bg-blue-600 text-white py-4 rounded-2xl text-base font-bold flex items-center gap-3 px-5">
-                                    <span className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold">
-                                        {cartItemCount}
-                                    </span>
-                                    <span className="flex-1 text-left">
-                                        {currentTicket.owner ? currentTicket.owner.nombre_completo : 'Sin cliente'} · Carrito
-                                    </span>
-                                    <span>{fmt(currentTicket.total)}</span>
-                                </button>
-                            ) : (
-                                <button onClick={newTicket} disabled={processing}
-                                    className="w-full bg-blue-600 text-white py-4 rounded-2xl text-base font-bold disabled:opacity-50">
-                                    + Nuevo ticket
-                                </button>
-                            )}
-                        </div>
-                    </>
+                        {/* CTA button above search */}
+                        {!currentTicket ? (
+                            <button onClick={newTicket} disabled={processing}
+                                className="w-full bg-zinc-900 text-white py-3 rounded-xl text-sm font-semibold mb-3 disabled:opacity-50">
+                                + Nueva venta
+                            </button>
+                        ) : (
+                            <button onClick={() => setMobileView('cart')}
+                                className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-semibold mb-3 flex items-center justify-between px-4">
+                                <span>Ver ticket ({cartItemCount})</span>
+                                <span>{fmt(currentTicket.total)}</span>
+                            </button>
+                        )}
+
+                        <MobileCatalog catalog={catalog} onAdd={addItem} />
+                    </div>
                 ) : (
                     <div className="flex-1 overflow-hidden">
                         {currentTicket && (
@@ -715,7 +705,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                         <div className="flex gap-2">
                             <button onClick={newTicket} disabled={processing}
                                 className="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
-                                + Nuevo ticket
+                                + Nueva venta
                             </button>
                             <Link href={route('pos.history')} className="text-xs border px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-600">Historial</Link>
                             <Link href={route('pos.shift.index')} className="text-xs border px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-600">Turno</Link>
