@@ -631,7 +631,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
         }
     }
 
-    const cartItemCount = currentTicket?.lines?.reduce((s, l) => s + l.cantidad, 0) ?? 0;
+    const cartItemCount = currentTicket?.lines?.reduce((s, l) => s + Number(l.cantidad), 0) ?? 0;
 
     if (!activeShift) {
         return (
@@ -651,35 +651,40 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
             {/* ── MOBILE ── */}
             <div className="md:hidden flex flex-col h-[calc(100dvh-56px)]">
                 {mobileView === 'catalog' ? (
-                    <div className="flex-1 overflow-hidden px-4 pt-4 flex flex-col">
-                        {/* Open tickets chips */}
-                        {openTickets.length > 0 && (
-                            <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-hide">
-                                {openTickets.map(t => (
-                                    <button key={t.id} onClick={() => loadTicket(t.id)}
-                                        className={`shrink-0 border rounded-lg px-3 py-1.5 text-xs ${currentTicket?.id === t.id ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-gray-200 text-gray-600'}`}>
-                                        #{t.folio} {t.owner ?? ''}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                    <>
+                        <div className="flex-1 overflow-hidden px-4 pt-4 flex flex-col">
+                            {/* Open tickets chips */}
+                            {openTickets.length > 0 && (
+                                <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-hide">
+                                    {openTickets.map(t => (
+                                        <button key={t.id} onClick={() => loadTicket(t.id)}
+                                            className={`shrink-0 border rounded-lg px-3 py-1.5 text-xs ${currentTicket?.id === t.id ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-gray-200 text-gray-600'}`}>
+                                            #{t.folio} {t.owner ?? ''}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
 
-                        {/* CTA button above search */}
-                        {!currentTicket ? (
+                            {/* Nueva venta — always visible above search */}
                             <button onClick={newTicket} disabled={processing}
                                 className="w-full bg-zinc-900 text-white py-3 rounded-xl text-sm font-semibold mb-3 disabled:opacity-50">
                                 + Nueva venta
                             </button>
-                        ) : (
-                            <button onClick={() => setMobileView('cart')}
-                                className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-semibold mb-3 flex items-center justify-between px-4">
-                                <span>Ver ticket ({cartItemCount})</span>
-                                <span>{fmt(currentTicket.total)}</span>
-                            </button>
-                        )}
 
-                        <MobileCatalog catalog={catalog} onAdd={addItem} />
-                    </div>
+                            <MobileCatalog catalog={catalog} onAdd={addItem} />
+                        </div>
+
+                        {/* Sticky bottom: Ver ticket */}
+                        {currentTicket && (
+                            <div className="p-4 bg-white border-t">
+                                <button onClick={() => setMobileView('cart')}
+                                    className="w-full bg-blue-600 text-white py-4 rounded-2xl text-base font-bold flex items-center justify-between px-6">
+                                    <span>Ver ticket ({Math.round(cartItemCount)})</span>
+                                    <span>{fmt(currentTicket.total)}</span>
+                                </button>
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div className="flex-1 overflow-hidden">
                         {currentTicket && (
