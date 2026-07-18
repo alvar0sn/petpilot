@@ -247,7 +247,7 @@ class PetController extends Controller
 
     public function storePhoto(Request $request, Pet $pet): RedirectResponse
     {
-        $request->validate(['foto' => 'required|image|max:5120']);
+        $request->validate(['foto' => 'required|image|max:20480']);
 
         if ($pet->foto_url) {
             Storage::disk(media_disk())->delete($pet->foto_url);

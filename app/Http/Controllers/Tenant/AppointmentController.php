@@ -468,7 +468,7 @@ class AppointmentController extends Controller
     public function storePhoto(Request $request, Appointment $appointment): RedirectResponse
     {
         $request->validate([
-            'foto'        => 'required|image|max:5120',
+            'foto'        => 'required|image|max:20480',
             'descripcion' => 'nullable|string|max:100',
             'tipo'        => 'nullable|in:recepcion,resultado',
         ]);

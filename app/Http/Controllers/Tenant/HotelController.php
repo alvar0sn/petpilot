@@ -572,7 +572,7 @@ class HotelController extends Controller
         }
 
         $data = $request->validate([
-            'foto' => 'required|image|max:5120',
+            'foto' => 'required|image|max:20480',
             'etiqueta' => 'nullable|string|max:100',
         ]);
 

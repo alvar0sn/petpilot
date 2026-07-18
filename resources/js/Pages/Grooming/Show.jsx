@@ -112,6 +112,11 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
     const resultFileRef = useRef();
     const [lightbox, setLightbox] = useState(null);
 
+    const hasRecepcionData = Object.values(rec).some(v => v) || appt.accesorios || appt.photos?.some(p => p.tipo === 'recepcion');
+    const [recepcionOpen, setRecepcionOpen] = useState(hasRecepcionData || canEdit);
+    const hasSalidaData = completeForm.data.notas_resultado || appt.photos?.some(p => p.tipo === 'resultado') || appt.has_event;
+    const [salidaOpen, setSalidaOpen] = useState(hasSalidaData || appt.estado === 'completada');
+
     function uploadPhoto(tipo) {
         return function(e) {
             e.preventDefault();
@@ -333,9 +338,13 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
             </div>
 
             {/* Recepción */}
-            <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5 mb-4">
-                <h2 className="font-semibold text-zinc-800 text-sm mb-4">Recepción</h2>
-                <div className="space-y-4">
+            <div className="bg-white border border-zinc-100 shadow-sm rounded-xl mb-4 overflow-hidden">
+                <button type="button" onClick={() => setRecepcionOpen(o => !o)}
+                    className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-zinc-50 transition-colors">
+                    <h2 className="font-semibold text-zinc-800 text-sm">Recepción</h2>
+                    <i className={`ti ti-chevron-down text-zinc-400 transition-transform duration-200 ${recepcionOpen ? 'rotate-180' : ''}`} style={{ fontSize: '16px' }} />
+                </button>
+                {recepcionOpen && <div className="px-5 pb-5 pt-1 space-y-4 border-t border-zinc-100">
                     <div>
                         <p className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wide">Análisis visual</p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -416,6 +425,7 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                                 {photoForm.processing ? 'Subiendo...' : 'Subir foto'}
                             </button>
                         </form>
+                        {photoForm.errors.foto && <p className="text-rose-500 text-xs mt-1">{photoForm.errors.foto}</p>}
                     </div>
 
                     <form onSubmit={saveRecepcion} className="flex justify-end">
@@ -424,13 +434,17 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                             {recForm.processing ? 'Guardando...' : 'Guardar recepción'}
                         </button>
                     </form>
-                </div>
+                </div>}
             </div>
 
             {/* Formulario de salida */}
-            <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5 mb-4">
-                <h2 className="font-semibold text-zinc-800 text-sm mb-4">Formulario de salida</h2>
-                <div className="space-y-4">
+            <div className="bg-white border border-zinc-100 shadow-sm rounded-xl mb-4 overflow-hidden">
+                <button type="button" onClick={() => setSalidaOpen(o => !o)}
+                    className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-zinc-50 transition-colors">
+                    <h2 className="font-semibold text-zinc-800 text-sm">Formulario de salida</h2>
+                    <i className={`ti ti-chevron-down text-zinc-400 transition-transform duration-200 ${salidaOpen ? 'rotate-180' : ''}`} style={{ fontSize: '16px' }} />
+                </button>
+                {salidaOpen && <div className="px-5 pb-5 pt-1 space-y-4 border-t border-zinc-100">
                     {checklistItems.length > 0 && (
                         <div>
                             <p className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wide">Checklist del servicio</p>
@@ -501,6 +515,7 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                                 {resultPhotoForm.processing ? 'Subiendo...' : 'Subir foto'}
                             </button>
                         </form>
+                        {resultPhotoForm.errors.foto && <p className="text-rose-500 text-xs mt-1">{resultPhotoForm.errors.foto}</p>}
                     </div>
 
                     {canEdit && (
@@ -511,7 +526,7 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                             </button>
                         </form>
                     )}
-                </div>
+                </div>}
             </div>
             {lightbox && (
                 <Lightbox
