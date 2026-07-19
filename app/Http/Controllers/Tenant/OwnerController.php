@@ -89,7 +89,8 @@ class OwnerController extends Controller
     public function show(Owner $owner): Response
     {
         $owner->load([
-            'pets' => fn($q) => $q->withCount('events')->orderBy('estado')->orderBy('nombre'),
+            'pets'              => fn($q) => $q->withCount('events')->orderBy('estado')->orderBy('nombre'),
+            'pets.memberships'  => fn($q) => $q->where('activa', true)->with('plan:id,nombre'),
         ]);
 
         return Inertia::render('Owners/Show', [
