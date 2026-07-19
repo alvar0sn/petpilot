@@ -566,23 +566,28 @@ function PetAvatar({ pet }) {
 
     return (
         <>
-        <div className="relative group shrink-0">
+        <div
+            className="relative group shrink-0"
+            onClick={() => url && setLightboxOpen(true)}
+            style={{ cursor: url ? 'zoom-in' : 'default' }}
+        >
             {url ? (
                 <img src={url} alt={pet.nombre}
-                    onClick={() => setLightboxOpen(true)}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-zinc-200 cursor-zoom-in" />
+                    className="w-16 h-16 rounded-full object-cover border-2 border-zinc-200" />
             ) : (
                 <div className="w-16 h-16 rounded-full bg-zinc-100 border-2 border-zinc-200 flex items-center justify-center text-3xl">
                     {tipoBadge[pet.tipo] ?? '🐾'}
                 </div>
             )}
             <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-0.5">
-                <button type="button" onClick={() => inputRef.current?.click()}
+                <button type="button"
+                    onClick={e => { e.stopPropagation(); inputRef.current?.click(); }}
                     className="text-white text-[10px] font-medium leading-none">
                     {url ? 'Cambiar' : 'Subir'}
                 </button>
                 {url && (
-                    <button type="button" onClick={e => { e.stopPropagation(); deletePhoto(); }}
+                    <button type="button"
+                        onClick={e => { e.stopPropagation(); deletePhoto(); }}
                         className="text-rose-300 text-[10px] font-medium leading-none">
                         Borrar
                     </button>
@@ -666,6 +671,14 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                                         <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200 inline-flex items-center">inactivo</span>
                                     )}
                                 </div>
+                                {activeMembership && (
+                                    <div className="mt-1.5 flex flex-wrap gap-1">
+                                        <span className="inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full bg-green-50 text-green-700 ring-1 ring-green-200 font-medium">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                                            {activeMembership.plan?.nombre} · {formatDate(activeMembership.fecha_vencimiento, tz)}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
