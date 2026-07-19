@@ -26,16 +26,17 @@ class MembershipController extends Controller
     {
         $memberships = Membership::with(['pet.owner:id,nombre,apellidos,telefono', 'plan:id,nombre,precio', 'credits'])
             ->where('activa', true)
-            ->when($request->search, fn($q, $s) =>
+            ->when($request->search, function ($q, $s) {
+                $sl = '%' . mb_strtolower($s) . '%';
                 $q->whereHas('pet', fn($q) => $q
-                    ->where('nombre', 'like', "%$s%")
+                    ->whereRaw('LOWER(nombre) LIKE ?', [$sl])
                     ->orWhereHas('owner', fn($q) => $q
-                        ->where('nombre', 'like', "%$s%")
-                        ->orWhere('apellidos', 'like', "%$s%")
-                        ->orWhere('telefono', 'like', "%$s%")
+                        ->whereRaw('LOWER(nombre) LIKE ?', [$sl])
+                        ->orWhereRaw('LOWER(apellidos) LIKE ?', [$sl])
+                        ->orWhereRaw('LOWER(telefono) LIKE ?', [$sl])
                     )
-                )
-            )
+                );
+            })
             ->when($request->plan_id, fn($q, $planId) => $q->where('plan_id', $planId))
             ->when($request->boolean('vence_pronto'), fn($q) =>
                 $q->whereDate('fecha_vencimiento', '<=', now()->addDays(7))

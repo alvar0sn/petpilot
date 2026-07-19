@@ -20,15 +20,16 @@ class OwnerController extends Controller
                 'pets.memberships' => fn($q) => $q->where('activa', true)
                     ->with('credits:id,membership_id,servicio_tipo,saldo_actual'),
             ])
-            ->when($request->search, fn($q, $s) =>
+            ->when($request->search, function ($q, $s) {
+                $sl = '%' . mb_strtolower($s) . '%';
                 $q->where(fn($q) =>
-                    $q->where('nombre', 'like', "%$s%")
-                      ->orWhere('apellidos', 'like', "%$s%")
-                      ->orWhere('telefono', 'like', "%$s%")
-                      ->orWhere('email', 'like', "%$s%")
-                      ->orWhereHas('pets', fn($q) => $q->where('nombre', 'like', "%$s%"))
-                )
-            )
+                    $q->whereRaw('LOWER(nombre) LIKE ?', [$sl])
+                      ->orWhereRaw('LOWER(apellidos) LIKE ?', [$sl])
+                      ->orWhereRaw('LOWER(telefono) LIKE ?', [$sl])
+                      ->orWhereRaw('LOWER(email) LIKE ?', [$sl])
+                      ->orWhereHas('pets', fn($q) => $q->whereRaw('LOWER(nombre) LIKE ?', [$sl]))
+                );
+            })
             ->latest()
             ->paginate(30)
             ->withQueryString()

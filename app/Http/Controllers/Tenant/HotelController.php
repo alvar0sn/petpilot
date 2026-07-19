@@ -29,16 +29,17 @@ class HotelController extends Controller
         $fechaDisponibilidad = $request->input('fecha_disponibilidad') ?: now()->toDateString();
 
         $stays = HotelStay::with(['pet.owner:id,nombre,apellidos,telefono', 'space:id,nombre', 'rate:id,nombre'])
-            ->when($request->search, fn($q, $s) =>
+            ->when($request->search, function ($q, $s) {
+                $sl = '%' . mb_strtolower($s) . '%';
                 $q->whereHas('pet', fn($q) => $q
-                    ->where('nombre', 'like', "%$s%")
+                    ->whereRaw('LOWER(nombre) LIKE ?', [$sl])
                     ->orWhereHas('owner', fn($q) => $q
-                        ->where('nombre', 'like', "%$s%")
-                        ->orWhere('apellidos', 'like', "%$s%")
-                        ->orWhere('telefono', 'like', "%$s%")
+                        ->whereRaw('LOWER(nombre) LIKE ?', [$sl])
+                        ->orWhereRaw('LOWER(apellidos) LIKE ?', [$sl])
+                        ->orWhereRaw('LOWER(telefono) LIKE ?', [$sl])
                     )
-                )
-            )
+                );
+            })
             ->when($request->estado, fn($q, $estado) => $q->where('estado', $estado))
             ->when($request->tipo, fn($q, $tipo) => $q->where('tipo', $tipo))
             ->when($request->space_id, fn($q, $spaceId) => $q->where('space_id', $spaceId))
