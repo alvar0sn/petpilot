@@ -271,7 +271,7 @@ Route::prefix('{tenant:slug}')->name('tenant.')->group(function () {
 
 // Owner Portal
 Route::prefix('{tenant:slug}')->name('portal.')->group(function () {
-    Route::get('portal', fn($tenant) => redirect()->route('tenant.login', ['tenant' => $tenant->slug]))->name('login');
+    Route::get('portal', fn($tenant) => redirect()->route('tenant.login', ['tenant' => $tenant]))->name('login');
     Route::post('portal', [OwnerAuthController::class, 'login'])->name('login.post');
     Route::post('portal/salir', [OwnerAuthController::class, 'logout'])->name('logout');
     Route::get('olvide-contrasena', [OwnerAuthController::class, 'showForgotPassword'])->name('forgot-password');
