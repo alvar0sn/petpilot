@@ -650,8 +650,8 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:items-start">
 
-                {/* ── Info mascota ─────────────────────────── col-1 row-1 */}
-                <div className="lg:col-start-1 lg:row-start-1">
+                {/* ── Columna izquierda ─────────────────────────────────── */}
+                <div className="space-y-3">
                     <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5">
                         <div className="flex items-start gap-3 mb-4">
                             <PetAvatar pet={pet} />
@@ -753,35 +753,13 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                             </div>
                         )}
                     </div>
-                </div>
 
-                {/* ── Recordatorios próximos (≤7 días) ────── col-1 row-2 */}
-                <div className="lg:col-start-1 lg:row-start-2">
                     <RecordatoriosSection pet={pet} maxDays={7} />
-                </div>
-
-                {/* ── Esquema médico ───────────────────────── col-1 row-3 */}
-                <div className="lg:col-start-1 lg:row-start-3">
                     <EsquemaSection events={pet.events} tz={tz} />
                 </div>
 
-                {/* ── Membresía (oculta en móvil) ─────────── col-1 row-4 */}
-                <div className="hidden lg:block lg:col-start-1 lg:row-start-4">
-                    {activeMembership ? (
-                        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                            <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Membresía activa</p>
-                            <p className="font-semibold text-zinc-900">{activeMembership.plan?.nombre}</p>
-                            <p className="text-xs text-zinc-500 mt-1">Vence: {formatDate(activeMembership.fecha_vencimiento, tz)}</p>
-                        </div>
-                    ) : (
-                        <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4">
-                            <p className="text-xs text-zinc-400 text-center">Sin membresía activa</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* ── Historial + Fotos ────────────────────── col-2/3, rows 1-4 */}
-                <div className="lg:col-start-2 lg:col-span-2 lg:row-start-1 lg:row-span-4 space-y-4">
+                {/* ── Columna derecha: Historial + Fotos ───────────────── */}
+                <div className="lg:col-span-2 space-y-4">
 
                     {/* Historial */}
                     <div className="bg-white border border-sky-200 shadow-sm rounded-xl overflow-hidden">
