@@ -20,39 +20,25 @@ const eventColors = {
     Consulta: 'bg-teal-100 border-teal-300 text-teal-800',
 };
 
-function NewEventForm({ petId, eventTypes, checklistItems, onCancel }) {
+function NewEventForm({ petId, eventTypes, onCancel }) {
     const tz = useTenantTimezone();
+
+    const allowedTypes = eventTypes.filter(t => t.nombre === 'Vacuna' || t.nombre === 'Desparasitación');
+
     const { data, setData, post, processing, errors, reset } = useForm({
-        event_type_id: eventTypes[0]?.id ?? '',
+        event_type_id: allowedTypes[0]?.id ?? '',
         fecha: dateKeyInTimezone(new Date(), tz),
         peso: '',
         notas: '',
-        // Estética
-        est_verrugas: false,
-        est_pulgas: false,
-        est_secreciones: false,
-        est_lesiones: false,
-        est_alergias: false,
-        est_manto: '',
-        checklist_items: [],
-        // Vacuna
         vacuna_nombre: '',
         vacuna_lote: '',
         vacuna_laboratorio: '',
-        // Desparasitación
         despa_producto: '',
         despa_via: '',
-        // Shared próxima date (Vacuna & Despa)
         proximo_recordatorio: '',
-        // Consulta
-        consulta_temperatura: '',
-        consulta_motivo: '',
-        consulta_diagnostico: '',
-        consulta_medicamentos: '',
-        consulta_proxima_cita: '',
     });
 
-    const selectedType = eventTypes.find(t => t.id == data.event_type_id);
+    const selectedType = allowedTypes.find(t => t.id == data.event_type_id);
     const typeName = selectedType?.nombre;
 
     function submit(e) {
@@ -60,14 +46,6 @@ function NewEventForm({ petId, eventTypes, checklistItems, onCancel }) {
         post(route('events.store', petId), {
             onSuccess: () => { reset(); onCancel(); },
         });
-    }
-
-    function toggleChecklist(id) {
-        setData('checklist_items',
-            data.checklist_items.includes(id)
-                ? data.checklist_items.filter(x => x !== id)
-                : [...data.checklist_items, id]
-        );
     }
 
     return (
@@ -78,7 +56,7 @@ function NewEventForm({ petId, eventTypes, checklistItems, onCancel }) {
                 <div>
                     <label className="block text-xs font-medium text-zinc-600 mb-1">Tipo *</label>
                     <select className="w-full border-gray-300 rounded-lg text-sm" value={data.event_type_id} onChange={e => setData('event_type_id', e.target.value)}>
-                        {eventTypes.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                        {allowedTypes.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                     </select>
                 </div>
 
@@ -93,39 +71,6 @@ function NewEventForm({ petId, eventTypes, checklistItems, onCancel }) {
                 </div>
             </div>
 
-            {/* Estética */}
-            {typeName === 'Estética' && (
-                <div className="space-y-3 border-t pt-3">
-                    <p className="text-xs font-semibold text-zinc-400">Hallazgos</p>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                        {['est_verrugas', 'est_pulgas', 'est_secreciones', 'est_lesiones', 'est_alergias'].map(field => (
-                            <label key={field} className="flex gap-2 items-center">
-                                <input type="checkbox" checked={data[field]} onChange={e => setData(field, e.target.checked)} className="rounded" />
-                                {field.replace('est_', '').charAt(0).toUpperCase() + field.replace('est_', '').slice(1)}
-                            </label>
-                        ))}
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-zinc-600 mb-1">Estado del manto</label>
-                        <input className="w-full border-gray-300 rounded-lg text-sm" value={data.est_manto} onChange={e => setData('est_manto', e.target.value)} placeholder="bueno, regular, malo..." />
-                    </div>
-                    {checklistItems.length > 0 && (
-                        <div>
-                            <p className="text-xs font-medium text-zinc-600 mb-2">Checklist de servicio</p>
-                            <div className="grid grid-cols-2 gap-1">
-                                {checklistItems.map(item => (
-                                    <label key={item.id} className="flex gap-2 items-center text-sm">
-                                        <input type="checkbox" checked={data.checklist_items.includes(item.id)} onChange={() => toggleChecklist(item.id)} className="rounded" />
-                                        {item.nombre}
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Vacuna */}
             {typeName === 'Vacuna' && (
                 <div className="grid grid-cols-2 gap-3 border-t pt-3">
                     <div className="col-span-2">
@@ -147,7 +92,6 @@ function NewEventForm({ petId, eventTypes, checklistItems, onCancel }) {
                 </div>
             )}
 
-            {/* Desparasitación */}
             {typeName === 'Desparasitación' && (
                 <div className="grid grid-cols-2 gap-3 border-t pt-3">
                     <div>
@@ -161,34 +105,6 @@ function NewEventForm({ petId, eventTypes, checklistItems, onCancel }) {
                     <div className="col-span-2">
                         <label className="block text-xs font-medium text-zinc-600 mb-1">Próxima desparasitación sugerida</label>
                         <input type="date" className="w-full border-gray-300 rounded-lg text-sm" value={data.proximo_recordatorio} onChange={e => setData('proximo_recordatorio', e.target.value)} />
-                    </div>
-                </div>
-            )}
-
-            {/* Consulta */}
-            {typeName === 'Consulta' && (
-                <div className="space-y-3 border-t pt-3">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-xs font-medium text-zinc-600 mb-1">Temperatura (°C)</label>
-                            <input type="number" step="0.1" className="w-full border-gray-300 rounded-lg text-sm" value={data.consulta_temperatura} onChange={e => setData('consulta_temperatura', e.target.value)} />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-zinc-600 mb-1">Próxima cita</label>
-                            <input type="date" className="w-full border-gray-300 rounded-lg text-sm" value={data.consulta_proxima_cita} onChange={e => setData('consulta_proxima_cita', e.target.value)} />
-                        </div>
-                        <div className="col-span-2">
-                            <label className="block text-xs font-medium text-zinc-600 mb-1">Motivo</label>
-                            <input className="w-full border-gray-300 rounded-lg text-sm" value={data.consulta_motivo} onChange={e => setData('consulta_motivo', e.target.value)} />
-                        </div>
-                        <div className="col-span-2">
-                            <label className="block text-xs font-medium text-zinc-600 mb-1">Diagnóstico</label>
-                            <textarea rows={2} className="w-full border-gray-300 rounded-lg text-sm" value={data.consulta_diagnostico} onChange={e => setData('consulta_diagnostico', e.target.value)} />
-                        </div>
-                        <div className="col-span-2">
-                            <label className="block text-xs font-medium text-zinc-600 mb-1">Medicamentos</label>
-                            <textarea rows={2} className="w-full border-gray-300 rounded-lg text-sm" value={data.consulta_medicamentos} onChange={e => setData('consulta_medicamentos', e.target.value)} />
-                        </div>
                     </div>
                 </div>
             )}
@@ -797,7 +713,6 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                         <NewEventForm
                             petId={pet.id}
                             eventTypes={eventTypes}
-                            checklistItems={checklistItems}
                             onCancel={() => setShowForm(false)}
                         />
                     )}
