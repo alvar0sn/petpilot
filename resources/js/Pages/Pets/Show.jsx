@@ -566,7 +566,7 @@ function PetAvatar({ pet }) {
 
     return (
         <>
-        <div className="relative shrink-0 w-16 h-16">
+        <div className="relative group shrink-0 w-16 h-16">
             {/* Foto o placeholder */}
             {url ? (
                 <img src={url} alt={pet.nombre}
@@ -574,29 +574,26 @@ function PetAvatar({ pet }) {
                     className="w-16 h-16 rounded-full object-cover border-2 border-zinc-200 cursor-zoom-in" />
             ) : (
                 <div className="w-16 h-16 rounded-full bg-zinc-100 border-2 border-zinc-200 flex items-center justify-center text-3xl">
-                    {compressing
-                        ? <span className="text-sm text-zinc-400 animate-spin">⟳</span>
-                        : (tipoBadge[pet.tipo] ?? '🐾')}
+                    {tipoBadge[pet.tipo] ?? '🐾'}
                 </div>
             )}
 
-            {/* X — eliminar (solo si hay foto) */}
-            {url && (
+            {/* Botón único esquina superior-derecha: + si no hay foto, X si hay */}
+            {url ? (
                 <button type="button"
                     onClick={deletePhoto}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-[11px] font-bold leading-none shadow transition-colors"
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white rounded-full items-center justify-center text-[11px] font-bold leading-none shadow transition-colors hidden group-hover:flex"
                     title="Eliminar foto">
                     ✕
                 </button>
+            ) : (
+                <button type="button"
+                    onClick={() => inputRef.current?.click()}
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-zinc-800 hover:bg-zinc-600 text-white rounded-full flex items-center justify-center text-sm font-bold leading-none shadow transition-colors"
+                    title="Subir foto">
+                    +
+                </button>
             )}
-
-            {/* + — subir/cambiar */}
-            <button type="button"
-                onClick={() => inputRef.current?.click()}
-                className="absolute -bottom-1 -right-1 w-5 h-5 bg-zinc-800 hover:bg-zinc-600 text-white rounded-full flex items-center justify-center text-sm font-bold leading-none shadow transition-colors"
-                title={url ? 'Cambiar foto' : 'Subir foto'}>
-                +
-            </button>
 
             <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
         </div>
