@@ -5,11 +5,23 @@ import { Link, router, useForm } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import { dateKeyInTimezone, formatDate, useTenantTimezone } from '@/lib/datetime';
 
-const agresividadBadge = {
-    tranquilo: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-    precaucion: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-    agresivo: 'bg-rose-50 text-rose-600 ring-1 ring-rose-200',
+const agresividadConfig = {
+    tranquilo:  { dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200', label: 'tranquilo' },
+    precaucion: { dot: 'bg-amber-500',   badge: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',       label: 'precaución' },
+    agresivo:   { dot: 'bg-rose-500',    badge: 'bg-rose-50 text-rose-600 ring-1 ring-rose-200',           label: 'agresivo'   },
 };
+
+function calcEdad(fechaNac) {
+    if (!fechaNac) return null;
+    const [y, m, d] = fechaNac.split('-').map(Number);
+    const now = new Date();
+    let years = now.getFullYear() - y;
+    let months = now.getMonth() + 1 - m;
+    if (months < 0) { years--; months += 12; }
+    if (years > 0) return `${years} año${years !== 1 ? 's' : ''}`;
+    if (months > 0) return `${months} mes${months !== 1 ? 'es' : ''}`;
+    return 'recién nacido';
+}
 
 const tipoBadge = { perro: '🐶', gato: '🐱', roedor: '🐭', reptil: '🦎', otro: '🐾' };
 
@@ -588,6 +600,7 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
     const tz = useTenantTimezone();
     const [showForm, setShowForm] = useState(false);
     const [filtro, setFiltro] = useState('todos');
+    const [infoOpen, setInfoOpen] = useState(false);
 
     // Build unified timeline
     const allEvents  = (pet.events ?? []).map(e => ({ _kind: 'event',  _fecha: e.fecha,                   ...e }));
@@ -625,25 +638,38 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                 {/* Info mascota */}
                 <div className="space-y-3">
                     <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5">
-                        <div className="flex items-start gap-3 mb-4">
+                        <div className="flex items-start gap-3 mb-3">
                             <PetAvatar pet={pet} />
-                            <div>
-                                <h2 className="text-xl font-bold text-zinc-900">{pet.nombre}</h2>
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium inline-flex items-center ${agresividadBadge[pet.nivel_agresividad]}`}>
-                                    {pet.nivel_agresividad}
-                                </span>
-                                {pet.estado === 'inactivo' && (
-                                    <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200 inline-flex items-center">inactivo</span>
-                                )}
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h2 className="text-xl font-bold text-zinc-900">{pet.nombre}</h2>
+                                    {pet.nivel_agresividad && (() => {
+                                        const cfg = agresividadConfig[pet.nivel_agresividad];
+                                        return cfg ? (
+                                            <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium ${cfg.badge}`}>
+                                                <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                                                {cfg.label}
+                                            </span>
+                                        ) : null;
+                                    })()}
+                                    {pet.estado === 'inactivo' && (
+                                        <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200 inline-flex items-center">inactivo</span>
+                                    )}
+                                </div>
+                                <button type="button" onClick={() => setInfoOpen(o => !o)}
+                                    className="mt-1 text-xs text-zinc-400 hover:text-zinc-600 md:hidden flex items-center gap-1 transition-colors">
+                                    {infoOpen ? 'Ocultar detalles ▴' : 'Ver detalles ▾'}
+                                </button>
                             </div>
                         </div>
 
+                        <div className={`${infoOpen ? 'block' : 'hidden md:block'}`}>
                         <div className="text-sm space-y-1.5 text-zinc-600">
                             {pet.raza && <div><span className="text-zinc-400">Raza:</span> {pet.raza}</div>}
-                            {pet.tamanio && <div><span className="text-zinc-400">Tamaño:</span> {pet.tamanio}</div>}
-                            {pet.sexo && <div><span className="text-zinc-400">Sexo:</span> {pet.sexo}{pet.esterilizado ? ' · esterilizado/a' : ''}</div>}
+                            {pet.tamanio && <div><span className="text-zinc-400">Tamaño:</span> <span className="capitalize">{pet.tamanio}</span></div>}
+                            {pet.sexo && <div><span className="text-zinc-400">Sexo:</span> <span className="capitalize">{pet.sexo}</span>{pet.esterilizado ? ' · esterilizado/a' : ''}</div>}
                             {pet.peso && <div><span className="text-zinc-400">Peso:</span> {pet.peso} kg</div>}
-                            {pet.fecha_nacimiento && <div><span className="text-zinc-400">Nacimiento:</span> {formatDate(pet.fecha_nacimiento, tz)}</div>}
+                            {pet.fecha_nacimiento && <div><span className="text-zinc-400">Nacimiento:</span> {formatDate(pet.fecha_nacimiento, tz)}{calcEdad(pet.fecha_nacimiento) ? <span className="ml-1 text-zinc-400 text-xs">({calcEdad(pet.fecha_nacimiento)})</span> : null}</div>}
                             {pet.num_expediente && <div><span className="text-zinc-400">Expediente:</span> <span className="font-mono">{pet.num_expediente}</span></div>}
                         </div>
 
@@ -669,6 +695,7 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                                 )}
                             </div>
                         )}
+                        </div>
                     </div>
 
                     {/* Esquema médico */}

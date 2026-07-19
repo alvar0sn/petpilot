@@ -15,6 +15,24 @@ function fmtNac(dateStr) {
     return `${d} ${meses[m - 1]} ${y}`;
 }
 
+function calcEdad(fechaNac) {
+    if (!fechaNac) return null;
+    const [y, m] = fechaNac.split('-').map(Number);
+    const now = new Date();
+    let years = now.getFullYear() - y;
+    let months = now.getMonth() + 1 - m;
+    if (months < 0) { years--; months += 12; }
+    if (years > 0) return `${years} año${years !== 1 ? 's' : ''}`;
+    if (months > 0) return `${months} mes${months !== 1 ? 'es' : ''}`;
+    return 'recién nacido';
+}
+
+const agresividadConfig = {
+    tranquilo:  { dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200', label: 'tranquilo' },
+    precaucion: { dot: 'bg-amber-500',   badge: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',       label: 'precaución' },
+    agresivo:   { dot: 'bg-rose-500',    badge: 'bg-rose-50 text-rose-600 ring-1 ring-rose-200',           label: 'agresivo'   },
+};
+
 const estadoBadge = {
     pendiente:  'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
     confirmada: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
@@ -43,6 +61,7 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
         items:          appt.items ?? [],
     });
     const [editing, setEditing] = useState(false);
+    const [petInfoOpen, setPetInfoOpen] = useState(false);
 
     function inferDuracion(hi, hf) {
         if (!hi || !hf) return null;
@@ -143,6 +162,15 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium inline-flex items-center ${estadoBadge[appt.estado] ?? 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200'}`}>
                                 {estadoLabel[appt.estado] ?? appt.estado}
                             </span>
+                            {appt.pet?.nivel_agresividad && (() => {
+                                const cfg = agresividadConfig[appt.pet.nivel_agresividad];
+                                return cfg ? (
+                                    <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium ${cfg.badge}`}>
+                                        <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                                        {cfg.label}
+                                    </span>
+                                ) : null;
+                            })()}
                         </div>
                         {appt.owner && (
                             <p className="text-sm text-zinc-500 mt-0.5">
@@ -150,27 +178,28 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                                 {appt.owner.telefono && <span className="ml-2">{appt.owner.telefono}</span>}
                             </p>
                         )}
-                        {appt.pet && (
+                        {appt.pet && (<>
+                            <button type="button" onClick={() => setPetInfoOpen(o => !o)}
+                                className="mt-1 text-xs text-zinc-400 hover:text-zinc-600 md:hidden flex items-center gap-1 transition-colors">
+                                {petInfoOpen ? 'Ocultar detalles ▴' : 'Ver detalles ▾'}
+                            </button>
+                            <div className={`${petInfoOpen ? 'block' : 'hidden md:block'}`}>
                             <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-600">
                                 {appt.pet.raza && <span><span className="font-medium text-zinc-500">Raza</span> {appt.pet.raza}</span>}
                                 {appt.pet.tamanio && <span><span className="font-medium text-zinc-500">Tamaño</span> <span className="capitalize">{appt.pet.tamanio}</span></span>}
                                 {appt.pet.sexo && <span><span className="font-medium text-zinc-500">Sexo</span> <span className="capitalize">{appt.pet.sexo}{appt.pet.esterilizado ? ' · esterilizado/a' : ''}</span></span>}
                                 {appt.pet.peso && <span><span className="font-medium text-zinc-500">Peso</span> {appt.pet.peso} kg</span>}
-                                {appt.pet.fecha_nacimiento && <span><span className="font-medium text-zinc-500">Nacimiento</span> {fmtNac(appt.pet.fecha_nacimiento)}</span>}
-                                {appt.pet.nivel_agresividad && appt.pet.nivel_agresividad !== 'tranquilo' && (
-                                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${appt.pet.nivel_agresividad === 'agresivo' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
-                                        {appt.pet.nivel_agresividad}
-                                    </span>
-                                )}
+                                {appt.pet.fecha_nacimiento && <span><span className="font-medium text-zinc-500">Nacimiento</span> {fmtNac(appt.pet.fecha_nacimiento)}{calcEdad(appt.pet.fecha_nacimiento) ? <span className="ml-1 text-zinc-400 text-xs">({calcEdad(appt.pet.fecha_nacimiento)})</span> : null}</span>}
                             </div>
-                        )}
-                        {(appt.pet?.alergias || appt.pet?.padecimientos || appt.pet?.obs_comportamiento) && (
-                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-zinc-500">
-                                {appt.pet.alergias && <span><span className="font-medium text-zinc-600">Alergias:</span> {appt.pet.alergias}</span>}
-                                {appt.pet.padecimientos && <span><span className="font-medium text-zinc-600">Padecimientos:</span> {appt.pet.padecimientos}</span>}
-                                {appt.pet.obs_comportamiento && <span><span className="font-medium text-zinc-600">Comportamiento:</span> {appt.pet.obs_comportamiento}</span>}
+                            {(appt.pet.alergias || appt.pet.padecimientos || appt.pet.obs_comportamiento) && (
+                                <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-zinc-500">
+                                    {appt.pet.alergias && <span><span className="font-medium text-zinc-600">Alergias:</span> {appt.pet.alergias}</span>}
+                                    {appt.pet.padecimientos && <span><span className="font-medium text-zinc-600">Padecimientos:</span> {appt.pet.padecimientos}</span>}
+                                    {appt.pet.obs_comportamiento && <span><span className="font-medium text-zinc-600">Comportamiento:</span> {appt.pet.obs_comportamiento}</span>}
+                                </div>
+                            )}
                             </div>
-                        )}
+                        </>)}
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600">
                             <span><span className="font-medium">Fecha:</span> {appt.fecha}</span>
                             {appt.hora_inicio && <span><span className="font-medium">Hora:</span> {appt.hora_inicio.slice(0,5)}{appt.hora_fin ? ` – ${appt.hora_fin.slice(0,5)}` : ''}</span>}
