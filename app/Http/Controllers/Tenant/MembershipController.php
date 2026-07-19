@@ -264,7 +264,7 @@ class MembershipController extends Controller
         ]);
 
         DB::transaction(function () use ($data) {
-            $posItemId = $data['pos_item_id'] ?: $this->ensureMembershipCatalogItem($data['nombre'], $data['precio'])->id;
+            $posItemId = ($data['pos_item_id'] ?? null) ?: $this->ensureMembershipCatalogItem($data['nombre'], $data['precio'])->id;
 
             $plan = MembershipPlan::create([
                 'nombre' => $data['nombre'],
