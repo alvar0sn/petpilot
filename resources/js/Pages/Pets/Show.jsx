@@ -566,33 +566,38 @@ function PetAvatar({ pet }) {
 
     return (
         <>
-        <div
-            className="relative group shrink-0"
-            onClick={() => url && setLightboxOpen(true)}
-            style={{ cursor: url ? 'zoom-in' : 'default' }}
-        >
+        <div className="relative shrink-0 w-16 h-16">
+            {/* Foto o placeholder */}
             {url ? (
                 <img src={url} alt={pet.nombre}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-zinc-200" />
+                    onClick={() => setLightboxOpen(true)}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-zinc-200 cursor-zoom-in" />
             ) : (
                 <div className="w-16 h-16 rounded-full bg-zinc-100 border-2 border-zinc-200 flex items-center justify-center text-3xl">
-                    {tipoBadge[pet.tipo] ?? '🐾'}
+                    {compressing
+                        ? <span className="text-sm text-zinc-400 animate-spin">⟳</span>
+                        : (tipoBadge[pet.tipo] ?? '🐾')}
                 </div>
             )}
-            <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-0.5">
+
+            {/* X — eliminar (solo si hay foto) */}
+            {url && (
                 <button type="button"
-                    onClick={e => { e.stopPropagation(); inputRef.current?.click(); }}
-                    className="text-white text-[10px] font-medium leading-none">
-                    {url ? 'Cambiar' : 'Subir'}
+                    onClick={deletePhoto}
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-[11px] font-bold leading-none shadow transition-colors"
+                    title="Eliminar foto">
+                    ✕
                 </button>
-                {url && (
-                    <button type="button"
-                        onClick={e => { e.stopPropagation(); deletePhoto(); }}
-                        className="text-rose-300 text-[10px] font-medium leading-none">
-                        Borrar
-                    </button>
-                )}
-            </div>
+            )}
+
+            {/* + — subir/cambiar */}
+            <button type="button"
+                onClick={() => inputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 w-5 h-5 bg-zinc-800 hover:bg-zinc-600 text-white rounded-full flex items-center justify-center text-sm font-bold leading-none shadow transition-colors"
+                title={url ? 'Cambiar foto' : 'Subir foto'}>
+                +
+            </button>
+
             <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
         </div>
         {lightboxOpen && url && (
