@@ -527,6 +527,7 @@ function PetAvatar({ pet }) {
     const inputRef = useRef(null);
     const photoForm = useForm({ foto: null });
     const [compressing, setCompressing] = useState(false);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
 
     async function handleFile(e) {
         const file = e.target.files[0];
@@ -552,10 +553,12 @@ function PetAvatar({ pet }) {
     const url = pet.foto_url ?? null;
 
     return (
+        <>
         <div className="relative group shrink-0">
             {url ? (
                 <img src={url} alt={pet.nombre}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-zinc-200" />
+                    onClick={() => setLightboxOpen(true)}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-zinc-200 cursor-zoom-in" />
             ) : (
                 <div className="w-16 h-16 rounded-full bg-zinc-100 border-2 border-zinc-200 flex items-center justify-center text-3xl">
                     {tipoBadge[pet.tipo] ?? '🐾'}
@@ -567,7 +570,7 @@ function PetAvatar({ pet }) {
                     {url ? 'Cambiar' : 'Subir'}
                 </button>
                 {url && (
-                    <button type="button" onClick={deletePhoto}
+                    <button type="button" onClick={e => { e.stopPropagation(); deletePhoto(); }}
                         className="text-rose-300 text-[10px] font-medium leading-none">
                         Borrar
                     </button>
@@ -575,6 +578,16 @@ function PetAvatar({ pet }) {
             </div>
             <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
         </div>
+        {lightboxOpen && url && (
+            <Lightbox
+                photos={[{ url, descripcion: pet.nombre }]}
+                index={0}
+                onClose={() => setLightboxOpen(false)}
+                onPrev={null}
+                onNext={null}
+            />
+        )}
+        </>
     );
 }
 
