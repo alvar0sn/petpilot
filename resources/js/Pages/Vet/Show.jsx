@@ -151,8 +151,9 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
 
             {/* Header */}
             <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5 mb-4">
-                <div className="flex flex-wrap items-start gap-4">
-                    <div className="flex-1 min-w-0">
+                {/* Fila superior: nombre + acciones */}
+                <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                             <h1 className="text-xl font-semibold text-zinc-900">
                                 <Link href={route('pets.show', appt.pet?.id)} className="hover:underline">
@@ -178,33 +179,6 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                                 {appt.owner.telefono && <span className="ml-2">{appt.owner.telefono}</span>}
                             </p>
                         )}
-                        {appt.pet && (<>
-                            <button type="button" onClick={() => setPetInfoOpen(o => !o)}
-                                className="mt-1 text-xs text-zinc-400 hover:text-zinc-600 md:hidden flex items-center gap-1 transition-colors">
-                                {petInfoOpen ? 'Ocultar detalles ▴' : 'Ver detalles ▾'}
-                            </button>
-                            <div className={`${petInfoOpen ? 'block' : 'hidden md:block'}`}>
-                            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-600">
-                                {appt.pet.raza && <span><span className="font-medium text-zinc-500">Raza</span> {appt.pet.raza}</span>}
-                                {appt.pet.tamanio && <span><span className="font-medium text-zinc-500">Tamaño</span> <span className="capitalize">{appt.pet.tamanio}</span></span>}
-                                {appt.pet.sexo && <span><span className="font-medium text-zinc-500">Sexo</span> <span className="capitalize">{appt.pet.sexo}{appt.pet.esterilizado ? ' · esterilizado/a' : ''}</span></span>}
-                                {appt.pet.peso && <span><span className="font-medium text-zinc-500">Peso</span> {appt.pet.peso} kg</span>}
-                                {appt.pet.fecha_nacimiento && <span><span className="font-medium text-zinc-500">Nacimiento</span> {fmtNac(appt.pet.fecha_nacimiento)}{calcEdad(appt.pet.fecha_nacimiento) ? <span className="ml-1 text-zinc-400 text-xs">({calcEdad(appt.pet.fecha_nacimiento)})</span> : null}</span>}
-                            </div>
-                            {(appt.pet.alergias || appt.pet.padecimientos || appt.pet.obs_comportamiento) && (
-                                <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-zinc-500">
-                                    {appt.pet.alergias && <span><span className="font-medium text-zinc-600">Alergias:</span> {appt.pet.alergias}</span>}
-                                    {appt.pet.padecimientos && <span><span className="font-medium text-zinc-600">Padecimientos:</span> {appt.pet.padecimientos}</span>}
-                                    {appt.pet.obs_comportamiento && <span><span className="font-medium text-zinc-600">Comportamiento:</span> {appt.pet.obs_comportamiento}</span>}
-                                </div>
-                            )}
-                            </div>
-                        </>)}
-                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600">
-                            <span><span className="font-medium">Fecha:</span> {appt.fecha}</span>
-                            {appt.hora_inicio && <span><span className="font-medium">Hora:</span> {appt.hora_inicio.slice(0,5)}{appt.hora_fin ? ` – ${appt.hora_fin.slice(0,5)}` : ''}</span>}
-                            {appt.veterinario && <span><span className="font-medium">Veterinario:</span> {appt.veterinario.nombre}</span>}
-                        </div>
                     </div>
                     <div className="flex flex-wrap gap-2 shrink-0">
                         {canEdit && !editing && (
@@ -224,6 +198,37 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                             </Link>
                         )}
                     </div>
+                </div>
+
+                {/* Info de mascota (colapsable en móvil) */}
+                {appt.pet && (<>
+                    <button type="button" onClick={() => setPetInfoOpen(o => !o)}
+                        className="text-xs text-zinc-400 hover:text-zinc-600 md:hidden flex items-center gap-1 transition-colors mb-1">
+                        {petInfoOpen ? 'Ocultar detalles ▴' : 'Ver detalles ▾'}
+                    </button>
+                    <div className={`${petInfoOpen ? 'block' : 'hidden md:block'}`}>
+                        <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-600">
+                            {appt.pet.raza && <span className="whitespace-nowrap"><span className="font-medium text-zinc-500">Raza</span> {appt.pet.raza}</span>}
+                            {appt.pet.tamanio && <span className="whitespace-nowrap"><span className="font-medium text-zinc-500">Tamaño</span> <span className="capitalize">{appt.pet.tamanio}</span></span>}
+                            {appt.pet.sexo && <span className="whitespace-nowrap"><span className="font-medium text-zinc-500">Sexo</span> <span className="capitalize">{appt.pet.sexo}{appt.pet.esterilizado ? ' · esterilizado/a' : ''}</span></span>}
+                            {appt.pet.peso && <span className="whitespace-nowrap"><span className="font-medium text-zinc-500">Peso</span> {appt.pet.peso} kg</span>}
+                            {appt.pet.fecha_nacimiento && <span className="whitespace-nowrap"><span className="font-medium text-zinc-500">Nacimiento</span> {fmtNac(appt.pet.fecha_nacimiento)}{calcEdad(appt.pet.fecha_nacimiento) ? <span className="ml-1 text-zinc-400 text-xs">({calcEdad(appt.pet.fecha_nacimiento)})</span> : null}</span>}
+                        </div>
+                        {(appt.pet.alergias || appt.pet.padecimientos || appt.pet.obs_comportamiento) && (
+                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-zinc-500">
+                                {appt.pet.alergias && <span><span className="font-medium text-zinc-600">Alergias:</span> {appt.pet.alergias}</span>}
+                                {appt.pet.padecimientos && <span><span className="font-medium text-zinc-600">Padecimientos:</span> {appt.pet.padecimientos}</span>}
+                                {appt.pet.obs_comportamiento && <span><span className="font-medium text-zinc-600">Comportamiento:</span> {appt.pet.obs_comportamiento}</span>}
+                            </div>
+                        )}
+                    </div>
+                </>)}
+
+                {/* Datos de la consulta */}
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600">
+                    <span className="whitespace-nowrap"><span className="font-medium">Fecha:</span> {fmtNac(appt.fecha)}</span>
+                    {appt.hora_inicio && <span className="whitespace-nowrap"><span className="font-medium">Hora:</span> {appt.hora_inicio.slice(0,5)}{appt.hora_fin ? ` – ${appt.hora_fin.slice(0,5)}` : ''}</span>}
+                    {appt.veterinario && <span className="whitespace-nowrap"><span className="font-medium">Veterinario:</span> {appt.veterinario.nombre}</span>}
                 </div>
             </div>
 
