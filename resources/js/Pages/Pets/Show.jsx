@@ -328,12 +328,11 @@ function EsquemaSection({ events, tz }) {
 }
 
 const FILTROS = [
-    { key: 'todos',   label: 'Todos' },
-    { key: 'medico',  label: 'Médico' },
-    { key: 'hotel',   label: 'Hotel / Guardería' },
+    { key: 'todos',    label: 'Todos' },
+    { key: 'medico',   label: 'Médico' },
+    { key: 'hotel',    label: 'Hotel / Guardería' },
     { key: 'estetica', label: 'Estética' },
-    { key: 'paseo',   label: 'Paseos' },
-    { key: 'fotos',   label: 'Fotos' },
+    { key: 'paseo',    label: 'Paseos' },
 ];
 
 const MEDIA_TIPOS = [
@@ -441,7 +440,7 @@ function daysFrom(dateStr) {
     return Math.round((d - today) / (1000 * 60 * 60 * 24));
 }
 
-function RecordatoriosSection({ pet }) {
+function RecordatoriosSection({ pet, maxDays = null }) {
     const recForm = useForm({
         recordatorio_vacuna:   pet.recordatorio_vacuna   ?? '',
         recordatorio_despa:    pet.recordatorio_despa    ?? '',
@@ -455,15 +454,28 @@ function RecordatoriosSection({ pet }) {
         recForm.put(route('pets.recordatorios.update', pet.id), { onSuccess: () => setEditing(false) });
     }
 
+    const visibleConfigs = maxDays !== null
+        ? RECORDATORIOS_CONFIG.filter(({ key }) => {
+            const d = daysFrom(pet[key]);
+            return pet[key] && d !== null && d >= 0 && d <= maxDays;
+          })
+        : RECORDATORIOS_CONFIG;
+
     const hasAny = RECORDATORIOS_CONFIG.some(r => pet[r.key]);
+
+    if (maxDays !== null && visibleConfigs.length === 0) return null;
 
     return (
         <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Recordatorios</h3>
-                <button onClick={() => setEditing(e => !e)} className="text-xs text-zinc-700 underline-offset-2 hover:underline">
-                    {editing ? 'Cancelar' : 'Editar'}
-                </button>
+                <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+                    {maxDays !== null ? `Recordatorios próximos` : 'Recordatorios'}
+                </h3>
+                {maxDays === null && (
+                    <button onClick={() => setEditing(e => !e)} className="text-xs text-zinc-700 underline-offset-2 hover:underline">
+                        {editing ? 'Cancelar' : 'Editar'}
+                    </button>
+                )}
             </div>
 
             {editing ? (
@@ -485,11 +497,11 @@ function RecordatoriosSection({ pet }) {
                         {recForm.processing ? 'Guardando...' : 'Guardar recordatorios'}
                     </button>
                 </form>
-            ) : !hasAny ? (
+            ) : !hasAny && maxDays === null ? (
                 <p className="text-xs text-zinc-400 text-center py-2">Sin recordatorios configurados.</p>
             ) : (
                 <div className="space-y-2">
-                    {RECORDATORIOS_CONFIG.map(({ key, label, color }) => {
+                    {visibleConfigs.map(({ key, label }) => {
                         const dateStr = pet[key];
                         if (!dateStr) return null;
                         const days = daysFrom(dateStr);
@@ -595,18 +607,18 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
     const tz = useTenantTimezone();
     const [showForm, setShowForm] = useState(false);
     const [filtro, setFiltro] = useState('todos');
-    const [infoOpen, setInfoOpen] = useState(false);
+    const [historialOpen, setHistorialOpen] = useState(false);
+    const [fotosOpen, setFotosOpen] = useState(false);
 
-    // Build unified timeline
-    const allEvents  = (pet.events ?? []).map(e => ({ _kind: 'event',  _fecha: e.fecha,                   ...e }));
-    const allHotel   = (hotelStays ?? []).map(s => ({ _kind: 'hotel',  _fecha: s.fecha_entrada,            ...s }));
-    const allPaseos  = (walkBookings ?? []).map(b => ({ _kind: 'paseo', _fecha: b.fecha,                   ...b }));
+    const allEvents  = (pet.events ?? []).map(e => ({ _kind: 'event',  _fecha: e.fecha,        ...e }));
+    const allHotel   = (hotelStays ?? []).map(s => ({ _kind: 'hotel',  _fecha: s.fecha_entrada, ...s }));
+    const allPaseos  = (walkBookings ?? []).map(b => ({ _kind: 'paseo', _fecha: b.fecha,         ...b }));
 
     const timeline = [...allEvents, ...allHotel, ...allPaseos]
         .sort((a, b) => (b._fecha ?? '').localeCompare(a._fecha ?? ''));
 
     const filtered = timeline.filter(item => {
-        if (filtro === 'todos') return true;
+        if (filtro === 'todos')    return true;
         if (filtro === 'medico')   return item._kind === 'event' && MEDICO_TIPOS.includes(item.event_type?.nombre);
         if (filtro === 'hotel')    return item._kind === 'hotel';
         if (filtro === 'estetica') return item._kind === 'event' && item.event_type?.nombre === 'Estética';
@@ -616,24 +628,27 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
 
     const totalCount = timeline.length;
 
+    const sexSymbol = pet.sexo === 'macho' ? { sym: '♂', cls: 'text-blue-500' }
+                    : pet.sexo === 'hembra' ? { sym: '♀', cls: 'text-rose-500' }
+                    : null;
+
     return (
         <TenantLayout title={pet.nombre}>
             <div className="mb-4 flex items-center justify-between">
                 <Link href={route('owners.show', pet.owner_id)} className="text-sm text-zinc-500 hover:text-zinc-700">
                     ← {pet.owner?.nombre_completo ?? 'Dueño'}
                 </Link>
-                <div className="flex gap-2">
-                    <Link href={route('pets.edit', pet.id)} className="text-xs bg-zinc-900 text-white px-3 py-1.5 rounded-lg hover:bg-zinc-700 transition-colors">
-                        Editar
-                    </Link>
-                </div>
+                <Link href={route('pets.edit', pet.id)} className="text-xs bg-zinc-900 text-white px-3 py-1.5 rounded-lg hover:bg-zinc-700 transition-colors">
+                    Editar
+                </Link>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Info mascota */}
-                <div className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:items-start">
+
+                {/* ── Info mascota ─────────────────────────── col-1 row-1 */}
+                <div className="lg:col-start-1 lg:row-start-1">
                     <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5">
-                        <div className="flex items-start gap-3 mb-3">
+                        <div className="flex items-start gap-3 mb-4">
                             <PetAvatar pet={pet} />
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -651,21 +666,55 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                                         <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200 inline-flex items-center">inactivo</span>
                                     )}
                                 </div>
-                                <button type="button" onClick={() => setInfoOpen(o => !o)}
-                                    className="mt-1 text-xs text-zinc-400 hover:text-zinc-600 md:hidden flex items-center gap-1 transition-colors">
-                                    {infoOpen ? 'Ocultar detalles ▴' : 'Ver detalles ▾'}
-                                </button>
                             </div>
                         </div>
 
-                        <div className={`${infoOpen ? 'block' : 'hidden md:block'}`}>
-                        <div className="text-sm space-y-1.5 text-zinc-600">
-                            {pet.raza && <div><span className="text-zinc-400">Raza:</span> {pet.raza}</div>}
-                            {pet.tamanio && <div><span className="text-zinc-400">Tamaño:</span> <span className="capitalize">{pet.tamanio}</span></div>}
-                            {pet.sexo && <div><span className="text-zinc-400">Sexo:</span> <span className="capitalize">{pet.sexo}</span>{pet.esterilizado ? ' · esterilizado/a' : ''}</div>}
-                            {pet.peso && <div><span className="text-zinc-400">Peso:</span> {pet.peso} kg</div>}
-                            {pet.fecha_nacimiento && <div><span className="text-zinc-400">Nacimiento:</span> {formatDate(pet.fecha_nacimiento, tz)}{calcEdad(pet.fecha_nacimiento) ? <span className="ml-1 text-zinc-400 text-xs">({calcEdad(pet.fecha_nacimiento)})</span> : null}</div>}
-                            {pet.num_expediente && <div><span className="text-zinc-400">Expediente:</span> <span className="font-mono">{pet.num_expediente}</span></div>}
+                        <div className="text-sm space-y-1.5 text-zinc-700">
+                            {pet.raza && (
+                                <div className="flex items-baseline gap-1.5">
+                                    <span className="text-zinc-400 text-xs w-20 shrink-0">Raza</span>
+                                    <span>{pet.raza}</span>
+                                </div>
+                            )}
+                            {pet.tamanio && (
+                                <div className="flex items-baseline gap-1.5">
+                                    <span className="text-zinc-400 text-xs w-20 shrink-0">Tamaño</span>
+                                    <span className="capitalize">{pet.tamanio}</span>
+                                </div>
+                            )}
+                            {pet.sexo && (
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-zinc-400 text-xs w-20 shrink-0">Sexo</span>
+                                    {sexSymbol && (
+                                        <span className={`text-lg font-bold leading-none ${sexSymbol.cls}`}>{sexSymbol.sym}</span>
+                                    )}
+                                    <span className="capitalize text-zinc-600">{pet.sexo}</span>
+                                    {pet.esterilizado && (
+                                        <span className="text-xs bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded">✂ esterilizado/a</span>
+                                    )}
+                                </div>
+                            )}
+                            {pet.peso && (
+                                <div className="flex items-baseline gap-1.5">
+                                    <span className="text-zinc-400 text-xs w-20 shrink-0">Peso</span>
+                                    <span>{pet.peso} kg</span>
+                                </div>
+                            )}
+                            {pet.fecha_nacimiento && (
+                                <div className="flex items-baseline gap-1.5">
+                                    <span className="text-zinc-400 text-xs w-20 shrink-0">Nacimiento</span>
+                                    <span>{formatDate(pet.fecha_nacimiento, tz)}</span>
+                                    {calcEdad(pet.fecha_nacimiento) && (
+                                        <span className="text-zinc-400 text-xs">({calcEdad(pet.fecha_nacimiento)})</span>
+                                    )}
+                                </div>
+                            )}
+                            {pet.num_expediente && (
+                                <div className="flex items-baseline gap-1.5">
+                                    <span className="text-zinc-400 text-xs w-20 shrink-0">Expediente</span>
+                                    <span className="font-mono">{pet.num_expediente}</span>
+                                </div>
+                            )}
                         </div>
 
                         {(pet.alergias || pet.padecimientos || pet.obs_comportamiento) && (
@@ -690,23 +739,26 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                                 )}
                             </div>
                         )}
-                        </div>
                     </div>
+                </div>
 
-                    {/* Esquema médico */}
+                {/* ── Recordatorios próximos (≤7 días) ────── col-1 row-2 */}
+                <div className="lg:col-start-1 lg:row-start-2">
+                    <RecordatoriosSection pet={pet} maxDays={7} />
+                </div>
+
+                {/* ── Esquema médico ───────────────────────── col-1 row-3 */}
+                <div className="lg:col-start-1 lg:row-start-3">
                     <EsquemaSection events={pet.events} tz={tz} />
+                </div>
 
-                    {/* Recordatorios */}
-                    <RecordatoriosSection pet={pet} />
-
-                    {/* Membresía activa */}
+                {/* ── Membresía (oculta en móvil) ─────────── col-1 row-4 */}
+                <div className="hidden lg:block lg:col-start-1 lg:row-start-4">
                     {activeMembership ? (
                         <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                             <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Membresía activa</p>
                             <p className="font-semibold text-zinc-900">{activeMembership.plan?.nombre}</p>
-                            <p className="text-xs text-zinc-500 mt-1">
-                                Vence: {formatDate(activeMembership.fecha_vencimiento, tz)}
-                            </p>
+                            <p className="text-xs text-zinc-500 mt-1">Vence: {formatDate(activeMembership.fecha_vencimiento, tz)}</p>
                         </div>
                     ) : (
                         <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4">
@@ -715,53 +767,53 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                     )}
                 </div>
 
-                {/* Bitácora */}
-                <div className="lg:col-span-2 space-y-3">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-zinc-700 uppercase tracking-wide">
-                            {filtro === 'fotos' ? `Fotos (${media.length})` : `Historial (${totalCount})`}
-                        </h3>
-                        {filtro !== 'fotos' && (
-                            <button
-                                onClick={() => setShowForm(f => !f)}
-                                className="bg-zinc-900 text-white px-4 py-2 rounded-lg hover:bg-zinc-700 text-sm font-medium transition-colors"
-                            >
-                                {showForm ? 'Cancelar' : '+ Nuevo evento'}
+                {/* ── Historial + Fotos ────────────────────── col-2/3, rows 1-4 */}
+                <div className="lg:col-start-2 lg:col-span-2 lg:row-start-1 lg:row-span-4 space-y-4">
+
+                    {/* Historial */}
+                    <div className="bg-white border border-sky-200 shadow-sm rounded-xl overflow-hidden">
+                        {/* Header colapsable (móvil) / siempre visible (desktop) */}
+                        <div className="flex items-center justify-between px-4 py-3.5 bg-sky-50">
+                            <button type="button"
+                                onClick={() => setHistorialOpen(o => !o)}
+                                className="flex items-center gap-2 flex-1 text-left min-w-0 lg:cursor-default">
+                                <span className="w-2 h-2 rounded-full bg-sky-500 shrink-0" />
+                                <span className="font-semibold text-sky-800 text-sm">
+                                    Historial ({totalCount})
+                                </span>
+                                <i className={`ti ti-chevron-down text-sky-400 transition-transform duration-200 lg:hidden ${historialOpen ? 'rotate-180' : ''}`} style={{ fontSize: 15 }} />
                             </button>
-                        )}
-                    </div>
-
-                    {showForm && filtro !== 'fotos' && (
-                        <NewEventForm
-                            petId={pet.id}
-                            eventTypes={eventTypes}
-                            onCancel={() => setShowForm(false)}
-                        />
-                    )}
-
-                    {/* Filtros */}
-                    <div className="flex flex-wrap gap-1.5">
-                        {FILTROS.map(f => (
                             <button
-                                key={f.key}
-                                onClick={() => setFiltro(f.key)}
-                                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                                    filtro === f.key
-                                        ? 'bg-zinc-900 text-white border-zinc-900'
-                                        : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'
-                                }`}
-                            >
-                                {f.label}
+                                onClick={() => { setShowForm(f => !f); if (!historialOpen) setHistorialOpen(true); }}
+                                className="shrink-0 bg-sky-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-sky-700 transition-colors ml-2">
+                                {showForm ? 'Cancelar' : '+ Nuevo'}
                             </button>
-                        ))}
-                    </div>
+                        </div>
 
-                    {filtro === 'fotos' ? (
-                        <MediaGallery media={media} />
-                    ) : (
-                        <>
+                        <div className={`${historialOpen ? 'block' : 'hidden lg:block'} px-4 pb-4 pt-3 space-y-3`}>
+                            {showForm && (
+                                <NewEventForm
+                                    petId={pet.id}
+                                    eventTypes={eventTypes}
+                                    onCancel={() => setShowForm(false)}
+                                />
+                            )}
+
+                            <div className="flex flex-wrap gap-1.5">
+                                {FILTROS.map(f => (
+                                    <button key={f.key} onClick={() => setFiltro(f.key)}
+                                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                                            filtro === f.key
+                                                ? 'bg-zinc-900 text-white border-zinc-900'
+                                                : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'
+                                        }`}>
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
+
                             {filtered.length === 0 && !showForm && (
-                                <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-8 text-center text-zinc-400 text-sm">
+                                <div className="bg-zinc-50 border border-zinc-100 rounded-xl p-8 text-center text-zinc-400 text-sm">
                                     {filtro === 'todos' ? 'Sin registros en la bitácora.' : 'Sin registros para este filtro.'}
                                 </div>
                             )}
@@ -774,8 +826,26 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                                     return null;
                                 })}
                             </div>
-                        </>
-                    )}
+                        </div>
+                    </div>
+
+                    {/* Fotos */}
+                    <div className="bg-white border border-violet-200 shadow-sm rounded-xl overflow-hidden">
+                        <button type="button"
+                            onClick={() => setFotosOpen(o => !o)}
+                            className="w-full flex items-center justify-between px-4 py-3.5 bg-violet-50 hover:bg-violet-100 transition-colors text-left">
+                            <span className="flex items-center gap-2 font-semibold text-violet-800 text-sm">
+                                <span className="w-2 h-2 rounded-full bg-violet-500" />
+                                Fotos ({media.length})
+                            </span>
+                            <i className={`ti ti-chevron-down text-violet-400 transition-transform duration-200 ${fotosOpen ? 'rotate-180' : ''}`} style={{ fontSize: 15 }} />
+                        </button>
+                        {fotosOpen && (
+                            <div className="px-4 pb-4 pt-3">
+                                <MediaGallery media={media} />
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </TenantLayout>
