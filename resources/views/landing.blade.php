@@ -43,7 +43,7 @@
             @endif
         </div>
         <div class="flex items-center gap-3">
-            <a href="{{ route('portal.login', $tenant->slug) }}"
+            <a href="{{ route('tenant.login', $tenant->slug) }}"
                class="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
                 Iniciar sesión
             </a>
@@ -197,7 +197,7 @@
         <p class="text-center text-gray-500 mb-10">Elige el plan que mejor se adapta a ti</p>
         <div class="space-y-4">
             @foreach($planes as $plan)
-            <a href="{{ route('portal.login', $tenant->slug) }}"
+            <a href="{{ route('tenant.login', $tenant->slug) }}"
                class="flex items-center justify-between bg-white rounded-2xl border border-gray-200 shadow-sm px-6 py-5 hover:shadow-md transition-all group">
                 <div class="flex-1 min-w-0">
                     <h3 class="text-base font-semibold text-gray-900 group-hover:opacity-80 transition-opacity">
