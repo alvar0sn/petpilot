@@ -8,6 +8,13 @@ function fmt(n) {
     return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 }
 
+function fmtNac(dateStr) {
+    if (!dateStr) return null;
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    return `${d} ${meses[m - 1]} ${y}`;
+}
+
 const estadoBadge = {
     pendiente:  'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
     confirmada: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
@@ -144,13 +151,12 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                             </p>
                         )}
                         {appt.pet && (
-                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-500">
-                                {appt.pet.tipo && <span className="capitalize">{appt.pet.tipo}</span>}
-                                {appt.pet.raza && <span>{appt.pet.raza}</span>}
-                                {appt.pet.sexo && <span className="capitalize">{appt.pet.sexo}{appt.pet.esterilizado ? ' · esterilizado/a' : ''}</span>}
-                                {appt.pet.tamanio && <span className="capitalize">{appt.pet.tamanio}</span>}
-                                {appt.pet.peso && <span>{appt.pet.peso} kg</span>}
-                                {appt.pet.fecha_nacimiento && <span>Nac. {appt.pet.fecha_nacimiento}</span>}
+                            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-600">
+                                {appt.pet.raza && <span><span className="font-medium text-zinc-500">Raza</span> {appt.pet.raza}</span>}
+                                {appt.pet.tamanio && <span><span className="font-medium text-zinc-500">Tamaño</span> <span className="capitalize">{appt.pet.tamanio}</span></span>}
+                                {appt.pet.sexo && <span><span className="font-medium text-zinc-500">Sexo</span> <span className="capitalize">{appt.pet.sexo}{appt.pet.esterilizado ? ' · esterilizado/a' : ''}</span></span>}
+                                {appt.pet.peso && <span><span className="font-medium text-zinc-500">Peso</span> {appt.pet.peso} kg</span>}
+                                {appt.pet.fecha_nacimiento && <span><span className="font-medium text-zinc-500">Nacimiento</span> {fmtNac(appt.pet.fecha_nacimiento)}</span>}
                                 {appt.pet.nivel_agresividad && appt.pet.nivel_agresividad !== 'tranquilo' && (
                                     <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${appt.pet.nivel_agresividad === 'agresivo' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
                                         {appt.pet.nivel_agresividad}
@@ -159,7 +165,7 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                             </div>
                         )}
                         {(appt.pet?.alergias || appt.pet?.padecimientos || appt.pet?.obs_comportamiento) && (
-                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
+                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-zinc-500">
                                 {appt.pet.alergias && <span><span className="font-medium text-zinc-600">Alergias:</span> {appt.pet.alergias}</span>}
                                 {appt.pet.padecimientos && <span><span className="font-medium text-zinc-600">Padecimientos:</span> {appt.pet.padecimientos}</span>}
                                 {appt.pet.obs_comportamiento && <span><span className="font-medium text-zinc-600">Comportamiento:</span> {appt.pet.obs_comportamiento}</span>}

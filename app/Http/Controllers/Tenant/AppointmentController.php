@@ -170,7 +170,7 @@ class AppointmentController extends Controller
         $tenant = app('current_tenant');
 
         $appointment->load([
-            'pet:id,nombre,owner_id',
+            'pet:id,nombre,owner_id,raza,sexo,esterilizado,tamanio,peso,fecha_nacimiento,nivel_agresividad,alergias,padecimientos,obs_comportamiento',
             'pet.owner:id,nombre,apellidos,telefono',
             'tipoServicio:id,nombre',
             'groomer:id,nombre,apellido',
@@ -193,10 +193,20 @@ class AppointmentController extends Controller
                 'accesorios' => $appointment->accesorios,
                 'recepcion' => $appointment->recepcion,
                 'created_via' => $appointment->created_via,
-                'pet' => [
-                    'id' => $appointment->pet?->id,
-                    'nombre' => $appointment->pet?->nombre,
-                ],
+                'pet' => $appointment->pet ? [
+                    'id'                => $appointment->pet->id,
+                    'nombre'            => $appointment->pet->nombre,
+                    'raza'              => $appointment->pet->raza,
+                    'sexo'              => $appointment->pet->sexo,
+                    'esterilizado'      => $appointment->pet->esterilizado,
+                    'tamanio'           => $appointment->pet->tamanio,
+                    'peso'              => $appointment->pet->peso,
+                    'fecha_nacimiento'  => $appointment->pet->fecha_nacimiento?->toDateString(),
+                    'nivel_agresividad' => $appointment->pet->nivel_agresividad,
+                    'alergias'          => $appointment->pet->alergias,
+                    'padecimientos'     => $appointment->pet->padecimientos,
+                    'obs_comportamiento'=> $appointment->pet->obs_comportamiento,
+                ] : null,
                 'owner' => $appointment->pet?->owner ? [
                     'id' => $appointment->pet->owner->id,
                     'nombre' => $appointment->pet->owner->nombre_completo,

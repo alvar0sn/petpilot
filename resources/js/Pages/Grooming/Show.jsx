@@ -9,6 +9,13 @@ function fmt(n) {
     return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 }
 
+function fmtNac(dateStr) {
+    if (!dateStr) return null;
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    return `${d} ${meses[m - 1]} ${y}`;
+}
+
 const estadoBadge = {
     pendiente:  'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
     confirmada: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
@@ -163,7 +170,11 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                 <div className="flex flex-wrap items-start gap-4">
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                            <h1 className="text-xl font-semibold text-zinc-900">{appt.pet?.nombre}</h1>
+                            <h1 className="text-xl font-semibold text-zinc-900">
+                                <Link href={route('pets.show', appt.pet?.id)} className="hover:underline">
+                                    {appt.pet?.nombre}
+                                </Link>
+                            </h1>
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium inline-flex items-center ${estadoBadge[appt.estado] ?? 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200'}`}>
                                 {estadoLabel[appt.estado] ?? appt.estado}
                             </span>
@@ -173,6 +184,26 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                                 <Link href={route('owners.show', appt.owner.id)} className="hover:underline">{appt.owner.nombre}</Link>
                                 {appt.owner.telefono && <span className="ml-2">{appt.owner.telefono}</span>}
                             </p>
+                        )}
+                        {appt.pet && (
+                            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-600">
+                                {appt.pet.raza && <span><span className="font-medium text-zinc-500">Raza</span> {appt.pet.raza}</span>}
+                                {appt.pet.tamanio && <span><span className="font-medium text-zinc-500">Tamaño</span> <span className="capitalize">{appt.pet.tamanio}</span></span>}
+                                {appt.pet.sexo && <span><span className="font-medium text-zinc-500">Sexo</span> <span className="capitalize">{appt.pet.sexo}{appt.pet.esterilizado ? ' · esterilizado/a' : ''}</span></span>}
+                                {appt.pet.peso && <span><span className="font-medium text-zinc-500">Peso</span> {appt.pet.peso} kg</span>}
+                                {appt.pet.fecha_nacimiento && <span><span className="font-medium text-zinc-500">Nacimiento</span> {fmtNac(appt.pet.fecha_nacimiento)}</span>}
+                                {appt.pet.nivel_agresividad && appt.pet.nivel_agresividad !== 'tranquilo' && (
+                                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${appt.pet.nivel_agresividad === 'agresivo' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+                                        {appt.pet.nivel_agresividad}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                        {(appt.pet?.alergias || appt.pet?.padecimientos) && (
+                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-zinc-500">
+                                {appt.pet.alergias && <span><span className="font-medium text-zinc-600">Alergias:</span> {appt.pet.alergias}</span>}
+                                {appt.pet.padecimientos && <span><span className="font-medium text-zinc-600">Padecimientos:</span> {appt.pet.padecimientos}</span>}
+                            </div>
                         )}
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600">
                             <span><span className="font-medium">Fecha:</span> {appt.fecha}</span>
