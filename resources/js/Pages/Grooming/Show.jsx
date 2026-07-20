@@ -63,7 +63,6 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
         notas_internas: appt.notas_internas ?? '',
         servicio_domicilio: appt.servicio_domicilio ?? false,
         direccion_entrega: appt.direccion_entrega ?? '',
-        items: appt.items ?? [],
     });
     const [editing, setEditing] = useState(false);
 
@@ -75,21 +74,32 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
         return diff > 0 ? diff : null;
     }
     const [duracion, setDuracion] = useState(() => inferDuracion(appt.hora_inicio, appt.hora_fin));
-    const [itemDraft, setItemDraft] = useState({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1' });
+    function saveEdit(e) { e.preventDefault(); form.put(route('grooming.update', appt.id), { onSuccess: () => setEditing(false) }); }
+    function doAction(routeName) { router.post(route(routeName, appt.id)); }
 
+    // Cargos (sección independiente)
+    const chargesForm = useForm({
+        items: (appt.items ?? []).map(i => ({
+            catalog_item_id: i.catalog_item_id ?? '',
+            nombre:          i.nombre,
+            precio:          String(i.precio),
+            cantidad:        String(i.cantidad ?? 1),
+        })),
+    });
+    const [itemDraft, setItemDraft] = useState({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1' });
     function pickCatalogItem(e) {
         const id = e.target.value;
         const found = catalogItems.find(c => String(c.id) === id);
         setItemDraft(d => ({ ...d, catalog_item_id: id, nombre: found?.nombre ?? d.nombre, precio: found ? String(found.precio) : d.precio }));
     }
-    function addItem() {
+    function addCharge() {
         if (!itemDraft.nombre || itemDraft.precio === '') return;
-        form.setData('items', [...form.data.items, { ...itemDraft, cantidad: parseFloat(itemDraft.cantidad) || 1 }]);
+        chargesForm.setData('items', [...chargesForm.data.items, { ...itemDraft, cantidad: parseFloat(itemDraft.cantidad) || 1 }]);
         setItemDraft({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1' });
     }
-    function removeItem(idx) { form.setData('items', form.data.items.filter((_, i) => i !== idx)); }
-    function saveEdit(e) { e.preventDefault(); form.put(route('grooming.update', appt.id), { onSuccess: () => setEditing(false) }); }
-    function doAction(routeName) { router.post(route(routeName, appt.id)); }
+    function removeCharge(idx) { chargesForm.setData('items', chargesForm.data.items.filter((_, i) => i !== idx)); }
+    function saveCharges(e) { e.preventDefault(); chargesForm.put(route('grooming.items', appt.id)); }
+    const totalCargos = chargesForm.data.items.reduce((s, i) => s + Number(i.precio) * Number(i.cantidad), 0);
 
     const ANALISIS = [
         { key: 'verrugas',          label: 'Verrugas' },
@@ -173,8 +183,6 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
         if (!confirm('¿Eliminar foto?')) return;
         router.delete(route('grooming.photos.destroy', { appointment: appt.id, photo: photoId }));
     }
-
-    const totalItems = (form.data.items ?? []).reduce((s, i) => s + Number(i.precio) * Number(i.cantidad), 0);
 
     return (
         <TenantLayout title="Cita de Grooming">
@@ -322,34 +330,6 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                         </div>
 
                         <div>
-                            <label className="block text-xs font-medium text-zinc-600 mb-1">Servicios / productos</label>
-                            {form.data.items.length > 0 && (
-                                <div className="mb-2 divide-y border border-zinc-100 rounded-lg text-xs">
-                                    {form.data.items.map((item, idx) => (
-                                        <div key={idx} className="flex items-center gap-2 px-2 py-1.5">
-                                            <span className="flex-1">{item.nombre}</span>
-                                            <span className="text-zinc-500">{item.cantidad}x {fmt(item.precio)}</span>
-                                            <button type="button" onClick={() => removeItem(idx)} className="text-rose-400 hover:text-rose-600 transition-colors">✕</button>
-                                        </div>
-                                    ))}
-                                    <div className="px-2 py-1.5 flex justify-between font-medium text-zinc-700">
-                                        <span>Total</span><span>{fmt(totalItems)}</span>
-                                    </div>
-                                </div>
-                            )}
-                            <div className="grid grid-cols-12 gap-1">
-                                <select className="col-span-4 border-gray-300 rounded-lg text-xs" value={itemDraft.catalog_item_id} onChange={pickCatalogItem}>
-                                    <option value="">Del catálogo...</option>
-                                    {catalogItems.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                                </select>
-                                <input className="col-span-3 border-gray-300 rounded-lg text-xs" placeholder="Nombre *" value={itemDraft.nombre} onChange={e => setItemDraft(d => ({ ...d, nombre: e.target.value }))} />
-                                <input type="number" step="0.01" className="col-span-2 border-gray-300 rounded-lg text-xs" placeholder="Precio" value={itemDraft.precio} onChange={e => setItemDraft(d => ({ ...d, precio: e.target.value }))} />
-                                <input type="number" step="0.01" min="0.01" className="col-span-2 border-gray-300 rounded-lg text-xs" placeholder="Cant." value={itemDraft.cantidad} onChange={e => setItemDraft(d => ({ ...d, cantidad: e.target.value }))} />
-                                <button type="button" onClick={addItem} className="col-span-1 text-zinc-700 font-bold text-sm hover:text-zinc-900 transition-colors">+</button>
-                            </div>
-                        </div>
-
-                        <div>
                             <label className="block text-xs font-medium text-zinc-600 mb-1">Notas internas</label>
                             <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2} value={form.data.notas_internas} onChange={e => form.setData('notas_internas', e.target.value)} />
                         </div>
@@ -414,6 +394,80 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                         )}
                     </div>
                 )}
+            </div>
+
+            {/* Cargos / Cuenta */}
+            <div className="bg-white border border-indigo-200 shadow-sm rounded-xl mb-4 overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 bg-indigo-50">
+                    <h2 className="font-semibold text-indigo-800 text-sm flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                        Cargos
+                        {totalCargos > 0 && (
+                            <span className="text-indigo-600 font-bold">{fmt(totalCargos)}</span>
+                        )}
+                    </h2>
+                </div>
+                <div className="px-5 pb-5 pt-3 space-y-3">
+                    {chargesForm.data.items.length > 0 && (
+                        <div className="divide-y border border-zinc-100 rounded-lg text-sm">
+                            {chargesForm.data.items.map((item, idx) => (
+                                <div key={idx} className="flex items-center gap-2 px-3 py-2">
+                                    <span className="flex-1 text-zinc-800">{item.nombre}</span>
+                                    <span className="text-zinc-500 text-xs whitespace-nowrap">{item.cantidad}× {fmt(item.precio)}</span>
+                                    <span className="text-zinc-700 text-xs font-medium whitespace-nowrap">{fmt(Number(item.precio) * Number(item.cantidad))}</span>
+                                    {canEdit && (
+                                        <button type="button" onClick={() => removeCharge(idx)}
+                                            className="text-rose-400 hover:text-rose-600 transition-colors text-xs ml-1">✕</button>
+                                    )}
+                                </div>
+                            ))}
+                            <div className="px-3 py-2 flex justify-between font-semibold text-zinc-800 bg-zinc-50 rounded-b-lg">
+                                <span>Total</span>
+                                <span>{fmt(totalCargos)}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {canEdit && (
+                        <form onSubmit={saveCharges} className="space-y-2">
+                            <div className="grid grid-cols-12 gap-1.5">
+                                <select className="col-span-4 border-gray-300 rounded-lg text-xs py-1.5"
+                                    value={itemDraft.catalog_item_id} onChange={pickCatalogItem}>
+                                    <option value="">Del catálogo…</option>
+                                    {catalogItems.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                                </select>
+                                <input className="col-span-3 border-gray-300 rounded-lg text-xs py-1.5"
+                                    placeholder="Nombre *"
+                                    value={itemDraft.nombre}
+                                    onChange={e => setItemDraft(d => ({ ...d, nombre: e.target.value }))} />
+                                <input type="number" step="0.01"
+                                    className="col-span-2 border-gray-300 rounded-lg text-xs py-1.5"
+                                    placeholder="Precio"
+                                    value={itemDraft.precio}
+                                    onChange={e => setItemDraft(d => ({ ...d, precio: e.target.value }))} />
+                                <input type="number" step="0.01" min="0.01"
+                                    className="col-span-2 border-gray-300 rounded-lg text-xs py-1.5"
+                                    placeholder="Cant."
+                                    value={itemDraft.cantidad}
+                                    onChange={e => setItemDraft(d => ({ ...d, cantidad: e.target.value }))} />
+                                <button type="button" onClick={addCharge}
+                                    className="col-span-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center justify-center">
+                                    +
+                                </button>
+                            </div>
+                            <div className="flex justify-end">
+                                <button type="submit" disabled={chargesForm.processing}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
+                                    {chargesForm.processing ? 'Guardando…' : 'Guardar cargos'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
+
+                    {chargesForm.data.items.length === 0 && !canEdit && (
+                        <p className="text-sm text-zinc-400 text-center py-2">Sin cargos registrados.</p>
+                    )}
+                </div>
             </div>
 
             {/* Recepción */}

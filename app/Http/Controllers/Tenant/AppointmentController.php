@@ -272,34 +272,48 @@ class AppointmentController extends Controller
             'items.*.cantidad' => 'nullable|numeric|min:0.01',
         ]);
 
+        $appointment->update([
+            'tipo_servicio_id'   => $data['tipo_servicio_id'],
+            'fecha'              => $data['fecha'],
+            'hora_inicio'        => $data['hora_inicio'],
+            'hora_fin'           => $data['hora_fin'] ?? null,
+            'groomer_id'         => $data['groomer_id'] ?? null,
+            'station_id'         => $data['station_id'] ?? null,
+            'notas_internas'     => $data['notas_internas'] ?? null,
+            'accesorios'         => $data['accesorios'] ?? null,
+            'servicio_domicilio' => !empty($data['servicio_domicilio']),
+            'direccion_entrega'  => !empty($data['servicio_domicilio']) ? ($data['direccion_entrega'] ?? null) : null,
+        ]);
+
+        return back()->with('success', 'Cita actualizada.');
+    }
+
+    public function updateItems(Request $request, Appointment $appointment): RedirectResponse
+    {
+        abort_unless(in_array($appointment->estado, ['pendiente', 'confirmada']), 422, 'No se pueden editar los cargos de esta cita.');
+
+        $data = $request->validate([
+            'items'                   => 'nullable|array',
+            'items.*.catalog_item_id' => 'nullable|exists:pos_catalog_items,id',
+            'items.*.nombre'          => 'required|string|max:255',
+            'items.*.precio'          => 'required|numeric|min:0',
+            'items.*.cantidad'        => 'nullable|numeric|min:0.01',
+        ]);
+
         DB::transaction(function () use ($appointment, $data) {
-            $appointment->update([
-                'tipo_servicio_id' => $data['tipo_servicio_id'],
-                'fecha' => $data['fecha'],
-                'hora_inicio' => $data['hora_inicio'],
-                'hora_fin' => $data['hora_fin'] ?? null,
-                'groomer_id' => $data['groomer_id'] ?? null,
-                'station_id' => $data['station_id'] ?? null,
-                'notas_internas'     => $data['notas_internas'] ?? null,
-                'accesorios'         => $data['accesorios'] ?? null,
-                'servicio_domicilio' => !empty($data['servicio_domicilio']),
-                'direccion_entrega'  => !empty($data['servicio_domicilio']) ? ($data['direccion_entrega'] ?? null) : null,
-            ]);
-
             $appointment->items()->delete();
-
             foreach ($data['items'] ?? [] as $item) {
                 AppointmentItem::create([
-                    'appointment_id' => $appointment->id,
+                    'appointment_id'  => $appointment->id,
                     'catalog_item_id' => $item['catalog_item_id'] ?? null,
-                    'nombre' => $item['nombre'],
-                    'precio' => $item['precio'],
-                    'cantidad' => $item['cantidad'] ?? 1,
+                    'nombre'          => $item['nombre'],
+                    'precio'          => $item['precio'],
+                    'cantidad'        => $item['cantidad'] ?? 1,
                 ]);
             }
         });
 
-        return back()->with('success', 'Cita actualizada.');
+        return back()->with('success', 'Cargos actualizados.');
     }
 
     public function confirm(Appointment $appointment): RedirectResponse

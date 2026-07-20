@@ -153,6 +153,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('grooming', [AppointmentController::class, 'store'])->name('grooming.store');
         Route::get('grooming/{appointment}', [AppointmentController::class, 'show'])->name('grooming.show');
         Route::put('grooming/{appointment}', [AppointmentController::class, 'update'])->name('grooming.update');
+        Route::put('grooming/{appointment}/items', [AppointmentController::class, 'updateItems'])->name('grooming.items');
         Route::post('grooming/{appointment}/confirm', [AppointmentController::class, 'confirm'])->name('grooming.confirm');
         Route::post('grooming/{appointment}/complete', [AppointmentController::class, 'complete'])->name('grooming.complete');
         Route::post('grooming/{appointment}/cancel', [AppointmentController::class, 'cancel'])->name('grooming.cancel');
