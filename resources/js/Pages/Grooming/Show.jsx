@@ -100,6 +100,7 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
     function removeCharge(idx) { chargesForm.setData('items', chargesForm.data.items.filter((_, i) => i !== idx)); }
     function saveCharges(e) { e.preventDefault(); chargesForm.put(route('grooming.items', appt.id)); }
     const totalCargos = chargesForm.data.items.reduce((s, i) => s + Number(i.precio) * Number(i.cantidad), 0);
+    const [cargosOpen, setCargosOpen] = useState(chargesForm.data.items.length > 0 || canEdit);
 
     const ANALISIS = [
         { key: 'verrugas',          label: 'Verrugas' },
@@ -358,25 +359,6 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                     </form>
                 ) : (
                     <div className="space-y-3 text-sm">
-                        {appt.items?.length > 0 ? (
-                            <div>
-                                <p className="text-xs font-medium text-zinc-500 mb-1">Servicios / productos</p>
-                                <div className="divide-y border border-zinc-100 rounded-lg">
-                                    {appt.items.map(item => (
-                                        <div key={item.id} className="flex justify-between px-3 py-2 text-sm">
-                                            <span>{item.nombre}</span>
-                                            <span className="text-zinc-500">{item.cantidad}x {fmt(item.precio)}</span>
-                                        </div>
-                                    ))}
-                                    <div className="flex justify-between px-3 py-2 font-medium text-zinc-700">
-                                        <span>Total</span>
-                                        <span>{fmt(appt.items.reduce((s, i) => s + Number(i.precio) * Number(i.cantidad), 0))}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="text-zinc-400 text-xs">Sin servicios registrados.</p>
-                        )}
                         {appt.servicio_domicilio && (
                             <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
                                 <p className="text-xs font-medium text-blue-700 mb-0.5">🛵 Servicio a domicilio</p>
@@ -398,16 +380,18 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
 
             {/* Cargos / Cuenta */}
             <div className="bg-white border border-indigo-200 shadow-sm rounded-xl mb-4 overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-4 bg-indigo-50">
+                <button type="button" onClick={() => setCargosOpen(o => !o)}
+                    className="w-full flex items-center justify-between px-5 py-4 bg-indigo-50 hover:bg-indigo-100 transition-colors text-left">
                     <h2 className="font-semibold text-indigo-800 text-sm flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-indigo-500" />
                         Cargos
                         {totalCargos > 0 && (
-                            <span className="text-indigo-600 font-bold">{fmt(totalCargos)}</span>
+                            <span className="text-indigo-600 font-bold">· {fmt(totalCargos)}</span>
                         )}
                     </h2>
-                </div>
-                <div className="px-5 pb-5 pt-3 space-y-3">
+                    <i className={`ti ti-chevron-down text-indigo-400 transition-transform duration-200 ${cargosOpen ? 'rotate-180' : ''}`} style={{ fontSize: '16px' }} />
+                </button>
+                {cargosOpen && <div className="px-5 pb-5 pt-3 space-y-3">
                     {chargesForm.data.items.length > 0 && (
                         <div className="divide-y border border-zinc-100 rounded-lg text-sm">
                             {chargesForm.data.items.map((item, idx) => (
@@ -467,7 +451,7 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                     {chargesForm.data.items.length === 0 && !canEdit && (
                         <p className="text-sm text-zinc-400 text-center py-2">Sin cargos registrados.</p>
                     )}
-                </div>
+                </div>}
             </div>
 
             {/* Recepción */}
