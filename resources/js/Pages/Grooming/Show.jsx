@@ -90,7 +90,13 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
     function pickCatalogItem(e) {
         const id = e.target.value;
         const found = catalogItems.find(c => String(c.id) === id);
-        setItemDraft(d => ({ ...d, catalog_item_id: id, nombre: found?.nombre ?? d.nombre, precio: found ? String(found.precio) : d.precio }));
+        setItemDraft(d => ({
+            ...d,
+            catalog_item_id: id,
+            nombre:   found?.nombre ?? (id ? d.nombre : ''),
+            precio:   found ? String(found.precio) : (id ? d.precio : ''),
+            cantidad: '1',
+        }));
     }
     function addCharge() {
         if (!itemDraft.nombre || itemDraft.precio === '') return;
@@ -413,35 +419,50 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                     )}
 
                     {canEdit && (
-                        <form onSubmit={saveCharges} className="space-y-2">
-                            <div className="grid grid-cols-12 gap-1.5">
-                                <select className="col-span-4 border-gray-300 rounded-lg text-xs py-1.5"
-                                    value={itemDraft.catalog_item_id} onChange={pickCatalogItem}>
-                                    <option value="">Del catálogo…</option>
-                                    {catalogItems.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                                </select>
-                                <input className="col-span-3 border-gray-300 rounded-lg text-xs py-1.5"
-                                    placeholder="Nombre *"
+                        <form onSubmit={saveCharges} className="space-y-2 border border-indigo-100 rounded-xl p-3 bg-indigo-50/40">
+                            {/* Selector de catálogo */}
+                            <select className="w-full border-gray-300 rounded-lg text-sm py-2"
+                                value={itemDraft.catalog_item_id} onChange={pickCatalogItem}>
+                                <option value="">— Seleccionar del catálogo —</option>
+                                {catalogItems.map(c => <option key={c.id} value={c.id}>{c.nombre} · {fmt(c.precio)}</option>)}
+                            </select>
+
+                            {/* Nombre (solo si no viene del catálogo) */}
+                            {!itemDraft.catalog_item_id && (
+                                <input className="w-full border-gray-300 rounded-lg text-sm py-2"
+                                    placeholder="Nombre del cargo *"
                                     value={itemDraft.nombre}
                                     onChange={e => setItemDraft(d => ({ ...d, nombre: e.target.value }))} />
-                                <input type="number" step="0.01"
-                                    className="col-span-2 border-gray-300 rounded-lg text-xs py-1.5"
-                                    placeholder="Precio"
-                                    value={itemDraft.precio}
-                                    onChange={e => setItemDraft(d => ({ ...d, precio: e.target.value }))} />
-                                <input type="number" step="0.01" min="0.01"
-                                    className="col-span-2 border-gray-300 rounded-lg text-xs py-1.5"
-                                    placeholder="Cant."
-                                    value={itemDraft.cantidad}
-                                    onChange={e => setItemDraft(d => ({ ...d, cantidad: e.target.value }))} />
+                            )}
+
+                            {/* Precio + cantidad +/- + agregar */}
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                                    <input type="number" step="0.01" min="0"
+                                        className="w-full border-gray-300 rounded-lg text-sm py-2 pl-6"
+                                        placeholder="0.00"
+                                        value={itemDraft.precio}
+                                        onChange={e => setItemDraft(d => ({ ...d, precio: e.target.value }))} />
+                                </div>
+                                <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white shrink-0">
+                                    <button type="button"
+                                        onClick={() => setItemDraft(d => ({ ...d, cantidad: String(Math.max(1, Number(d.cantidad) - 1)) }))}
+                                        className="px-3 py-2 text-zinc-600 hover:bg-zinc-100 text-base font-bold transition-colors">−</button>
+                                    <span className="px-3 text-sm font-medium text-zinc-800 min-w-[2rem] text-center">{itemDraft.cantidad}</span>
+                                    <button type="button"
+                                        onClick={() => setItemDraft(d => ({ ...d, cantidad: String(Number(d.cantidad) + 1) }))}
+                                        className="px-3 py-2 text-zinc-600 hover:bg-zinc-100 text-base font-bold transition-colors">+</button>
+                                </div>
                                 <button type="button" onClick={addCharge}
-                                    className="col-span-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors flex items-center justify-center">
-                                    +
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shrink-0">
+                                    Agregar
                                 </button>
                             </div>
-                            <div className="flex justify-end">
+
+                            <div className="flex justify-end pt-1">
                                 <button type="submit" disabled={chargesForm.processing}
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
+                                    className="bg-zinc-900 hover:bg-zinc-700 text-white px-5 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
                                     {chargesForm.processing ? 'Guardando…' : 'Guardar cargos'}
                                 </button>
                             </div>
