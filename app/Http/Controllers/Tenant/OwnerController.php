@@ -142,14 +142,24 @@ class OwnerController extends Controller
 
     public function importTemplate(): StreamedResponse
     {
-        $headers = ['nombre', 'apellidos', 'telefono', 'email', 'direccion', 'notas'];
-        $example = ['Juan', 'García López', '5512345678', 'juan@email.com', 'Calle 123', 'Cliente frecuente'];
+        $headers = [
+            'nombre', 'apellidos', 'telefono', 'email', 'direccion', 'notas',
+            'mascota_nombre', 'mascota_tipo', 'mascota_raza', 'mascota_sexo',
+            'mascota_fecha_nacimiento', 'mascota_peso', 'mascota_esterilizado',
+        ];
+        $rows = [
+            ['Juan', 'García López', '5512345678', 'juan@email.com', 'Calle 123', 'Cliente frecuente', 'Firulais', 'perro', 'Labrador', 'macho', '2020-03-15', '12.5', 'si'],
+            ['Juan', 'García López', '5512345678', '', '', '', 'Michi', 'gato', 'Siamés', 'hembra', '2021-07-01', '4', 'no'],
+            ['María', 'López', '5598765432', 'maria@email.com', '', '', '', '', '', '', '', '', ''],
+        ];
 
-        return response()->streamDownload(function () use ($headers, $example) {
+        return response()->streamDownload(function () use ($headers, $rows) {
             $out = fopen('php://output', 'w');
             fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM para Excel
             fputcsv($out, $headers);
-            fputcsv($out, $example);
+            foreach ($rows as $row) {
+                fputcsv($out, $row);
+            }
             fclose($out);
         }, 'clientes-plantilla.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
@@ -178,6 +188,7 @@ class OwnerController extends Controller
 
         $imported = 0;
         $skipped  = 0;
+        $pets     = 0;
         $errors   = [];
         $chunk    = [];
         $line     = 1;
@@ -188,19 +199,20 @@ class OwnerController extends Controller
             $chunk[] = ['line' => $line, 'data' => array_combine($headers, array_map('trim', $row))];
 
             if (count($chunk) >= 50) {
-                [$i, $s, $e] = $this->processImportChunk($chunk);
-                $imported += $i; $skipped += $s; $errors = array_merge($errors, $e);
+                [$i, $s, $p, $e] = $this->processImportChunk($chunk);
+                $imported += $i; $skipped += $s; $pets += $p; $errors = array_merge($errors, $e);
                 $chunk = [];
             }
         }
         if ($chunk) {
-            [$i, $s, $e] = $this->processImportChunk($chunk);
-            $imported += $i; $skipped += $s; $errors = array_merge($errors, $e);
+            [$i, $s, $p, $e] = $this->processImportChunk($chunk);
+            $imported += $i; $skipped += $s; $pets += $p; $errors = array_merge($errors, $e);
         }
         fclose($handle);
 
         $msg = "Importación completada: {$imported} cliente(s) nuevo(s)";
-        if ($skipped) $msg .= ", {$skipped} omitido(s) por teléfono duplicado";
+        if ($pets)    $msg .= ", {$pets} mascota(s) registrada(s)";
+        if ($skipped) $msg .= ", {$skipped} dueño(s) ya existían";
 
         return back()
             ->with('success', $msg)
@@ -211,9 +223,10 @@ class OwnerController extends Controller
     {
         $imported = 0;
         $skipped  = 0;
+        $pets     = 0;
         $errors   = [];
 
-        DB::transaction(function () use ($rows, &$imported, &$skipped, &$errors) {
+        DB::transaction(function () use ($rows, &$imported, &$skipped, &$pets, &$errors) {
             foreach ($rows as ['line' => $line, 'data' => $row]) {
                 $nombre   = $row['nombre'] ?? '';
                 $telefono = $row['telefono'] ?? '';
@@ -223,25 +236,47 @@ class OwnerController extends Controller
                     continue;
                 }
 
-                if (Owner::where('telefono', $telefono)->exists()) {
+                $owner = Owner::where('telefono', $telefono)->first();
+
+                if ($owner) {
                     $skipped++;
-                    continue;
+                } else {
+                    $owner = Owner::create([
+                        'nombre'          => $nombre,
+                        'apellidos'       => $row['apellidos'] ?? null,
+                        'telefono'        => $telefono,
+                        'email'           => $row['email'] ?? null,
+                        'direccion'       => $row['direccion'] ?? null,
+                        'notas'           => $row['notas'] ?? null,
+                        'ghl_sync_status' => 'pending',
+                    ]);
+                    $imported++;
                 }
 
-                Owner::create([
-                    'nombre'          => $nombre,
-                    'apellidos'       => $row['apellidos'] ?? null,
-                    'telefono'        => $telefono,
-                    'email'           => $row['email'] ?? null,
-                    'direccion'       => $row['direccion'] ?? null,
-                    'notas'           => $row['notas'] ?? null,
-                    'ghl_sync_status' => 'pending',
-                ]);
-                $imported++;
+                // Crear mascota si viene mascota_nombre
+                $petNombre = $row['mascota_nombre'] ?? '';
+                if ($petNombre) {
+                    $esterilizado = in_array(mb_strtolower($row['mascota_esterilizado'] ?? ''), ['si', 'sí', 'yes', '1', 'true']);
+                    $fechaNac     = $row['mascota_fecha_nacimiento'] ?? '';
+                    $peso         = $row['mascota_peso'] ?? '';
+
+                    \App\Models\Pet::create([
+                        'owner_id'         => $owner->id,
+                        'nombre'           => $petNombre,
+                        'tipo'             => $row['mascota_tipo'] ?? null,
+                        'raza'             => $row['mascota_raza'] ?? null,
+                        'sexo'             => $row['mascota_sexo'] ?? null,
+                        'fecha_nacimiento' => $fechaNac ?: null,
+                        'peso'             => is_numeric($peso) ? $peso : null,
+                        'esterilizado'     => $esterilizado,
+                        'estado'           => 'activo',
+                    ]);
+                    $pets++;
+                }
             }
         });
 
-        return [$imported, $skipped, $errors];
+        return [$imported, $skipped, $pets, $errors];
     }
 
     public function syncGhl(Owner $owner): RedirectResponse

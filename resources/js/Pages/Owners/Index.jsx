@@ -74,10 +74,24 @@ export default function OwnersIndex({ owners, filters }) {
                         <button onClick={() => setImportOpen(false)} className="text-zinc-400 hover:text-zinc-600 text-lg leading-none">✕</button>
                     </div>
 
-                    <div className="bg-zinc-50 border border-zinc-100 rounded-lg p-4 text-sm text-zinc-600 space-y-1">
-                        <p className="font-medium text-zinc-700">Columnas requeridas en el CSV:</p>
-                        <p><span className="font-mono text-xs bg-zinc-100 px-1 rounded">nombre</span>, <span className="font-mono text-xs bg-zinc-100 px-1 rounded">apellidos</span>, <span className="font-mono text-xs bg-zinc-100 px-1 rounded">telefono</span>, <span className="font-mono text-xs bg-zinc-100 px-1 rounded">email</span>, <span className="font-mono text-xs bg-zinc-100 px-1 rounded">direccion</span>, <span className="font-mono text-xs bg-zinc-100 px-1 rounded">notas</span></p>
-                        <p className="text-xs text-zinc-400">Solo <strong>nombre</strong> y <strong>telefono</strong> son obligatorios. Los teléfonos duplicados se omiten automáticamente.</p>
+                    <div className="bg-zinc-50 border border-zinc-100 rounded-lg p-4 text-sm text-zinc-600 space-y-2">
+                        <div>
+                            <p className="font-medium text-zinc-700 mb-1">Columnas del dueño:</p>
+                            <p className="text-xs flex flex-wrap gap-1">
+                                {['nombre *', 'apellidos', 'telefono *', 'email', 'direccion', 'notas'].map(c => (
+                                    <span key={c} className="font-mono bg-zinc-100 px-1.5 py-0.5 rounded">{c}</span>
+                                ))}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="font-medium text-zinc-700 mb-1">Columnas de mascota (opcional):</p>
+                            <p className="text-xs flex flex-wrap gap-1">
+                                {['mascota_nombre', 'mascota_tipo', 'mascota_raza', 'mascota_sexo', 'mascota_fecha_nacimiento', 'mascota_peso', 'mascota_esterilizado'].map(c => (
+                                    <span key={c} className="font-mono bg-zinc-100 px-1.5 py-0.5 rounded">{c}</span>
+                                ))}
+                            </p>
+                        </div>
+                        <p className="text-xs text-zinc-400">Si un teléfono ya existe, solo se agrega la mascota al dueño existente. Puedes tener varias filas con el mismo teléfono para agregar múltiples mascotas.</p>
                     </div>
 
                     <a href={route('owners.import.template')}
