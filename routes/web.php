@@ -52,6 +52,8 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::resource('owners', OwnerController::class);
         Route::post('owners/{owner}/sync-ghl', [OwnerController::class, 'syncGhl'])->name('owners.sync-ghl');
         Route::post('owners/{owner}/portal-access', [OwnerController::class, 'sendPortalAccess'])->name('owners.portal-access');
+        Route::get('owners-import/template', [OwnerController::class, 'importTemplate'])->name('owners.import.template');
+        Route::post('owners-import', [OwnerController::class, 'import'])->name('owners.import');
 
         Route::get('owners/{owner}/pets/create', [PetController::class, 'create'])->name('pets.create');
         Route::post('owners/{owner}/pets', [PetController::class, 'store'])->name('pets.store');

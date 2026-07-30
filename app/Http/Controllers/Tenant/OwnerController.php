@@ -7,9 +7,11 @@ use App\Jobs\SyncOwnerToGhl;
 use App\Models\Owner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OwnerController extends Controller
 {
@@ -136,6 +138,110 @@ class OwnerController extends Controller
     {
         $owner->delete();
         return redirect()->route('owners.index')->with('success', 'Cliente eliminado.');
+    }
+
+    public function importTemplate(): StreamedResponse
+    {
+        $headers = ['nombre', 'apellidos', 'telefono', 'email', 'direccion', 'notas'];
+        $example = ['Juan', 'García López', '5512345678', 'juan@email.com', 'Calle 123', 'Cliente frecuente'];
+
+        return response()->streamDownload(function () use ($headers, $example) {
+            $out = fopen('php://output', 'w');
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM para Excel
+            fputcsv($out, $headers);
+            fputcsv($out, $example);
+            fclose($out);
+        }, 'clientes-plantilla.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function import(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'archivo' => 'required|file|mimes:csv,txt|max:5120',
+        ]);
+
+        $path   = $request->file('archivo')->getRealPath();
+        $handle = fopen($path, 'r');
+
+        // Detectar y eliminar BOM si existe
+        $bom = fread($handle, 3);
+        if ($bom !== chr(0xEF) . chr(0xBB) . chr(0xBF)) {
+            rewind($handle);
+        }
+
+        $rawHeaders = fgetcsv($handle);
+        if (!$rawHeaders) {
+            fclose($handle);
+            return back()->withErrors(['archivo' => 'El archivo está vacío o no tiene encabezados.']);
+        }
+        $headers = array_map('trim', $rawHeaders);
+
+        $imported = 0;
+        $skipped  = 0;
+        $errors   = [];
+        $chunk    = [];
+        $line     = 1;
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $line++;
+            if (count($row) < count($headers)) continue;
+            $chunk[] = ['line' => $line, 'data' => array_combine($headers, array_map('trim', $row))];
+
+            if (count($chunk) >= 50) {
+                [$i, $s, $e] = $this->processImportChunk($chunk);
+                $imported += $i; $skipped += $s; $errors = array_merge($errors, $e);
+                $chunk = [];
+            }
+        }
+        if ($chunk) {
+            [$i, $s, $e] = $this->processImportChunk($chunk);
+            $imported += $i; $skipped += $s; $errors = array_merge($errors, $e);
+        }
+        fclose($handle);
+
+        $msg = "Importación completada: {$imported} cliente(s) nuevo(s)";
+        if ($skipped) $msg .= ", {$skipped} omitido(s) por teléfono duplicado";
+
+        return back()
+            ->with('success', $msg)
+            ->with('import_errors', array_slice($errors, 0, 20));
+    }
+
+    private function processImportChunk(array $rows): array
+    {
+        $imported = 0;
+        $skipped  = 0;
+        $errors   = [];
+
+        DB::transaction(function () use ($rows, &$imported, &$skipped, &$errors) {
+            foreach ($rows as ['line' => $line, 'data' => $row]) {
+                $nombre   = $row['nombre'] ?? '';
+                $telefono = $row['telefono'] ?? '';
+
+                if (!$nombre || !$telefono) {
+                    $errors[] = "Línea {$line}: nombre y teléfono son obligatorios.";
+                    continue;
+                }
+
+                if (Owner::where('telefono', $telefono)->exists()) {
+                    $skipped++;
+                    continue;
+                }
+
+                Owner::create([
+                    'nombre'          => $nombre,
+                    'apellidos'       => $row['apellidos'] ?? null,
+                    'telefono'        => $telefono,
+                    'email'           => $row['email'] ?? null,
+                    'direccion'       => $row['direccion'] ?? null,
+                    'notas'           => $row['notas'] ?? null,
+                    'ghl_sync_status' => 'pending',
+                ]);
+                $imported++;
+            }
+        });
+
+        return [$imported, $skipped, $errors];
     }
 
     public function syncGhl(Owner $owner): RedirectResponse
