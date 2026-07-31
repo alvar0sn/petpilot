@@ -471,11 +471,9 @@ function RecordatoriosSection({ pet, maxDays = null }) {
                 <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
                     {maxDays !== null ? `Recordatorios próximos` : 'Recordatorios'}
                 </h3>
-                {maxDays === null && (
-                    <button onClick={() => setEditing(e => !e)} className="text-xs text-zinc-700 underline-offset-2 hover:underline">
-                        {editing ? 'Cancelar' : 'Editar'}
-                    </button>
-                )}
+                <button onClick={() => setEditing(e => !e)} className="text-xs text-zinc-700 underline-offset-2 hover:underline">
+                    {editing ? 'Cancelar' : 'Editar'}
+                </button>
             </div>
 
             {editing ? (
@@ -756,7 +754,7 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                         )}
                     </div>
 
-                    <RecordatoriosSection pet={pet} maxDays={7} />
+                    <RecordatoriosSection pet={pet} />
                     <EsquemaSection events={pet.events} tz={tz} />
                 </div>
 

@@ -361,7 +361,9 @@ class AppointmentController extends Controller
             ]);
 
             if (!empty($data['proxima_estetica'])) {
-                Pet::where('id', $appointment->pet_id)->update(['recordatorio_estetica' => $data['proxima_estetica']]);
+                DB::table('pets')
+                    ->where('id', $appointment->pet_id)
+                    ->update(['recordatorio_estetica' => $data['proxima_estetica'], 'updated_at' => now()]);
             }
 
             if (!empty($data['checklist_items'])) {
