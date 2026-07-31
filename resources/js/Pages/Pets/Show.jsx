@@ -303,7 +303,6 @@ function EsquemaSection({ events, tz }) {
                         {lastVacuna.vacuna_laboratorio && (
                             <p className="text-zinc-500">{lastVacuna.vacuna_laboratorio}{lastVacuna.vacuna_lote ? ` · Lote: ${lastVacuna.vacuna_lote}` : ''}</p>
                         )}
-                        <ProximaBadge dateStr={lastVacuna.proximo_recordatorio} tz={tz} />
                     </div>
                 </div>
             )}
@@ -319,7 +318,6 @@ function EsquemaSection({ events, tz }) {
                             </span>
                             <span className="text-zinc-400 shrink-0">{formatDate(lastDespa.fecha, tz)}</span>
                         </div>
-                        <ProximaBadge dateStr={lastDespa.proximo_recordatorio} tz={tz} />
                     </div>
                 </div>
             )}
@@ -425,8 +423,10 @@ function MediaGallery({ media }) {
 const MEDICO_TIPOS = ['Vacuna', 'Desparasitación', 'Consulta'];
 
 const RECORDATORIOS_CONFIG = [
-    { key: 'recordatorio_consulta', label: 'Consulta', color: 'teal' },
-    { key: 'recordatorio_estetica', label: 'Estética', color: 'purple' },
+    { key: 'recordatorio_vacuna',   label: 'Vacuna',          color: 'blue' },
+    { key: 'recordatorio_despa',    label: 'Desparasitación', color: 'orange' },
+    { key: 'recordatorio_consulta', label: 'Consulta',        color: 'teal' },
+    { key: 'recordatorio_estetica', label: 'Estética',        color: 'purple' },
 ];
 
 function daysFrom(dateStr) {
@@ -440,6 +440,8 @@ function daysFrom(dateStr) {
 
 function RecordatoriosSection({ pet, maxDays = null }) {
     const recForm = useForm({
+        recordatorio_vacuna:   pet.recordatorio_vacuna   ?? '',
+        recordatorio_despa:    pet.recordatorio_despa    ?? '',
         recordatorio_consulta: pet.recordatorio_consulta ?? '',
         recordatorio_estetica: pet.recordatorio_estetica ?? '',
     });
