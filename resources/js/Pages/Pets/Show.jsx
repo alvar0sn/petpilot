@@ -425,10 +425,8 @@ function MediaGallery({ media }) {
 const MEDICO_TIPOS = ['Vacuna', 'Desparasitación', 'Consulta'];
 
 const RECORDATORIOS_CONFIG = [
-    { key: 'recordatorio_vacuna',   label: 'Vacuna',          color: 'blue' },
-    { key: 'recordatorio_despa',    label: 'Desparasitación', color: 'orange' },
-    { key: 'recordatorio_consulta', label: 'Consulta',        color: 'teal' },
-    { key: 'recordatorio_estetica', label: 'Estética',        color: 'purple' },
+    { key: 'recordatorio_consulta', label: 'Consulta', color: 'teal' },
+    { key: 'recordatorio_estetica', label: 'Estética', color: 'purple' },
 ];
 
 function daysFrom(dateStr) {
@@ -442,8 +440,6 @@ function daysFrom(dateStr) {
 
 function RecordatoriosSection({ pet, maxDays = null }) {
     const recForm = useForm({
-        recordatorio_vacuna:   pet.recordatorio_vacuna   ?? '',
-        recordatorio_despa:    pet.recordatorio_despa    ?? '',
         recordatorio_consulta: pet.recordatorio_consulta ?? '',
         recordatorio_estetica: pet.recordatorio_estetica ?? '',
     });
