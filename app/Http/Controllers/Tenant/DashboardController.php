@@ -46,10 +46,6 @@ class DashboardController extends Controller
 
         // Alertas sin filtro de período
         $sinMascota = Owner::doesntHave('pets')->count();
-        $recordatoriosVencidos = Event::whereNotNull('proximo_recordatorio')
-            ->where('proximo_recordatorio', '<', today())
-            ->where('recordatorio_enviado', false)
-            ->count();
         $membresiasSaldoBajo = Membership::where('activa', true)
             ->whereHas('credits', fn($q) => $q->where('saldo_actual', '<=', 2))
             ->count();
@@ -57,18 +53,63 @@ class DashboardController extends Controller
             ->whereBetween('fecha_vencimiento', [today(), today()->addDays(7)])
             ->count();
 
-        // Recordatorios programados para hoy
-        $recordatoriosHoy = Event::with(['pet:id,nombre', 'pet.owner:id,nombre,apellidos,telefono', 'eventType:id,nombre'])
-            ->whereDate('proximo_recordatorio', today())
+        // Recordatorios unificados ±7 días (eventos + campos del pet)
+        $rangeStart = today()->subDays(7);
+        $rangeEnd   = today()->addDays(7);
+
+        $recEventos = Event::with(['pet:id,nombre', 'pet.owner:id,nombre,apellidos,telefono', 'eventType:id,nombre'])
+            ->whereNotNull('proximo_recordatorio')
+            ->whereBetween('proximo_recordatorio', [$rangeStart, $rangeEnd])
             ->where('recordatorio_enviado', false)
-            ->limit(10)
             ->get()
             ->map(fn($e) => [
-                'pet' => $e->pet?->nombre,
-                'owner' => $e->pet?->owner?->nombre_completo,
+                'fecha'    => is_string($e->proximo_recordatorio) ? $e->proximo_recordatorio : $e->proximo_recordatorio?->toDateString(),
+                'pet'      => $e->pet?->nombre,
+                'pet_id'   => $e->pet?->id,
+                'owner'    => $e->pet?->owner?->nombre_completo,
+                'owner_id' => $e->pet?->owner?->id,
                 'telefono' => $e->pet?->owner?->telefono,
-                'tipo' => $e->eventType?->nombre,
+                'tipo'     => $e->eventType?->nombre,
             ]);
+
+        $camposRecordatorio = [
+            'recordatorio_vacuna'   => 'Vacuna',
+            'recordatorio_despa'    => 'Desparasitación',
+            'recordatorio_consulta' => 'Consulta',
+            'recordatorio_estetica' => 'Estética',
+        ];
+
+        $recPets = Pet::with('owner:id,nombre,apellidos,telefono')
+            ->where(fn($q) => $q
+                ->whereBetween('recordatorio_vacuna',   [$rangeStart, $rangeEnd])
+                ->orWhereBetween('recordatorio_despa',   [$rangeStart, $rangeEnd])
+                ->orWhereBetween('recordatorio_consulta', [$rangeStart, $rangeEnd])
+                ->orWhereBetween('recordatorio_estetica', [$rangeStart, $rangeEnd])
+            )
+            ->get()
+            ->flatMap(function ($pet) use ($camposRecordatorio, $rangeStart, $rangeEnd) {
+                $items = [];
+                foreach ($camposRecordatorio as $campo => $tipo) {
+                    $fecha = $pet->$campo;
+                    if ($fecha && $fecha->between($rangeStart, $rangeEnd)) {
+                        $items[] = [
+                            'fecha'    => $fecha->toDateString(),
+                            'pet'      => $pet->nombre,
+                            'pet_id'   => $pet->id,
+                            'owner'    => $pet->owner?->nombre_completo,
+                            'owner_id' => $pet->owner?->id,
+                            'telefono' => $pet->owner?->telefono,
+                            'tipo'     => $tipo,
+                        ];
+                    }
+                }
+                return $items;
+            });
+
+        $recordatorios = $recEventos->merge($recPets)
+            ->sortBy('fecha')
+            ->values()
+            ->all();
 
         return Inertia::render('Dashboard', [
             'period' => $period,
@@ -86,11 +127,10 @@ class DashboardController extends Controller
             ],
             'alertas' => [
                 'sin_mascota' => $sinMascota,
-                'recordatorios_vencidos' => $recordatoriosVencidos,
                 'membresias_saldo_bajo' => $membresiasSaldoBajo,
                 'membresias_vencen_semana' => $membresiasVencenEstaSemana,
             ],
-            'recordatorios_hoy' => $recordatoriosHoy,
+            'recordatorios' => $recordatorios,
         ]);
     }
 }

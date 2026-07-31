@@ -1,5 +1,6 @@
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 
 function fmt(n) {
     return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
@@ -8,8 +9,8 @@ function fmt(n) {
 function MetricCard({ label, value, sub, color = 'indigo' }) {
     const colors = {
         indigo: 'bg-zinc-100 text-zinc-700',
-        green: 'bg-green-50 text-green-700',
-        blue: 'bg-sky-50 text-sky-700',
+        green:  'bg-green-50 text-green-700',
+        blue:   'bg-sky-50 text-sky-700',
         purple: 'bg-violet-50 text-violet-700',
         orange: 'bg-orange-50 text-orange-700',
     };
@@ -24,32 +25,76 @@ function MetricCard({ label, value, sub, color = 'indigo' }) {
 
 function AlertCard({ label, count, href, color = 'yellow' }) {
     if (!count) return null;
-    const colors = { yellow: 'border-yellow-300 bg-yellow-50 text-yellow-800', red: 'border-red-300 bg-red-50 text-red-800' };
+    const colors = {
+        yellow: 'border-yellow-300 bg-yellow-50 text-yellow-800',
+        red:    'border-red-300 bg-red-50 text-red-800',
+    };
     return (
         <div className={`border rounded-lg p-3 flex items-center justify-between ${colors[color]}`}>
             <div>
                 <p className="text-sm font-medium">{label}</p>
                 <p className="text-2xl font-bold">{count}</p>
             </div>
-            {href && (
-                <Link href={href} className="text-xs underline opacity-70 hover:opacity-100">Ver →</Link>
-            )}
+            {href && <Link href={href} className="text-xs underline opacity-70 hover:opacity-100">Ver →</Link>}
         </div>
     );
 }
 
+const TIPO_COLOR = {
+    'Estética':        'bg-violet-100 text-violet-700',
+    'Vacuna':          'bg-sky-100 text-sky-700',
+    'Desparasitación': 'bg-orange-100 text-orange-700',
+    'Consulta':        'bg-teal-100 text-teal-700',
+};
+
+function daysFromToday(dateStr) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const d = new Date(dateStr + 'T00:00:00');
+    return Math.round((d - today) / (1000 * 60 * 60 * 24));
+}
+
+function DaysLabel({ dateStr }) {
+    const days = daysFromToday(dateStr);
+    if (days === 0) return <span className="text-amber-600 font-semibold text-xs">Hoy</span>;
+    if (days < 0)  return <span className="text-red-600 text-xs">Hace {Math.abs(days)} día{Math.abs(days) !== 1 ? 's' : ''}</span>;
+    return <span className="text-emerald-600 text-xs">En {days} día{days !== 1 ? 's' : ''}</span>;
+}
+
 const periods = [
-    { value: 'week', label: 'Esta semana' },
-    { value: 'month', label: 'Este mes' },
+    { value: 'week',    label: 'Esta semana' },
+    { value: 'month',   label: 'Este mes' },
     { value: 'quarter', label: 'Este trimestre' },
 ];
 
-export default function Dashboard({ period, from, to, metricas, alertas, recordatorios_hoy }) {
+const FILTROS = [
+    { key: 'hoy',   label: 'Hoy',     days: 0 },
+    { key: '3dias', label: '± 3 días', days: 3 },
+    { key: '7dias', label: '± 7 días', days: 7 },
+];
+
+export default function Dashboard({ period, from, to, metricas, alertas, recordatorios }) {
+    const [filtro, setFiltro] = useState('hoy');
+
     function changePeriod(p) {
         router.get(route('dashboard'), { period: p }, { preserveState: false });
     }
 
-    const hasAlertas = alertas.sin_mascota + alertas.recordatorios_vencidos + alertas.membresias_saldo_bajo + alertas.membresias_vencen_semana > 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const maxDays = FILTROS.find(f => f.key === filtro)?.days ?? 0;
+    const filtered = (recordatorios ?? []).filter(r => {
+        const d = Math.abs(daysFromToday(r.fecha));
+        return d <= maxDays;
+    });
+
+    // Para "Hoy" también incluir los negativos de 0 días (mismo día)
+    const filteredFinal = filtro === 'hoy'
+        ? (recordatorios ?? []).filter(r => daysFromToday(r.fecha) === 0)
+        : filtered;
+
+    const hasAlertas = alertas.sin_mascota + alertas.membresias_saldo_bajo + alertas.membresias_vencen_semana > 0;
 
     return (
         <TenantLayout title="Dashboard">
@@ -82,26 +127,40 @@ export default function Dashboard({ period, from, to, metricas, alertas, recorda
                 {/* Alertas */}
                 <div className="space-y-3">
                     <h2 className="text-sm font-semibold text-zinc-600 uppercase tracking-wide">Alertas</h2>
-                    {!hasAlertas && (
+                    {!hasAlertas ? (
                         <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-green-700 text-sm">
                             Sin alertas pendientes ✓
                         </div>
+                    ) : (
+                        <>
+                            <AlertCard label="Clientes sin mascota" count={alertas.sin_mascota} href={route('owners.index')} color="yellow" />
+                            <AlertCard label="Membresías con saldo bajo" count={alertas.membresias_saldo_bajo} href={route('memberships.index')} color="red" />
+                            <AlertCard label="Membresías vencen esta semana" count={alertas.membresias_vencen_semana} href={route('memberships.index')} color="yellow" />
+                        </>
                     )}
-                    <AlertCard label="Clientes sin mascota" count={alertas.sin_mascota} href={route('owners.index')} color="yellow" />
-                    <AlertCard label="Recordatorios vencidos" count={alertas.recordatorios_vencidos} color="red" />
-                    <AlertCard label="Membresías con saldo bajo" count={alertas.membresias_saldo_bajo} href={route('memberships.index')} color="red" />
-                    <AlertCard label="Membresías vencen esta semana" count={alertas.membresias_vencen_semana} href={route('memberships.index')} color="yellow" />
                 </div>
 
-                {/* Recordatorios de hoy */}
+                {/* Recordatorios */}
                 <div className="lg:col-span-2">
-                    <h2 className="text-sm font-semibold text-zinc-600 uppercase tracking-wide mb-3">
-                        Recordatorios para hoy ({recordatorios_hoy.length})
-                    </h2>
+                    <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-sm font-semibold text-zinc-600 uppercase tracking-wide">Recordatorios</h2>
+                        <div className="flex gap-1">
+                            {FILTROS.map(f => (
+                                <button key={f.key} onClick={() => setFiltro(f.key)}
+                                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                                        filtro === f.key
+                                            ? 'bg-zinc-900 text-white border-zinc-900'
+                                            : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'
+                                    }`}>
+                                    {f.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
 
-                    {recordatorios_hoy.length === 0 ? (
+                    {filteredFinal.length === 0 ? (
                         <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-6 text-center text-zinc-400 text-sm">
-                            Sin recordatorios pendientes para hoy.
+                            Sin recordatorios para este rango.
                         </div>
                     ) : (
                         <div className="bg-white border border-zinc-100 shadow-sm rounded-xl overflow-hidden">
@@ -110,18 +169,42 @@ export default function Dashboard({ period, from, to, metricas, alertas, recorda
                                     <tr>
                                         <th className="px-4 py-3 text-left">Mascota / Dueño</th>
                                         <th className="px-4 py-3 text-left">Tipo</th>
+                                        <th className="px-4 py-3 text-left">Fecha</th>
                                         <th className="px-4 py-3 text-left">Teléfono</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-50">
-                                    {recordatorios_hoy.map((r, i) => (
+                                    {filteredFinal.map((r, i) => (
                                         <tr key={i} className="hover:bg-zinc-50">
                                             <td className="px-4 py-3">
-                                                <span className="font-medium text-zinc-800">{r.pet}</span>
-                                                <span className="text-zinc-400 text-xs ml-1">/ {r.owner}</span>
+                                                {r.pet_id ? (
+                                                    <Link href={route('pets.show', r.pet_id)}
+                                                        className="font-medium text-zinc-800 hover:underline">
+                                                        {r.pet}
+                                                    </Link>
+                                                ) : (
+                                                    <span className="font-medium text-zinc-800">{r.pet}</span>
+                                                )}
+                                                {r.owner && (
+                                                    <div className="text-xs text-zinc-400">
+                                                        {r.owner_id ? (
+                                                            <Link href={route('owners.show', r.owner_id)} className="hover:underline">
+                                                                {r.owner}
+                                                            </Link>
+                                                        ) : r.owner}
+                                                    </div>
+                                                )}
                                             </td>
-                                            <td className="px-4 py-3 text-zinc-600">{r.tipo}</td>
-                                            <td className="px-4 py-3 font-mono text-zinc-600">{r.telefono}</td>
+                                            <td className="px-4 py-3">
+                                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TIPO_COLOR[r.tipo] ?? 'bg-zinc-100 text-zinc-600'}`}>
+                                                    {r.tipo}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="text-xs text-zinc-500">{r.fecha}</div>
+                                                <DaysLabel dateStr={r.fecha} />
+                                            </td>
+                                            <td className="px-4 py-3 font-mono text-zinc-600 text-xs">{r.telefono}</td>
                                         </tr>
                                     ))}
                                 </tbody>
