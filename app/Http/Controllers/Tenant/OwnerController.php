@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -95,6 +96,13 @@ class OwnerController extends Controller
             'pets'              => fn($q) => $q->withCount('events')->orderBy('estado')->orderBy('nombre'),
             'pets.memberships'  => fn($q) => $q->where('activa', true)->with('plan:id,nombre'),
         ]);
+
+        $owner->pets->transform(function ($pet) {
+            $pet->foto_url = $pet->foto_url
+                ? Storage::disk(media_disk())->url($pet->foto_url)
+                : null;
+            return $pet;
+        });
 
         return Inertia::render('Owners/Show', [
             'owner' => $owner,
