@@ -178,15 +178,27 @@ export default function SuperAdminOwners({ owners, tenants, filters }) {
                     <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
                         <span>Página {owners.current_page} de {owners.last_page}</span>
                         <div className="flex gap-2">
-                            {owners.prev_page_url && (
-                                <Link href={owners.prev_page_url} className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 text-xs">
+                            {owners.current_page > 1 && (
+                                <button onClick={() => router.get(route('super-admin.owners.index'), {
+                                    search:      search || undefined,
+                                    tenant_id:   tenantId || undefined,
+                                    sync_status: syncStatus || undefined,
+                                    page:        owners.current_page - 1,
+                                }, { preserveState: true })}
+                                    className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 text-xs">
                                     ← Anterior
-                                </Link>
+                                </button>
                             )}
-                            {owners.next_page_url && (
-                                <Link href={owners.next_page_url} className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 text-xs">
+                            {owners.current_page < owners.last_page && (
+                                <button onClick={() => router.get(route('super-admin.owners.index'), {
+                                    search:      search || undefined,
+                                    tenant_id:   tenantId || undefined,
+                                    sync_status: syncStatus || undefined,
+                                    page:        owners.current_page + 1,
+                                }, { preserveState: true })}
+                                    className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 text-xs">
                                     Siguiente →
-                                </Link>
+                                </button>
                             )}
                         </div>
                     </div>
