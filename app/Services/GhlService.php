@@ -53,9 +53,22 @@ class GhlService
             $http = Http::withToken($config->api_key)
                 ->withHeaders(['Version' => '2021-07-28']);
 
-            if ($owner->ghl_contact_id) {
+            // Resolver ghl_contact_id: usar el existente, o buscar en GHL antes de crear
+            $ghlContactId = $owner->ghl_contact_id;
+
+            if (! $ghlContactId) {
+                $ghlContactId = $this->findContactId($http, $config->location_id, $phone, $email);
+
+                if ($ghlContactId) {
+                    // Vinculamos localmente el ID encontrado
+                    $owner->withoutGlobalScopes()->where('id', $owner->id)
+                        ->update(['ghl_contact_id' => $ghlContactId]);
+                }
+            }
+
+            if ($ghlContactId) {
                 $updatePayload = array_diff_key($payload, ['locationId' => null]);
-                $response = $http->put("https://services.leadconnectorhq.com/contacts/{$owner->ghl_contact_id}", $updatePayload);
+                $response = $http->put("https://services.leadconnectorhq.com/contacts/{$ghlContactId}", $updatePayload);
                 $action = 'update';
             } else {
                 $response = $http->post('https://services.leadconnectorhq.com/contacts/', $payload);
@@ -123,6 +136,25 @@ class GhlService
 
             return false;
         }
+    }
+
+    private function findContactId(\Illuminate\Http\Client\PendingRequest $http, string $locationId, ?string $phone, ?string $email): ?string
+    {
+        // Buscar por teléfono primero, luego por email
+        foreach (array_filter([$phone, $email]) as $query) {
+            $response = $http->get('https://services.leadconnectorhq.com/contacts/', [
+                'locationId' => $locationId,
+                'query'      => $query,
+                'limit'      => 1,
+            ]);
+
+            if ($response->successful()) {
+                $id = $response->json('contacts.0.id');
+                if ($id) return $id;
+            }
+        }
+
+        return null;
     }
 
     private function normalizePhone(string $phone): string
