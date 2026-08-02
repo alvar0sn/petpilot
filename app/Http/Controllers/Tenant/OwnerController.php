@@ -268,12 +268,14 @@ class OwnerController extends Controller
                     $fechaNac     = $row['mascota_fecha_nacimiento'] ?? '';
                     $peso         = $row['mascota_peso'] ?? '';
 
+                    $str = fn(string $k) => ($row[$k] ?? '') !== '' ? $row[$k] : null;
+
                     \App\Models\Pet::create([
                         'owner_id'         => $owner->id,
                         'nombre'           => $petNombre,
-                        'tipo'             => $row['mascota_tipo'] ?? null,
-                        'raza'             => $row['mascota_raza'] ?? null,
-                        'sexo'             => $row['mascota_sexo'] ?? null,
+                        'tipo'             => $str('mascota_tipo'),
+                        'raza'             => $str('mascota_raza'),
+                        'sexo'             => $str('mascota_sexo'),
                         'fecha_nacimiento' => $fechaNac ?: null,
                         'peso'             => is_numeric($peso) ? $peso : null,
                         'esterilizado'     => $esterilizado,
