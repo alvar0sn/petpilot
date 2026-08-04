@@ -23,6 +23,7 @@ function CheckinModal({ stay, checkoutRates, onClose }) {
         : 1;
     const creditosReservados = stay.creditos_consumidos ?? 0;
     const nochesACobrar = Math.max(0, nochesEstimadas - creditosReservados);
+    const totalPagado = (stay.payments ?? []).reduce((sum, p) => sum + Number(p.monto), 0);
 
     const defaultRateId = stay.rate_id ? String(stay.rate_id) : (checkoutRates[0]?.id ? String(checkoutRates[0].id) : '');
     const [withPayment, setWithPayment] = useState(false);
@@ -34,7 +35,9 @@ function CheckinModal({ stay, checkoutRates, onClose }) {
     });
 
     const selectedRate = checkoutRates.find(r => String(r.id) === form.data.checkout_rate_id) ?? null;
-    const montoSugerido = selectedRate ? (nochesACobrar * Number(selectedRate.precio)).toFixed(2) : '0';
+    const montoSugerido = selectedRate
+        ? Math.max(0, nochesACobrar * Number(selectedRate.precio) - totalPagado).toFixed(2)
+        : '0';
 
     useEffect(() => {
         if (withPayment && selectedRate) {
@@ -75,6 +78,12 @@ function CheckinModal({ stay, checkoutRates, onClose }) {
                                 <div className="flex justify-between py-1.5 text-green-700">
                                     <span>Cubiertas por membresía</span>
                                     <span className="font-semibold">{creditosReservados} noche{creditosReservados !== 1 ? 's' : ''}</span>
+                                </div>
+                            )}
+                            {totalPagado > 0 && (
+                                <div className="flex justify-between py-1.5 text-green-700">
+                                    <span>Ya pagado (adelantos/abonos)</span>
+                                    <span className="font-semibold">− {fmt(totalPagado)}</span>
                                 </div>
                             )}
                             {nochesACobrar > 0 && selectedRate && (
@@ -613,7 +622,9 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
     const creditosReservados = stay.creditos_consumidos ?? 0;
     const nochesACobrar = nochesEstimadas !== null ? Math.max(0, nochesEstimadas - creditosReservados) : null;
     const montoEstimado = nochesACobrar !== null && stay.precio_por_noche ? nochesACobrar * Number(stay.precio_por_noche) : null;
-    const totalPagado = (stay.payments ?? []).reduce((sum, p) => sum + Number(p.monto), 0);
+    const ticketPagado = stay.ticket?.estado === 'pagado';
+    const totalPagado = (stay.payments ?? []).reduce((sum, p) => sum + Number(p.monto), 0)
+        + (ticketPagado ? Number(stay.ticket.total) : 0);
     const saldoPendiente = montoEstimado !== null ? Math.max(0, montoEstimado - totalPagado) : null;
 
     return (
@@ -734,6 +745,9 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
                                     <span>{saldoPendiente > 0 ? 'Saldo pendiente' : 'Pagado completo'}</span>
                                     <span className="font-mono">{fmt(saldoPendiente)}</span>
                                 </div>
+                                {saldoPendiente > 0 && stay.ticket && !ticketPagado && (
+                                    <p className="text-xs text-amber-600">→ por cobrar en el ticket #{stay.ticket.folio} (POS)</p>
+                                )}
                             </div>
                         )}
 
@@ -761,9 +775,14 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
                         )}
 
                         {stay.ticket && (
-                            <div className="border-t pt-2 flex justify-between">
+                            <div className="border-t pt-2 flex justify-between items-center">
                                 <span className="text-zinc-500">Ticket final POS</span>
-                                <span className="font-mono text-zinc-700">#{stay.ticket.folio} · {fmt(stay.ticket.total)}</span>
+                                <span className="flex items-center gap-1.5">
+                                    <span className="font-mono text-zinc-700">#{stay.ticket.folio} · {fmt(stay.ticket.total)}</span>
+                                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${ticketPagado ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'}`}>
+                                        {ticketPagado ? 'pagado' : stay.ticket.estado}
+                                    </span>
+                                </span>
                             </div>
                         )}
                     </div>
