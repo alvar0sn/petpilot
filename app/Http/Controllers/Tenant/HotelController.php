@@ -480,8 +480,8 @@ class HotelController extends Controller
             $creditosAUsar = $stay->cobro_membresia ? ($stay->creditos_consumidos ?? 0) : 0;
             $nochesExtra = $noches - $creditosAUsar;
 
-            $totalPagado = $stay->payments()->sum('monto');
-            $saldoPendiente = max(0, $data['monto'] - $totalPagado);
+            // $data['monto'] ya viene neto de lo pagado (calculado en el frontend)
+            $saldoPendiente = max(0, $data['monto']);
 
             $ticket = null;
 
