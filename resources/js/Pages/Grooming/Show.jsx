@@ -167,6 +167,7 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
         }
     }
 
+    const recepcionGuardada = !!appt.recepcion;
     const hasRecepcionData = Object.values(rec).some(v => v) || appt.accesorios || appt.photos?.some(p => p.tipo === 'recepcion');
     const [recepcionOpen, setRecepcionOpen] = useState(hasRecepcionData || canEdit);
     const hasSalidaData = completeForm.data.notas_resultado || appt.photos?.some(p => p.tipo === 'resultado') || appt.has_event;
@@ -663,12 +664,20 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                     </div>
 
                     {canEdit && (
-                        <form onSubmit={doComplete} className="flex justify-end">
-                            <button type="submit" disabled={completeForm.processing}
-                                className="bg-emerald-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors">
-                                {completeForm.processing ? 'Completando...' : 'Completar cita'}
-                            </button>
-                        </form>
+                        <div className="flex flex-col items-end gap-1.5">
+                            {!recepcionGuardada && (
+                                <p className="text-xs text-amber-600 flex items-center gap-1">
+                                    <span>⚠</span> Guarda la recepción antes de completar la cita.
+                                </p>
+                            )}
+                            <form onSubmit={doComplete}>
+                                <button type="submit" disabled={completeForm.processing || !recepcionGuardada}
+                                    title={!recepcionGuardada ? 'Guarda la recepción primero' : undefined}
+                                    className="bg-emerald-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                    {completeForm.processing ? 'Completando...' : 'Completar cita'}
+                                </button>
+                            </form>
+                        </div>
                     )}
                 </div>}
             </div>
