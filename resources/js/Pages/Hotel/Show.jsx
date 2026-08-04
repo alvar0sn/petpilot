@@ -244,7 +244,6 @@ function CheckoutModal({ stay, checkoutRates, totalPagado, saldoPendiente, onClo
 
     const form = useForm({
         checkout_rate_id: defaultRateId,
-        monto: '0',
         fecha_salida: dateKeyInTimezone(new Date(), tz),
     });
 
@@ -257,24 +256,8 @@ function CheckoutModal({ stay, checkoutRates, totalPagado, saldoPendiente, onClo
 
     const selectedRate = checkoutRates.find(r => String(r.id) === form.data.checkout_rate_id) ?? null;
     const unidadLabel = selectedRate?.unidad === 'horas' ? 'hora(s)' : 'noche(s)';
-
-    function recalcMonto(fecha, rateId) {
-        const rate = checkoutRates.find(r => String(r.id) === rateId) ?? null;
-        if (!rate) return;
-        const n = Math.max(1, Math.round(
-            (new Date(fecha) - new Date(stay.fecha_entrada.slice(0, 10))) / 86400000
-        ));
-        const credUsed = willUseMembership ? Math.min(n, creditosDisponibles) : 0;
-        const extra = n - credUsed;
-        const unidades = willUseMembership ? extra : n;
-        const bruto = unidades > 0 ? unidades * Number(rate.precio) : 0;
-        const neto = Math.max(0, bruto - (totalPagado ?? 0));
-        form.setData({ ...form.data, fecha_salida: fecha, checkout_rate_id: rateId, monto: neto.toFixed(2) });
-    }
-
-    useEffect(() => {
-        recalcMonto(form.data.fecha_salida, form.data.checkout_rate_id);
-    }, []);
+    const bruto = selectedRate ? nochesExtra * Number(selectedRate.precio) : 0;
+    const netoACobrar = Math.max(0, bruto - (totalPagado ?? 0));
 
     function submit() {
         form.post(route('hotel.checkout', stay.id), { onSuccess: onClose });
@@ -290,7 +273,7 @@ function CheckoutModal({ stay, checkoutRates, totalPagado, saldoPendiente, onClo
                         <label className="block text-xs font-medium text-zinc-600 mb-1">Fecha de salida *</label>
                         <input type="date" className="w-full border-gray-300 rounded-lg text-sm"
                             value={form.data.fecha_salida}
-                            onChange={e => recalcMonto(e.target.value, form.data.checkout_rate_id)} />
+                            onChange={e => form.setData('fecha_salida', e.target.value)} />
                         {form.errors.fecha_salida && <p className="text-red-500 text-xs mt-1">{form.errors.fecha_salida}</p>}
                     </div>
                     <div>
@@ -333,7 +316,7 @@ function CheckoutModal({ stay, checkoutRates, totalPagado, saldoPendiente, onClo
                                 <select
                                     className="w-full border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900 focus:border-transparent outline-none"
                                     value={form.data.checkout_rate_id}
-                                    onChange={e => recalcMonto(form.data.fecha_salida, e.target.value)}
+                                    onChange={e => form.setData('checkout_rate_id', e.target.value)}
                                 >
                                     {checkoutRates.map(r => (
                                         <option key={r.id} value={r.id}>
@@ -364,15 +347,13 @@ function CheckoutModal({ stay, checkoutRates, totalPagado, saldoPendiente, onClo
                             </div>
                         )}
 
-                        <div>
-                            <label className="block text-xs font-medium text-zinc-600 mb-1">Saldo a cobrar hoy (ajustable)</label>
-                            <input type="number" step="0.01" min="0"
-                                className="w-full border-gray-300 rounded-lg text-sm font-mono"
-                                value={form.data.monto}
-                                onChange={e => form.setData('monto', e.target.value)} />
-                            {form.errors.monto && <p className="text-red-500 text-xs mt-1">{form.errors.monto}</p>}
+                        <div className="bg-zinc-50 border border-zinc-100 rounded-lg p-3">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium text-zinc-700">Saldo a cobrar hoy</span>
+                                <span className="font-mono font-semibold text-zinc-800">{fmt(netoACobrar)}</span>
+                            </div>
                             <p className="text-xs text-zinc-400 mt-1">
-                                {nochesExtra} {unidadLabel} × {fmt(selectedRate?.precio ?? 0)}{(totalPagado ?? 0) > 0 ? ` − ${fmt(totalPagado)} ya pagado` : ''}. Ajusta si aplica descuento.
+                                {nochesExtra} {unidadLabel} × {fmt(selectedRate?.precio ?? 0)}{(totalPagado ?? 0) > 0 ? ` − ${fmt(totalPagado)} ya pagado` : ''}. Se enviará este monto a POS para cerrar la cuenta — si aplica un descuento, hazlo ahí antes de cobrar.
                             </p>
                         </div>
                     </div>
@@ -680,14 +661,14 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
                         </button>
                     )}
                     {stay.estado === 'activo' && (
-                        <>
-                            <button onClick={() => setShowCheckout(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
-                                Check-out
-                            </button>
-                            <button onClick={() => setShowPayment(true)} className="bg-white border border-zinc-200 text-zinc-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors">
-                                Registrar abono
-                            </button>
-                        </>
+                        <button onClick={() => setShowCheckout(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                            Check-out
+                        </button>
+                    )}
+                    {(stay.estado === 'reservado' || stay.estado === 'activo') && (
+                        <button onClick={() => setShowPayment(true)} className="bg-white border border-zinc-200 text-zinc-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors">
+                            Registrar abono
+                        </button>
                     )}
                     {(stay.estado === 'reservado' || stay.estado === 'activo') && (
                         <button onClick={() => setShowCancel(true)} className="border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors">

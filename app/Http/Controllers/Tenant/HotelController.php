@@ -465,7 +465,6 @@ class HotelController extends Controller
 
         $data = $request->validate([
             'checkout_rate_id' => 'nullable|exists:hotel_rates,id',
-            'monto' => 'required|numeric|min:0',
             'fecha_salida' => 'required|date',
         ]);
 
@@ -480,24 +479,30 @@ class HotelController extends Controller
             $creditosAUsar = $stay->cobro_membresia ? ($stay->creditos_consumidos ?? 0) : 0;
             $nochesExtra = $noches - $creditosAUsar;
 
-            // $data['monto'] ya viene neto de lo pagado (calculado en el frontend)
-            $saldoPendiente = max(0, $data['monto']);
+            $selectedRate = !empty($data['checkout_rate_id'])
+                ? HotelRate::find($data['checkout_rate_id'])
+                : $stay->rate;
+
+            // El saldo se calcula siempre en el servidor a partir de los pagos
+            // reales en BD (nunca de un monto editado en el cliente), para
+            // garantizar que el checkout cobre exactamente lo que falta y no
+            // deje saldos huérfanos una vez que la mascota ya se fue.
+            $precioNoche = (float) ($selectedRate?->precio ?? $stay->precio_por_noche ?? 0);
+            $bruto = $nochesExtra > 0 ? $nochesExtra * $precioNoche : 0;
+            $totalPagado = (float) $stay->payments()->sum('monto');
+            $saldoPendiente = max(0, round($bruto - $totalPagado, 2));
 
             $ticket = null;
 
             if ($nochesExtra > 0 && $saldoPendiente > 0) {
                 $shift = PosShift::where('estado', 'abierto')->first();
 
-                $selectedRate = !empty($data['checkout_rate_id'])
-                    ? HotelRate::find($data['checkout_rate_id'])
-                    : $stay->rate;
-
                 $itemId = $selectedRate?->pos_item_id
-                    ?? $this->ensureHotelRateCatalogItem($stay->tipo === 'hotel' ? 'Hotel' : 'Guardería', $selectedRate?->precio ?? $data['monto'])->id;
+                    ?? $this->ensureHotelRateCatalogItem($stay->tipo === 'hotel' ? 'Hotel' : 'Guardería', $precioNoche)->id;
 
                 $tipoLabel = $stay->tipo === 'hotel' ? 'Hotel' : 'Guardería';
                 $rateName = $selectedRate?->nombre ?? $tipoLabel;
-                $precioUnitario = $selectedRate?->precio ?? ($nochesExtra > 0 ? round($data['monto'] / $nochesExtra, 2) : $data['monto']);
+                $precioUnitario = $selectedRate?->precio ?? round($saldoPendiente / $nochesExtra, 2);
                 $unidadLabel = $selectedRate?->unidad === 'horas' ? 'hora(s)' : 'noche(s)';
 
                 $nombreSnapshot = $creditosAUsar > 0
