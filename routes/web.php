@@ -84,9 +84,11 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('pos/tickets/{ticket}/owner', [PosTicketController::class, 'setOwner'])->name('pos.tickets.owner');
         Route::post('pos/tickets/{ticket}/pay', [PosTicketController::class, 'pay'])->name('pos.tickets.pay');
         Route::post('pos/tickets/{ticket}/cancel', [PosTicketController::class, 'cancel'])->name('pos.tickets.cancel');
+        Route::post('pos/tickets/{ticket}/refund', [PosTicketController::class, 'refund'])->name('pos.tickets.refund');
 
         Route::get('pos/shifts', [PosShiftController::class, 'index'])->name('pos.shift.index');
         Route::post('pos/shifts', [PosShiftController::class, 'store'])->name('pos.shift.store');
+        Route::get('pos/shifts/{shift}', [PosShiftController::class, 'show'])->name('pos.shift.show');
         Route::post('pos/shifts/{shift}/close', [PosShiftController::class, 'close'])->name('pos.shift.close');
         Route::post('pos/shifts/{shift}/movement', [PosShiftController::class, 'addMovement'])->name('pos.shift.movement');
 

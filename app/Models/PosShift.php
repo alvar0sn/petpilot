@@ -16,6 +16,7 @@ class PosShift extends Model
     protected $fillable = [
         'tenant_id',
         'user_id',
+        'closed_by_user_id',
         'fecha_apertura',
         'fecha_cierre',
         'fondo_inicial',
@@ -35,6 +36,11 @@ class PosShift extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function closedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'closed_by_user_id');
+    }
+
     public function cashMovements(): HasMany
     {
         return $this->hasMany(PosCashMovement::class, 'shift_id');
@@ -43,6 +49,16 @@ class PosShift extends Model
     public function ticketsOpened(): HasMany
     {
         return $this->hasMany(PosTicket::class, 'shift_open_id');
+    }
+
+    public function ticketsClosed(): HasMany
+    {
+        return $this->hasMany(PosTicket::class, 'shift_close_id');
+    }
+
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(PosTicketRefund::class, 'shift_id');
     }
 
     public function isOpen(): bool

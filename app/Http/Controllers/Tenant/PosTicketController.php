@@ -13,6 +13,7 @@ use App\Models\PosShift;
 use App\Models\PosStockMovement;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
+use App\Models\PosTicketRefund;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -288,6 +289,41 @@ class PosTicketController extends Controller
         return redirect()->route('pos.index')->with('success', "Ticket #{$ticket->folio} cancelado.");
     }
 
+    public function refund(Request $request, PosTicket $ticket): RedirectResponse
+    {
+        abort_if($ticket->estado !== 'pagado', 403, 'Solo se pueden reembolsar tickets pagados.');
+
+        $data = $request->validate([
+            'monto' => 'required|numeric|min:0.01',
+            'payment_method_id' => 'required|exists:pos_payment_methods,id',
+            'motivo' => 'required|string|max:255',
+        ]);
+
+        if ($data['monto'] > $ticket->refundableAmount() + 0.01) {
+            return back()->withErrors(['monto' => 'El monto excede el saldo reembolsable del ticket.']);
+        }
+
+        $shift = PosShift::where('estado', 'abierto')->first();
+        if (! $shift) {
+            return back()->withErrors(['error' => 'Debes abrir un turno para procesar reembolsos.']);
+        }
+
+        DB::transaction(function () use ($ticket, $shift, $data) {
+            PosTicketRefund::create([
+                'ticket_id' => $ticket->id,
+                'shift_id' => $shift->id,
+                'payment_method_id' => $data['payment_method_id'],
+                'user_id' => auth()->id(),
+                'monto' => $data['monto'],
+                'motivo' => $data['motivo'],
+            ]);
+
+            $ticket->increment('refunded_amount', $data['monto']);
+        });
+
+        return back()->with('success', "Reembolso registrado en el ticket #{$ticket->folio}.");
+    }
+
     public function history(Request $request): Response
     {
         $tickets = PosTicket::with(['owner:id,nombre,apellidos', 'payments.paymentMethod:id,nombre'])
@@ -302,8 +338,11 @@ class PosTicketController extends Controller
                 'token' => $t->token,
                 'owner' => $t->owner?->nombre_completo ?? 'Sin cliente',
                 'estado' => $t->estado,
+                'estado_display' => $t->displayEstado(),
                 'subtotal' => $t->subtotal,
                 'total' => $t->total,
+                'refunded_amount' => $t->refunded_amount,
+                'saldo_reembolsable' => $t->refundableAmount(),
                 'cobrado_at' => $t->cobrado_at,
                 'created_at' => $t->created_at,
             ]);
@@ -311,6 +350,7 @@ class PosTicketController extends Controller
         return Inertia::render('Pos/History', [
             'tickets' => $tickets,
             'filters' => $request->only('estado', 'fecha'),
+            'paymentMethods' => PosPaymentMethod::where('activo', true)->orderBy('orden')->get(['id', 'nombre']),
         ]);
     }
 

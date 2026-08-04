@@ -29,6 +29,7 @@ class PosTicket extends Model
         'discount_amount',
         'subtotal',
         'total',
+        'refunded_amount',
         'comentario_cancelacion',
         'cobrado_at',
     ];
@@ -37,6 +38,7 @@ class PosTicket extends Model
         'discount_amount' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'total' => 'decimal:2',
+        'refunded_amount' => 'decimal:2',
         'cobrado_at' => 'datetime',
     ];
 
@@ -76,8 +78,27 @@ class PosTicket extends Model
         return $this->hasMany(PosPayment::class, 'ticket_id');
     }
 
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(PosTicketRefund::class, 'ticket_id');
+    }
+
     public function isPaid(): bool
     {
         return $this->estado === 'pagado';
+    }
+
+    public function refundableAmount(): float
+    {
+        return max(0, (float) $this->total - (float) $this->refunded_amount);
+    }
+
+    public function displayEstado(): string
+    {
+        if ($this->estado === 'pagado' && (float) $this->refunded_amount > 0) {
+            return (float) $this->refunded_amount >= (float) $this->total ? 'reembolsado' : 'reembolso_parcial';
+        }
+
+        return $this->estado;
     }
 }
