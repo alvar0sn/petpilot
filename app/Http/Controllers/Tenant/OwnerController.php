@@ -153,14 +153,14 @@ class OwnerController extends Controller
     public function importTemplate(): StreamedResponse
     {
         $headers = [
-            'nombre', 'apellidos', 'telefono', 'email', 'direccion', 'notas',
+            'nombre', 'apellidos', 'telefono', 'email', 'direccion', 'ubicacion_url', 'notas',
             'mascota_nombre', 'mascota_tipo', 'mascota_raza', 'mascota_sexo',
             'mascota_fecha_nacimiento', 'mascota_peso', 'mascota_esterilizado',
         ];
         $rows = [
-            ['Juan', 'García López', '5512345678', 'juan@email.com', 'Calle 123', 'Cliente frecuente', 'Firulais', 'perro', 'Labrador', 'macho', '2020-03-15', '12.5', 'si'],
-            ['Juan', 'García López', '5512345678', '', '', '', 'Michi', 'gato', 'Siamés', 'hembra', '2021-07-01', '4', 'no'],
-            ['María', 'López', '5598765432', 'maria@email.com', '', '', '', '', '', '', '', '', ''],
+            ['Juan', 'García López', '5512345678', 'juan@email.com', 'Calle 123', 'https://maps.app.goo.gl/ejemplo', 'Cliente frecuente', 'Firulais', 'perro', 'Labrador', 'macho', '2020-03-15', '12.5', 'si'],
+            ['Juan', 'García López', '5512345678', '', '', '', '', 'Michi', 'gato', 'Siamés', 'hembra', '2021-07-01', '4', 'no'],
+            ['María', 'López', '5598765432', 'maria@email.com', '', '', '', '', '', '', '', '', '', ''],
         ];
 
         return response()->streamDownload(function () use ($headers, $rows) {
@@ -257,6 +257,7 @@ class OwnerController extends Controller
                         'telefono'        => $telefono,
                         'email'           => $row['email'] ?? null,
                         'direccion'       => $row['direccion'] ?? null,
+                        'ubicacion_url'   => $row['ubicacion_url'] ?? null,
                         'notas'           => $row['notas'] ?? null,
                         'ghl_sync_status' => 'pending',
                     ]);

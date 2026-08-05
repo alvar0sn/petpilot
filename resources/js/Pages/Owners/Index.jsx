@@ -78,7 +78,7 @@ export default function OwnersIndex({ owners, filters }) {
                         <div>
                             <p className="font-medium text-zinc-700 mb-1">Columnas del dueño:</p>
                             <p className="text-xs flex flex-wrap gap-1">
-                                {['nombre *', 'apellidos', 'telefono *', 'email', 'direccion', 'notas'].map(c => (
+                                {['nombre *', 'apellidos', 'telefono *', 'email', 'direccion', 'ubicacion_url', 'notas'].map(c => (
                                     <span key={c} className="font-mono bg-zinc-100 px-1.5 py-0.5 rounded">{c}</span>
                                 ))}
                             </p>
