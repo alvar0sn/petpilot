@@ -551,53 +551,55 @@ export default function HotelIndex({ stays, spaces, rates, filters, availability
             {earlyCheckinStay && <EarlyCheckinModal stay={earlyCheckinStay} onClose={() => setEarlyCheckinStay(null)} />}
 
             <div className="bg-white border border-zinc-100 shadow-sm rounded-xl overflow-hidden">
-                <table className="min-w-full divide-y divide-zinc-200 text-sm">
-                    <thead className="bg-zinc-50 text-xs font-semibold text-zinc-400 uppercase tracking-wide">
-                        <tr>
-                            <th className="px-4 py-3 text-left">Mascota / Dueño</th>
-                            <th className="px-4 py-3 text-left">Tipo</th>
-                            <th className="px-4 py-3 text-left">Espacio</th>
-                            <th className="px-4 py-3 text-left">Fechas</th>
-                            <th className="px-4 py-3 text-left">Estado</th>
-                            <th className="px-4 py-3 text-left">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100">
-                        {stays.data.map(s => (
-                            <tr key={s.id} className="hover:bg-zinc-50">
-                                <td className="px-4 py-3">
-                                    <Link href={route('hotel.show', s.id)} className="font-medium text-zinc-900 hover:underline">
-                                        {s.pet}
-                                    </Link>
-                                    <div className="text-xs text-zinc-400">{s.owner}</div>
-                                </td>
-                                <td className="px-4 py-3">
-                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tipoColor[s.tipo]}`}>{tipoLabel[s.tipo]}</span>
-                                </td>
-                                <td className="px-4 py-3 text-zinc-600">{s.space ?? '—'}</td>
-                                <td className="px-4 py-3 text-zinc-600 text-xs">
-                                    {formatDate(s.fecha_entrada, tz)} → {formatDate(s.fecha_salida, tz)}
-                                </td>
-                                <td className="px-4 py-3">
-                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${estadoColor[s.estado]}`}>{estadoLabel[s.estado]}</span>
-                                </td>
-                                <td className="px-4 py-3">
-                                    <div className="flex items-center gap-2">
-                                        {s.estado === 'reservado' && (
-                                            <button onClick={() => checkin(s)} className="text-xs text-zinc-700 underline-offset-2 hover:underline font-medium">Check-in</button>
-                                        )}
-                                        <Link href={route('hotel.show', s.id)} className="text-xs text-zinc-500 hover:text-zinc-700">Ver →</Link>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                        {stays.data.length === 0 && (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-zinc-200 text-sm">
+                        <thead className="bg-zinc-50 text-xs font-semibold text-zinc-400 uppercase tracking-wide">
                             <tr>
-                                <td colSpan={6} className="px-4 py-10 text-center text-zinc-400">Sin reservas registradas.</td>
+                                <th className="px-4 py-3 text-left">Mascota / Dueño</th>
+                                <th className="px-4 py-3 text-left">Tipo</th>
+                                <th className="px-4 py-3 text-left">Espacio</th>
+                                <th className="px-4 py-3 text-left">Fechas</th>
+                                <th className="px-4 py-3 text-left">Estado</th>
+                                <th className="px-4 py-3 text-left">Acciones</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100">
+                            {stays.data.map(s => (
+                                <tr key={s.id} className="hover:bg-zinc-50">
+                                    <td className="px-4 py-3">
+                                        <Link href={route('hotel.show', s.id)} className="font-medium text-zinc-900 hover:underline">
+                                            {s.pet}
+                                        </Link>
+                                        <div className="text-xs text-zinc-400">{s.owner}</div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tipoColor[s.tipo]}`}>{tipoLabel[s.tipo]}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-zinc-600">{s.space ?? '—'}</td>
+                                    <td className="px-4 py-3 text-zinc-600 text-xs">
+                                        {formatDate(s.fecha_entrada, tz)} → {formatDate(s.fecha_salida, tz)}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${estadoColor[s.estado]}`}>{estadoLabel[s.estado]}</span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-2">
+                                            {s.estado === 'reservado' && (
+                                                <button onClick={() => checkin(s)} className="text-xs text-zinc-700 underline-offset-2 hover:underline font-medium">Check-in</button>
+                                            )}
+                                            <Link href={route('hotel.show', s.id)} className="text-xs text-zinc-500 hover:text-zinc-700">Ver →</Link>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {stays.data.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className="px-4 py-10 text-center text-zinc-400">Sin reservas registradas.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </TenantLayout>
     );
