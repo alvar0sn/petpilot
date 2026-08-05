@@ -48,7 +48,10 @@ class PosTicket extends Model
 
         static::creating(function ($ticket) {
             if (empty($ticket->token)) {
-                $ticket->token = Str::uuid();
+                do {
+                    $token = Str::random(10);
+                } while (static::withoutTenantScope()->where('token', $token)->exists());
+                $ticket->token = $token;
             }
         });
     }

@@ -26,9 +26,8 @@ export default function PublicTicket({ ticket, config }) {
                     {config.logo_url ? (
                         <img src={config.logo_url} alt="Logo" style={{ maxHeight: '100px', maxWidth: '220px', objectFit: 'contain', margin: '0 auto 0.75rem' }} />
                     ) : null}
-                    <div style={{ color: '#fff', fontSize: '0.875rem', opacity: 0.85 }}>Ticket de venta</div>
-                    <div style={{ color: '#fff', fontSize: '1.75rem', fontWeight: 700, fontFamily: 'monospace' }}>
-                        #{ticket.folio}
+                    <div style={{ color: '#fff', fontSize: '1rem', fontWeight: 600 }}>
+                        Ticket de venta <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>#{ticket.folio}</span>
                     </div>
                     {ticket.cobrado_at && (
                         <div style={{ color: '#fff', fontSize: '0.75rem', opacity: 0.75, marginTop: '0.25rem' }}>

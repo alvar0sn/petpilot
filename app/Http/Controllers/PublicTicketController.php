@@ -46,7 +46,7 @@ class PublicTicketController extends Controller
             ],
             'config' => [
                 'logo_url'       => $config?->logo_path
-                    ? Storage::url($config->logo_path)
+                    ? Storage::disk(media_disk())->url($config->logo_path)
                     : null,
                 'color_primario' => $config?->color_primario ?? '#4f46e5',
                 'color_texto'    => $config?->color_texto    ?? '#1f2937',
