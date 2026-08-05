@@ -365,10 +365,15 @@ function NewStayModal({ spaces, rates, onClose }) {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-zinc-600 mb-1">Monto del adelanto *</label>
-                                    <input type="number" min="0.01" step="0.01"
+                                    <input type="number" min="0.01" step="0.01" max={montoSugerido || undefined}
                                         className="w-full border-gray-300 rounded-lg text-sm py-1.5"
                                         value={form.data.adelanto_monto}
-                                        onChange={e => form.setData('adelanto_monto', e.target.value)} />
+                                        onChange={e => {
+                                            const n = Number(e.target.value);
+                                            const tope = Number(montoSugerido);
+                                            form.setData('adelanto_monto', tope > 0 && !isNaN(n) && n > tope ? montoSugerido : e.target.value);
+                                        }} />
+                                    {form.errors.adelanto_monto && <p className="text-red-500 text-xs mt-1">{form.errors.adelanto_monto}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-zinc-600 mb-1">Notas del adelanto</label>
@@ -379,8 +384,6 @@ function NewStayModal({ spaces, rates, onClose }) {
                                 </div>
                             </div>
                         )}
-
-                        {form.errors.adelanto_monto && <p className="text-red-500 text-xs">{form.errors.adelanto_monto}</p>}
 
                         <div className="flex gap-2 pt-1">
                             <button onClick={() => setStep(1)} className="bg-white border border-zinc-200 text-zinc-600 py-1.5 rounded-lg text-sm px-4 font-medium hover:bg-zinc-50 transition-colors">← Atrás</button>

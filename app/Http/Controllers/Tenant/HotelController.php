@@ -19,6 +19,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -179,6 +180,44 @@ class HotelController extends Controller
         $stay->update(['creditos_consumidos' => $deseados]);
     }
 
+    /**
+     * Costo total estimado de la estancia (noches a cobrar × precio), o null si no hay
+     * tarifa/precio conocido y por lo tanto no se puede topar el monto de un pago.
+     */
+    private function estimatedStayTotal(HotelStay $stay, ?int $rateIdOverride = null): ?float
+    {
+        $rate = $rateIdOverride ? HotelRate::find($rateIdOverride) : $stay->rate;
+        $precio = $rate?->precio ?? $stay->precio_por_noche;
+
+        if ($precio === null) {
+            return null;
+        }
+
+        $noches = $stay->fecha_salida
+            ? max(1, $stay->fecha_entrada->diffInDays($stay->fecha_salida))
+            : 1;
+        $creditosAUsar = $stay->cobro_membresia ? ($stay->creditos_consumidos ?? 0) : 0;
+        $nochesACobrar = max(0, $noches - $creditosAUsar);
+
+        return $nochesACobrar * (float) $precio;
+    }
+
+    /**
+     * Saldo pendiente estimado = costo estimado − pagos ya registrados. Null si no hay
+     * costo estimado conocido (sin tope posible).
+     */
+    private function saldoPendienteEstimado(HotelStay $stay, ?int $rateIdOverride = null): ?float
+    {
+        $total = $this->estimatedStayTotal($stay, $rateIdOverride);
+        if ($total === null) {
+            return null;
+        }
+
+        $pagado = (float) $stay->payments()->sum('monto');
+
+        return max(0, round($total - $pagado, 2));
+    }
+
     private function hasOverlappingStay(int $petId, string $tipo, string $fechaEntrada, ?string $fechaSalida, ?int $excludeStayId = null): bool
     {
         $finNuevo = $fechaSalida ?? $fechaEntrada;
@@ -262,6 +301,13 @@ class HotelController extends Controller
             $ticket = null;
 
             if (!empty($data['adelanto_monto'])) {
+                $saldoPendiente = $this->saldoPendienteEstimado($stay, $data['adelanto_rate_id'] ?? null);
+                if ($saldoPendiente !== null && $data['adelanto_monto'] > $saldoPendiente + 0.01) {
+                    throw ValidationException::withMessages([
+                        'adelanto_monto' => 'El adelanto no puede exceder el costo estimado de la reserva (' . number_format($saldoPendiente, 2) . ').',
+                    ]);
+                }
+
                 $paymentData = [
                     'checkout_rate_id' => $data['adelanto_rate_id'] ?? null,
                     'monto' => $data['adelanto_monto'],
@@ -365,6 +411,13 @@ class HotelController extends Controller
             'notas' => 'nullable|string|max:255',
         ]);
 
+        if (!empty($data['monto'])) {
+            $saldoPendiente = $this->saldoPendienteEstimado($stay, $data['checkout_rate_id'] ?? null);
+            if ($saldoPendiente !== null && $data['monto'] > $saldoPendiente + 0.01) {
+                return back()->withErrors(['monto' => 'El adelanto no puede exceder el saldo pendiente estimado (' . number_format($saldoPendiente, 2) . ').'])->withInput();
+            }
+        }
+
         $ticket = null;
 
         DB::transaction(function () use ($stay, $data, &$ticket) {
@@ -398,6 +451,11 @@ class HotelController extends Controller
             'monto' => 'required|numeric|min:0.01',
             'notas' => 'nullable|string|max:255',
         ]);
+
+        $saldoPendiente = $this->saldoPendienteEstimado($stay, $data['checkout_rate_id'] ?? null);
+        if ($saldoPendiente !== null && $data['monto'] > $saldoPendiente + 0.01) {
+            return back()->withErrors(['monto' => 'El abono no puede exceder el saldo pendiente estimado (' . number_format($saldoPendiente, 2) . ').'])->withInput();
+        }
 
         $ticket = DB::transaction(function () use ($stay, $data) {
             $ticket = $this->createPaymentTicket($stay, $data, 'abono');

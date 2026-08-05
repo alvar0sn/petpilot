@@ -9,6 +9,19 @@ function fmt(n) {
     return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 }
 
+function CollapseToggle({ title, open, onToggle }) {
+    return (
+        <button type="button" onClick={onToggle}
+            className="w-full flex items-center justify-between mb-1 lg:pointer-events-none lg:mb-2">
+            <h3 className="font-semibold text-zinc-700">{title}</h3>
+            <svg className={`w-4 h-4 text-zinc-400 transition-transform lg:hidden ${open ? 'rotate-180' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+        </button>
+    );
+}
+
 function isOverdueCheckout(stay, timeZone) {
     if (stay.estado !== 'activo' || !stay.fecha_salida) return false;
     return dateKeyInTimezone(stay.fecha_salida, timeZone) < dateKeyInTimezone(new Date(), timeZone);
@@ -124,10 +137,13 @@ function CheckinModal({ stay, checkoutRates, onClose }) {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-zinc-600 mb-1">Monto del adelanto (ajustable)</label>
-                                    <input type="number" step="0.01" min="0"
+                                    <input type="number" step="0.01" min="0" max={montoSugerido}
                                         className="w-full border-gray-300 rounded-lg text-sm font-mono bg-white"
                                         value={form.data.monto}
-                                        onChange={e => form.setData('monto', e.target.value)} />
+                                        onChange={e => {
+                                            const n = Number(e.target.value);
+                                            form.setData('monto', !isNaN(n) && n > Number(montoSugerido) ? montoSugerido : e.target.value);
+                                        }} />
                                     {form.errors.monto && <p className="text-red-500 text-xs mt-1">{form.errors.monto}</p>}
                                 </div>
                                 <div>
@@ -159,11 +175,21 @@ function CheckinModal({ stay, checkoutRates, onClose }) {
 }
 
 function PaymentModal({ stay, checkoutRates, saldoPendiente, onClose }) {
+    const hayTope = saldoPendiente !== null;
     const form = useForm({
         checkout_rate_id: stay.rate_id ? String(stay.rate_id) : (checkoutRates[0]?.id ? String(checkoutRates[0].id) : ''),
-        monto: saldoPendiente > 0 ? String(saldoPendiente.toFixed(2)) : '',
+        monto: hayTope && saldoPendiente > 0 ? String(saldoPendiente.toFixed(2)) : '',
         notas: '',
     });
+
+    function setMonto(value) {
+        const n = Number(value);
+        if (hayTope && !isNaN(n) && n > saldoPendiente) {
+            form.setData('monto', String(saldoPendiente.toFixed(2)));
+        } else {
+            form.setData('monto', value);
+        }
+    }
 
     function submit() {
         form.post(route('hotel.payments.store', stay.id), { onSuccess: onClose });
@@ -174,9 +200,9 @@ function PaymentModal({ stay, checkoutRates, saldoPendiente, onClose }) {
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
                 <h3 className="font-semibold text-zinc-800">Registrar abono — {stay.pet?.nombre}</h3>
 
-                {saldoPendiente > 0 && (
-                    <p className="text-sm text-zinc-500">Saldo pendiente estimado: <span className="font-semibold text-zinc-800">{fmt(saldoPendiente)}</span></p>
-                )}
+                <p className="text-sm text-zinc-500">
+                    Pago pendiente: <span className="font-semibold text-zinc-800">{hayTope ? fmt(saldoPendiente) : 'sin estimar (define tarifa/fechas)'}</span>
+                </p>
 
                 <div>
                     <label className="block text-xs font-medium text-zinc-600 mb-1">Tarifa de referencia</label>
@@ -195,10 +221,10 @@ function PaymentModal({ stay, checkoutRates, saldoPendiente, onClose }) {
 
                 <div>
                     <label className="block text-xs font-medium text-zinc-600 mb-1">Monto del abono *</label>
-                    <input type="number" step="0.01" min="0.01"
+                    <input type="number" step="0.01" min="0.01" max={hayTope ? saldoPendiente : undefined}
                         className="w-full border-gray-300 rounded-lg text-sm font-mono"
                         value={form.data.monto}
-                        onChange={e => form.setData('monto', e.target.value)} />
+                        onChange={e => setMonto(e.target.value)} />
                     {form.errors.monto && <p className="text-red-500 text-xs mt-1">{form.errors.monto}</p>}
                 </div>
 
@@ -408,6 +434,7 @@ function CancelModal({ stay, onClose }) {
 }
 
 function CareForm({ stay, spaces }) {
+    const [open, setOpen] = useState(true);
     const form = useForm({
         space_id: stay.space_id ?? '',
         fecha_entrada: stay.fecha_entrada?.slice(0, 10) ?? '',
@@ -427,72 +454,74 @@ function CareForm({ stay, spaces }) {
 
     return (
         <form onSubmit={submit} className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5 space-y-4">
-            <h3 className="font-semibold text-zinc-700">Ficha de estancia</h3>
+            <CollapseToggle title="Ficha de estancia" open={open} onToggle={() => setOpen(v => !v)} />
 
-            <div>
-                <label className="block text-xs font-medium text-zinc-600 mb-1">Espacio</label>
-                <select className="w-full border-gray-300 rounded-lg text-sm" value={form.data.space_id} onChange={e => form.setData('space_id', e.target.value)}>
-                    <option value="">Sin asignar</option>
-                    {spaces.map(s => (
-                        <option key={s.id} value={s.id}>{s.nombre}{s.capacidad ? ` (capacidad ${s.capacidad})` : ''}</option>
-                    ))}
-                </select>
-                {form.errors.space_id && <p className="text-red-500 text-xs mt-1">{form.errors.space_id}</p>}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
+            <div className={`${open ? 'block' : 'hidden'} lg:block space-y-4`}>
                 <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Fecha de entrada *</label>
-                    <input type="date" className="w-full border-gray-300 rounded-lg text-sm" value={form.data.fecha_entrada} onChange={e => form.setData('fecha_entrada', e.target.value)} />
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Espacio</label>
+                    <select className="w-full border-gray-300 rounded-lg text-sm" value={form.data.space_id} onChange={e => form.setData('space_id', e.target.value)}>
+                        <option value="">Sin asignar</option>
+                        {spaces.map(s => (
+                            <option key={s.id} value={s.id}>{s.nombre}{s.capacidad ? ` (capacidad ${s.capacidad})` : ''}</option>
+                        ))}
+                    </select>
+                    {form.errors.space_id && <p className="text-red-500 text-xs mt-1">{form.errors.space_id}</p>}
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Fecha de entrada *</label>
+                        <input type="date" className="w-full border-gray-300 rounded-lg text-sm" value={form.data.fecha_entrada} onChange={e => form.setData('fecha_entrada', e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Fecha de salida</label>
+                        <input type="date" className="w-full border-gray-300 rounded-lg text-sm" value={form.data.fecha_salida} onChange={e => form.setData('fecha_salida', e.target.value)} />
+                    </div>
+                </div>
+                {form.errors.fecha_entrada && <p className="text-red-500 text-xs">{form.errors.fecha_entrada}</p>}
+
                 <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Fecha de salida</label>
-                    <input type="date" className="w-full border-gray-300 rounded-lg text-sm" value={form.data.fecha_salida} onChange={e => form.setData('fecha_salida', e.target.value)} />
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Alimentación</label>
+                    <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2} value={form.data.alimentacion} onChange={e => form.setData('alimentacion', e.target.value)} placeholder="Horarios, cantidades, marca de alimento..." />
                 </div>
-            </div>
-            {form.errors.fecha_entrada && <p className="text-red-500 text-xs">{form.errors.fecha_entrada}</p>}
 
-            <div>
-                <label className="block text-xs font-medium text-zinc-600 mb-1">Alimentación</label>
-                <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2} value={form.data.alimentacion} onChange={e => form.setData('alimentacion', e.target.value)} placeholder="Horarios, cantidades, marca de alimento..." />
-            </div>
-
-            <div>
-                <label className="block text-xs font-medium text-zinc-600 mb-1">Medicación</label>
-                <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2} value={form.data.medicacion} onChange={e => form.setData('medicacion', e.target.value)} placeholder="Medicamentos, dosis, horarios..." />
-            </div>
-
-            <div>
-                <label className="block text-xs font-medium text-zinc-600 mb-1">Estado físico</label>
-                <div className="flex gap-3">
-                    <label className="flex items-center gap-1.5 text-sm">
-                        <input type="radio" name="estado_fisico" checked={form.data.estado_fisico === 'ok'} onChange={() => form.setData('estado_fisico', 'ok')} className="text-zinc-900" />
-                        Sin novedad
-                    </label>
-                    <label className="flex items-center gap-1.5 text-sm">
-                        <input type="radio" name="estado_fisico" checked={form.data.estado_fisico === 'lesion'} onChange={() => form.setData('estado_fisico', 'lesion')} className="text-zinc-900" />
-                        Lesión / novedad
-                    </label>
+                <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Medicación</label>
+                    <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2} value={form.data.medicacion} onChange={e => form.setData('medicacion', e.target.value)} placeholder="Medicamentos, dosis, horarios..." />
                 </div>
-                {form.data.estado_fisico === 'lesion' && (
-                    <textarea className="w-full border-gray-300 rounded-lg text-sm mt-2" rows={2} value={form.data.nota_lesion} onChange={e => form.setData('nota_lesion', e.target.value)} placeholder="Describe la lesión o novedad..." />
-                )}
-            </div>
 
-            <div>
-                <label className="block text-xs font-medium text-zinc-600 mb-1">Objetos recibidos</label>
-                <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2} value={form.data.objetos_recibidos} onChange={e => form.setData('objetos_recibidos', e.target.value)} placeholder="Correa, juguetes, cobija, alimento..." />
-            </div>
+                <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Estado físico</label>
+                    <div className="flex gap-3">
+                        <label className="flex items-center gap-1.5 text-sm">
+                            <input type="radio" name="estado_fisico" checked={form.data.estado_fisico === 'ok'} onChange={() => form.setData('estado_fisico', 'ok')} className="text-zinc-900" />
+                            Sin novedad
+                        </label>
+                        <label className="flex items-center gap-1.5 text-sm">
+                            <input type="radio" name="estado_fisico" checked={form.data.estado_fisico === 'lesion'} onChange={() => form.setData('estado_fisico', 'lesion')} className="text-zinc-900" />
+                            Lesión / novedad
+                        </label>
+                    </div>
+                    {form.data.estado_fisico === 'lesion' && (
+                        <textarea className="w-full border-gray-300 rounded-lg text-sm mt-2" rows={2} value={form.data.nota_lesion} onChange={e => form.setData('nota_lesion', e.target.value)} placeholder="Describe la lesión o novedad..." />
+                    )}
+                </div>
 
-            <div>
-                <label className="block text-xs font-medium text-zinc-600 mb-1">Notas generales</label>
-                <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2} value={form.data.notas} onChange={e => form.setData('notas', e.target.value)} />
-            </div>
+                <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Objetos recibidos</label>
+                    <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2} value={form.data.objetos_recibidos} onChange={e => form.setData('objetos_recibidos', e.target.value)} placeholder="Correa, juguetes, cobija, alimento..." />
+                </div>
 
-            <button type="submit" disabled={form.processing}
-                className="w-full bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors disabled:opacity-50">
-                {form.processing ? 'Guardando...' : 'Guardar ficha'}
-            </button>
+                <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Notas generales</label>
+                    <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2} value={form.data.notas} onChange={e => form.setData('notas', e.target.value)} />
+                </div>
+
+                <button type="submit" disabled={form.processing}
+                    className="w-full bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors disabled:opacity-50">
+                    {form.processing ? 'Guardando...' : 'Guardar ficha'}
+                </button>
+            </div>
         </form>
     );
 }
@@ -595,14 +624,16 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
     const [showCheckout, setShowCheckout] = useState(false);
     const [showPayment, setShowPayment] = useState(false);
     const [showCancel, setShowCancel] = useState(false);
+    const [cobroOpen, setCobroOpen] = useState(true);
 
-    // Cálculo financiero estimado
+    // Cálculo financiero estimado — sin fecha de salida se asume 1 noche/día
+    // (mismo criterio que usa el backend para topar pagos), no "sin estimar".
     const nochesEstimadas = stay.fecha_salida
         ? Math.max(1, Math.round((new Date(stay.fecha_salida.slice(0, 10)) - new Date(stay.fecha_entrada.slice(0, 10))) / 86400000))
-        : null;
+        : 1;
     const creditosReservados = stay.creditos_consumidos ?? 0;
-    const nochesACobrar = nochesEstimadas !== null ? Math.max(0, nochesEstimadas - creditosReservados) : null;
-    const montoEstimado = nochesACobrar !== null && stay.precio_por_noche ? nochesACobrar * Number(stay.precio_por_noche) : null;
+    const nochesACobrar = Math.max(0, nochesEstimadas - creditosReservados);
+    const montoEstimado = stay.precio_por_noche ? nochesACobrar * Number(stay.precio_por_noche) : null;
     const ticketPagado = stay.ticket?.estado === 'pagado';
     const totalPagado = (stay.payments ?? []).reduce((sum, p) => sum + Number(p.monto), 0)
         + (ticketPagado ? Number(stay.ticket.total) : 0);
@@ -679,93 +710,95 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <div className="lg:col-span-2 space-y-5">
+                <div className="order-2 lg:order-1 lg:col-span-2 space-y-5">
                     <CareForm stay={stay} spaces={spaces} />
                     <PhotoGallery stay={stay} />
                 </div>
 
-                <div className="space-y-4">
+                <div className="order-1 lg:order-2 space-y-4">
                     {/* Resumen financiero */}
                     <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5 text-sm space-y-2">
-                        <h3 className="font-semibold text-zinc-700 mb-1">Cobro</h3>
+                        <CollapseToggle title="Cobro" open={cobroOpen} onToggle={() => setCobroOpen(v => !v)} />
 
-                        <div className="flex justify-between">
-                            <span className="text-zinc-500">Tarifa base</span>
-                            <span className="text-zinc-700">{stay.rate?.nombre ?? '—'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-zinc-500">Precio / noche</span>
-                            <span className="font-mono text-zinc-700">{stay.precio_por_noche ? fmt(stay.precio_por_noche) : '—'}</span>
-                        </div>
-                        {stay.cobro_membresia && stay.membership && (
+                        <div className={`${cobroOpen ? 'block' : 'hidden'} lg:block space-y-2`}>
                             <div className="flex justify-between">
-                                <span className="text-zinc-500">Membresía</span>
-                                <span className="text-zinc-700">{stay.membership.plan?.nombre}</span>
+                                <span className="text-zinc-500">Tarifa base</span>
+                                <span className="text-zinc-700">{stay.rate?.nombre ?? '—'}</span>
                             </div>
-                        )}
-                        {creditosReservados > 0 && (
-                            <div className="flex justify-between text-green-700">
-                                <span>Cubiertas por membresía</span>
-                                <span className="font-semibold">{creditosReservados} noche{creditosReservados !== 1 ? 's' : ''}</span>
+                            <div className="flex justify-between">
+                                <span className="text-zinc-500">Precio / noche</span>
+                                <span className="font-mono text-zinc-700">{stay.precio_por_noche ? fmt(stay.precio_por_noche) : '—'}</span>
                             </div>
-                        )}
-
-                        {montoEstimado !== null && (
-                            <div className="border-t pt-2 mt-1 space-y-1.5">
-                                <div className="flex justify-between text-zinc-600">
-                                    <span>Total estimado</span>
-                                    <span className="font-mono">{fmt(montoEstimado)}</span>
+                            {stay.cobro_membresia && stay.membership && (
+                                <div className="flex justify-between">
+                                    <span className="text-zinc-500">Membresía</span>
+                                    <span className="text-zinc-700">{stay.membership.plan?.nombre}</span>
                                 </div>
-                                {totalPagado > 0 && (
-                                    <div className="flex justify-between text-green-700">
-                                        <span>Total pagado</span>
-                                        <span className="font-mono font-semibold">{fmt(totalPagado)}</span>
-                                    </div>
-                                )}
-                                <div className={`flex justify-between font-semibold ${saldoPendiente > 0 ? 'text-amber-700' : 'text-green-700'}`}>
-                                    <span>{saldoPendiente > 0 ? 'Saldo pendiente' : 'Pagado completo'}</span>
-                                    <span className="font-mono">{fmt(saldoPendiente)}</span>
+                            )}
+                            {creditosReservados > 0 && (
+                                <div className="flex justify-between text-green-700">
+                                    <span>Cubiertas por membresía</span>
+                                    <span className="font-semibold">{creditosReservados} noche{creditosReservados !== 1 ? 's' : ''}</span>
                                 </div>
-                                {saldoPendiente > 0 && stay.ticket && !ticketPagado && (
-                                    <p className="text-xs text-amber-600">→ por cobrar en el ticket #{stay.ticket.folio} (POS)</p>
-                                )}
-                            </div>
-                        )}
+                            )}
 
-                        {/* Historial de pagos */}
-                        {(stay.payments ?? []).length > 0 && (
-                            <div className="border-t pt-2 mt-1 space-y-1.5">
-                                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Pagos registrados</p>
-                                {stay.payments.map(p => (
-                                    <div key={p.id} className="flex items-center justify-between gap-2">
-                                        <div>
-                                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${p.tipo === 'adelanto' ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-200' : 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'}`}>
-                                                {p.tipo}
-                                            </span>
-                                            {p.notas && <span className="text-xs text-zinc-400 ml-1">{p.notas}</span>}
-                                        </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            <span className="font-mono text-zinc-700">{fmt(p.monto)}</span>
-                                            {p.ticket && (
-                                                <span className="text-xs text-zinc-400">#{p.ticket.folio}</span>
-                                            )}
-                                        </div>
+                            {montoEstimado !== null && (
+                                <div className="border-t pt-2 mt-1 space-y-1.5">
+                                    <div className="flex justify-between text-zinc-600">
+                                        <span>Total estimado</span>
+                                        <span className="font-mono">{fmt(montoEstimado)}</span>
                                     </div>
-                                ))}
-                            </div>
-                        )}
+                                    {totalPagado > 0 && (
+                                        <div className="flex justify-between text-green-700">
+                                            <span>Total pagado</span>
+                                            <span className="font-mono font-semibold">{fmt(totalPagado)}</span>
+                                        </div>
+                                    )}
+                                    <div className={`flex justify-between font-semibold ${saldoPendiente > 0 ? 'text-amber-700' : 'text-green-700'}`}>
+                                        <span>{saldoPendiente > 0 ? 'Saldo pendiente' : 'Pagado completo'}</span>
+                                        <span className="font-mono">{fmt(saldoPendiente)}</span>
+                                    </div>
+                                    {saldoPendiente > 0 && stay.ticket && !ticketPagado && (
+                                        <p className="text-xs text-amber-600">→ por cobrar en el ticket #{stay.ticket.folio} (POS)</p>
+                                    )}
+                                </div>
+                            )}
 
-                        {stay.ticket && (
-                            <div className="border-t pt-2 flex justify-between items-center">
-                                <span className="text-zinc-500">Ticket final POS</span>
-                                <span className="flex items-center gap-1.5">
-                                    <span className="font-mono text-zinc-700">#{stay.ticket.folio} · {fmt(stay.ticket.total)}</span>
-                                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${ticketPagado ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'}`}>
-                                        {ticketPagado ? 'pagado' : stay.ticket.estado}
+                            {/* Historial de pagos */}
+                            {(stay.payments ?? []).length > 0 && (
+                                <div className="border-t pt-2 mt-1 space-y-1.5">
+                                    <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Pagos registrados</p>
+                                    {stay.payments.map(p => (
+                                        <div key={p.id} className="flex items-center justify-between gap-2">
+                                            <div>
+                                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${p.tipo === 'adelanto' ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-200' : 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'}`}>
+                                                    {p.tipo}
+                                                </span>
+                                                {p.notas && <span className="text-xs text-zinc-400 ml-1">{p.notas}</span>}
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <span className="font-mono text-zinc-700">{fmt(p.monto)}</span>
+                                                {p.ticket && (
+                                                    <span className="text-xs text-zinc-400">#{p.ticket.folio}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {stay.ticket && (
+                                <div className="border-t pt-2 flex justify-between items-center">
+                                    <span className="text-zinc-500">Ticket final POS</span>
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="font-mono text-zinc-700">#{stay.ticket.folio} · {fmt(stay.ticket.total)}</span>
+                                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${ticketPagado ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'}`}>
+                                            {ticketPagado ? 'pagado' : stay.ticket.estado}
+                                        </span>
                                     </span>
-                                </span>
-                            </div>
-                        )}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {stay.createdBy && (
@@ -776,7 +809,7 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
 
             {showCheckin && <CheckinModal stay={stay} checkoutRates={checkoutRates ?? []} onClose={() => setShowCheckin(false)} />}
             {showCheckout && <CheckoutModal stay={stay} checkoutRates={checkoutRates ?? []} totalPagado={totalPagado} saldoPendiente={saldoPendiente} onClose={() => setShowCheckout(false)} />}
-            {showPayment && <PaymentModal stay={stay} checkoutRates={checkoutRates ?? []} saldoPendiente={saldoPendiente ?? 0} onClose={() => setShowPayment(false)} />}
+            {showPayment && <PaymentModal stay={stay} checkoutRates={checkoutRates ?? []} saldoPendiente={saldoPendiente} onClose={() => setShowPayment(false)} />}
             {showCancel && <CancelModal stay={stay} onClose={() => setShowCancel(false)} />}
         </TenantLayout>
     );
