@@ -72,7 +72,7 @@ export default function PublicTicket({ ticket, config }) {
                                     <span style={{ fontFamily: 'monospace' }}>{fmt(ticket.subtotal)}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#16a34a', marginBottom: '0.25rem' }}>
-                                    <span>Descuento</span>
+                                    <span>Descuento{ticket.discount_name ? ` (${ticket.discount_name})` : ''}</span>
                                     <span style={{ fontFamily: 'monospace' }}>-{fmt(ticket.discount_amount)}</span>
                                 </div>
                             </>
@@ -82,6 +82,21 @@ export default function PublicTicket({ ticket, config }) {
                             <span style={{ fontFamily: 'monospace', color: primary }}>{fmt(ticket.total)}</span>
                         </div>
                     </div>
+
+                    {/* Método de pago */}
+                    {ticket.payments && ticket.payments.length > 0 && (
+                        <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: `1px solid ${primary}22` }}>
+                            <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.3rem' }}>
+                                {ticket.payments.length > 1 ? 'Métodos de pago' : 'Método de pago'}
+                            </div>
+                            {ticket.payments.map((p, i) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span>{p.metodo ?? 'N/D'}</span>
+                                    {ticket.payments.length > 1 && <span style={{ fontFamily: 'monospace' }}>{fmt(p.monto)}</span>}
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Estado */}
                     <div style={{ textAlign: 'center', marginTop: '1rem' }}>

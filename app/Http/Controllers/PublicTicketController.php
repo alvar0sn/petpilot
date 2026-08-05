@@ -14,7 +14,7 @@ class PublicTicketController extends Controller
     {
         $ticket = PosTicket::withoutGlobalScopes()
             ->where('token', $token)
-            ->with(['lines', 'owner:id,nombre,apellidos'])
+            ->with(['lines', 'owner:id,nombre,apellidos', 'payments.paymentMethod:id,nombre', 'discount:id,nombre'])
             ->firstOrFail();
 
         $config = PosTicketConfig::withoutGlobalScopes()
@@ -36,8 +36,13 @@ class PublicTicketController extends Controller
                 ]),
                 'subtotal'        => $ticket->subtotal,
                 'discount_amount' => $ticket->discount_amount,
+                'discount_name'   => $ticket->discount?->nombre,
                 'total'           => $ticket->total,
                 'cobrado_at'      => $ticket->cobrado_at?->toDateTimeString(),
+                'payments'        => $ticket->payments->map(fn($p) => [
+                    'metodo' => $p->paymentMethod?->nombre,
+                    'monto'  => $p->monto,
+                ]),
             ],
             'config' => [
                 'logo_url'       => $config?->logo_path
