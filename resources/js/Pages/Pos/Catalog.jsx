@@ -6,6 +6,43 @@ function fmt(n) {
     return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 }
 
+function CatalogImportInfo() {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <>
+            <button onClick={() => setOpen(true)} title="Cómo funciona el importador"
+                className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-zinc-200 text-zinc-500 text-xs font-semibold hover:bg-zinc-50 hover:text-zinc-700 transition-colors">
+                i
+            </button>
+
+            {open && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="bg-white border border-zinc-200 rounded-xl shadow-lg p-6 w-full max-w-md space-y-3 text-sm text-zinc-600">
+                        <h3 className="font-semibold text-zinc-800">Cómo funciona el importador de catálogo</h3>
+                        <p>El CSV debe tener estas columnas, con encabezado en la primera fila:</p>
+                        <p className="flex flex-wrap gap-1">
+                            {['categoria *', 'nombre *', 'tipo *', 'precio *', 'costo', 'sku', 'stock'].map(c => (
+                                <span key={c} className="font-mono text-xs bg-zinc-100 px-1.5 py-0.5 rounded">{c}</span>
+                            ))}
+                        </p>
+                        <ul className="list-disc pl-5 space-y-1.5">
+                            <li><span className="font-medium text-zinc-700">categoria</span>: si no existe todavía, <span className="font-medium">se crea automáticamente</span> con ese nombre — no hace falta darla de alta antes.</li>
+                            <li><span className="font-medium text-zinc-700">tipo</span>: debe ser exactamente <code className="bg-zinc-100 px-1 rounded">producto</code> o <code className="bg-zinc-100 px-1 rounded">servicio</code>.</li>
+                            <li><span className="font-medium text-zinc-700">precio</span>: numérico y mayor o igual a 0 (usa punto decimal, ej. <code className="bg-zinc-100 px-1 rounded">120.50</code>).</li>
+                            <li><span className="font-medium text-zinc-700">costo</span> y <span className="font-medium text-zinc-700">stock</span> son opcionales — si no son numéricos se guardan como 0.</li>
+                            <li>Filas con <span className="font-medium text-zinc-700">categoria</span>, <span className="font-medium text-zinc-700">nombre</span>, <span className="font-medium text-zinc-700">tipo</span> o <span className="font-medium text-zinc-700">precio</span> vacíos se omiten y se listan como error, sin detener el resto de la importación.</li>
+                        </ul>
+                        <button onClick={() => setOpen(false)} className="w-full bg-zinc-900 text-white py-2 rounded-lg text-sm hover:bg-zinc-700 transition-colors">
+                            Entendido
+                        </button>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
+
 function CatalogImport() {
     const [open, setOpen] = useState(false);
     const [file, setFile] = useState(null);
@@ -41,6 +78,7 @@ function CatalogImport() {
                     className="inline-flex items-center gap-1.5 border border-zinc-200 text-zinc-600 text-sm px-3 py-1.5 rounded-lg hover:bg-zinc-50 transition-colors">
                     ↑ Importar CSV
                 </button>
+                <CatalogImportInfo />
             </div>
 
             {open && (
