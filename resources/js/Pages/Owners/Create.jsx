@@ -8,6 +8,7 @@ export default function OwnersCreate() {
         telefono: '',
         email: '',
         direccion: '',
+        ubicacion_url: '',
         notas: '',
     });
 
@@ -76,6 +77,18 @@ export default function OwnersCreate() {
                             value={data.direccion}
                             onChange={e => setData('direccion', e.target.value)}
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-zinc-700 mb-1">URL de ubicación (Google Maps)</label>
+                        <input
+                            type="url"
+                            className="w-full border-gray-300 rounded-lg text-sm"
+                            placeholder="https://maps.app.goo.gl/..."
+                            value={data.ubicacion_url}
+                            onChange={e => setData('ubicacion_url', e.target.value)}
+                        />
+                        {errors.ubicacion_url && <p className="text-red-500 text-xs mt-1">{errors.ubicacion_url}</p>}
                     </div>
 
                     <div>

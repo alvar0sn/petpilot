@@ -79,6 +79,7 @@ class OwnerController extends Controller
             'telefono' => 'required|string|max:30|unique:owners,telefono',
             'email' => 'nullable|email|max:255',
             'direccion' => 'nullable|string|max:500',
+            'ubicacion_url' => 'nullable|url|max:2048',
             'notas' => 'nullable|string',
         ]);
 
@@ -127,6 +128,7 @@ class OwnerController extends Controller
             'email' => 'nullable|email|max:255',
             'portal_password' => 'nullable|string|min:6',
             'direccion' => 'nullable|string|max:500',
+            'ubicacion_url' => 'nullable|url|max:2048',
             'notas' => 'nullable|string',
         ]);
 

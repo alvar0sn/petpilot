@@ -70,10 +70,18 @@ export default function OwnerShow({ owner }) {
                                 <span className="break-all">{owner.email}</span>
                             </div>
                         )}
-                        {owner.direccion && (
+                        {(owner.direccion || owner.ubicacion_url) && (
                             <div className="flex gap-2">
                                 <span className="text-zinc-400 w-24 shrink-0">Dirección</span>
-                                <span>{owner.direccion}</span>
+                                <span className="flex items-center gap-2">
+                                    {owner.direccion && <span>{owner.direccion}</span>}
+                                    {owner.ubicacion_url && (
+                                        <a href={owner.ubicacion_url} target="_blank" rel="noopener noreferrer"
+                                            className="text-xs text-zinc-500 hover:text-zinc-800 underline underline-offset-2 shrink-0">
+                                            Ver en mapa →
+                                        </a>
+                                    )}
+                                </span>
                             </div>
                         )}
                         <div className="flex gap-2 items-center">

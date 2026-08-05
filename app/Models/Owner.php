@@ -24,6 +24,7 @@ class Owner extends Authenticatable implements CanResetPasswordContract
         'email',
         'password',
         'direccion',
+        'ubicacion_url',
         'notas',
     ];
 
