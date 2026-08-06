@@ -1,0 +1,216 @@
+<?php
+
+namespace App\Http\Controllers\Tenant;
+
+use App\Http\Controllers\Controller;
+use App\Models\PosCashMovement;
+use App\Models\PosPayment;
+use App\Models\PosPaymentMethod;
+use App\Models\PosShift;
+use App\Models\PosTicket;
+use App\Models\PosTicketLine;
+use App\Models\PosTicketRefund;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+class FinancialReportController extends Controller
+{
+    public function index(Request $request): Response
+    {
+        $period = $request->get('period', 'week');
+        [$from, $to] = $this->resolveRange($period, $request);
+
+        $ticketsQuery = fn() => PosTicket::where('estado', 'pagado')->whereBetween('cobrado_at', [$from, $to]);
+
+        $ventasBrutas = (float) $ticketsQuery()->sum('subtotal');
+        $descuentos = (float) $ticketsQuery()->sum('discount_amount');
+        $ventas = (float) $ticketsQuery()->sum('total'); // ya neto de descuento, bruto de reembolsos
+
+        $reembolsos = PosTicketRefund::whereBetween('created_at', [$from, $to])
+            ->with(['ticket:id,folio,owner_id', 'ticket.owner:id,nombre,apellidos', 'paymentMethod:id,nombre'])
+            ->get();
+        $reembolsosTotal = (float) $reembolsos->sum('monto');
+
+        $movimientos = PosCashMovement::whereBetween('created_at', [$from, $to])->with('user:id,nombre,apellido')->get();
+        $otrosIngresos = (float) $movimientos->where('tipo', 'deposito')->sum('monto');
+        $egresosCaja = (float) $movimientos->where('tipo', 'salida')->sum('monto');
+        $egresos = $egresosCaja + $reembolsosTotal;
+
+        $balance = $ventas + $otrosIngresos - $egresos;
+
+        $lines = PosTicketLine::whereHas('ticket', fn($q) => $q->where('estado', 'pagado')->whereBetween('cobrado_at', [$from, $to]))
+            ->with('item.categoria')
+            ->get();
+
+        $porCategoria = $this->groupByCategory($lines, $ventasBrutas);
+
+        $porMetodo = PosPayment::whereHas('ticket', fn($q) => $q->where('estado', 'pagado')->whereBetween('cobrado_at', [$from, $to]))
+            ->join('pos_payment_methods', 'pos_payment_methods.id', '=', 'pos_payments.payment_method_id')
+            ->selectRaw('pos_payment_methods.nombre as nombre, count(*) as cantidad, sum(pos_payments.monto) as total')
+            ->groupBy('pos_payment_methods.nombre')
+            ->orderByDesc('total')
+            ->get();
+
+        $ingresosDetalle = $porMetodo->map(fn($m) => [
+            'label' => "Ventas por ticket ({$m->nombre})",
+            'nota' => "{$m->cantidad} ticket" . ($m->cantidad != 1 ? 's' : '') . " · {$m->nombre}",
+            'monto' => (float) $m->total,
+        ])->concat(
+            $movimientos->where('tipo', 'deposito')->map(fn($m) => [
+                'label' => $m->comentario ?: 'Depósito',
+                'nota' => $m->created_at->translatedFormat('d M') . ($m->user ? ' · ' . trim($m->user->nombre . ' ' . $m->user->apellido) : ''),
+                'monto' => (float) $m->monto,
+            ])
+        )->values();
+
+        $egresosDetalle = $movimientos->where('tipo', 'salida')->map(fn($m) => [
+            'label' => $m->comentario ?: 'Salida',
+            'nota' => $m->created_at->translatedFormat('d M') . ($m->user ? ' · ' . trim($m->user->nombre . ' ' . $m->user->apellido) : ''),
+            'monto' => (float) $m->monto,
+        ])->concat(
+            $reembolsos->map(fn($r) => [
+                'label' => 'Reembolso — ticket #' . $r->ticket?->folio,
+                'nota' => $r->created_at->translatedFormat('d M') . ' · ' . ($r->paymentMethod?->nombre ?? '') . ($r->motivo ? " · {$r->motivo}" : ''),
+                'monto' => (float) $r->monto,
+            ])
+        )->values();
+
+        $turnosCount = PosShift::whereBetween('fecha_apertura', [$from, $to])->count();
+
+        return Inertia::render('Reports/Financial', [
+            'period' => $period,
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'kpis' => [
+                'ventas' => $ventas,
+                'otros_ingresos' => $otrosIngresos,
+                'egresos' => $egresos,
+                'balance' => $balance,
+            ],
+            'porCategoria' => $porCategoria,
+            'porMetodo' => $porMetodo->map(fn($m) => ['nombre' => $m->nombre, 'cantidad' => $m->cantidad, 'total' => (float) $m->total]),
+            'caja' => [
+                'ingresos_total' => (float) $ingresosDetalle->sum('monto'),
+                'egresos_total' => (float) $egresosDetalle->sum('monto'),
+                'ingresos' => $ingresosDetalle,
+                'egresos' => $egresosDetalle,
+            ],
+            'turnosCount' => $turnosCount,
+        ]);
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $period = $request->get('period', 'week');
+        [$from, $to] = $this->resolveRange($period, $request);
+
+        $tickets = PosTicket::where('estado', 'pagado')
+            ->whereBetween('cobrado_at', [$from, $to])
+            ->with('lines.item.categoria')
+            ->get();
+
+        $movimientos = PosCashMovement::whereBetween('created_at', [$from, $to])->get();
+        $reembolsos = PosTicketRefund::whereBetween('created_at', [$from, $to])->get();
+
+        // Columnas dinámicas: unión de todas las categorías con ventas en el período
+        $categorias = $tickets->flatMap(fn($t) => $t->lines)
+            ->pluck('item.categoria.nombre')
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+        if (empty($categorias)) {
+            $categorias = ['Sin categoría'];
+        }
+
+        $filename = "reporte-financiero-{$from->toDateString()}_a_{$to->toDateString()}.csv";
+
+        return response()->streamDownload(function () use ($from, $to, $tickets, $movimientos, $reembolsos, $categorias) {
+            $out = fopen('php://output', 'w');
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($out, array_merge(['Día'], $categorias, ['Ingresos', 'Egresos', 'Balance']), ',', '"', '');
+
+            foreach (CarbonPeriod::create($from->copy()->startOfDay(), $to->copy()->startOfDay()) as $day) {
+                $dayTickets = $tickets->filter(fn($t) => $t->cobrado_at->isSameDay($day));
+
+                $porCategoriaDia = array_fill_keys($categorias, 0.0);
+                foreach ($dayTickets as $t) {
+                    foreach ($t->lines as $line) {
+                        $nombre = $line->item?->categoria?->nombre ?? 'Sin categoría';
+                        if (!array_key_exists($nombre, $porCategoriaDia)) continue;
+                        $porCategoriaDia[$nombre] += (float) $line->subtotal;
+                    }
+                }
+
+                $ventasDia = (float) $dayTickets->sum('total');
+                $depositosDia = (float) $movimientos->where('tipo', 'deposito')->filter(fn($m) => $m->created_at->isSameDay($day))->sum('monto');
+                $salidasDia = (float) $movimientos->where('tipo', 'salida')->filter(fn($m) => $m->created_at->isSameDay($day))->sum('monto');
+                $reembolsosDia = (float) $reembolsos->filter(fn($r) => $r->created_at->isSameDay($day))->sum('monto');
+
+                $ingresosDia = $ventasDia + $depositosDia;
+                $egresosDia = $salidasDia + $reembolsosDia;
+                $balanceDia = $ingresosDia - $egresosDia;
+
+                $row = [$day->toDateString()];
+                foreach ($categorias as $c) {
+                    $row[] = number_format($porCategoriaDia[$c], 2, '.', '');
+                }
+                $row[] = number_format($ingresosDia, 2, '.', '');
+                $row[] = number_format($egresosDia, 2, '.', '');
+                $row[] = number_format($balanceDia, 2, '.', '');
+
+                fputcsv($out, $row, ',', '"', '');
+            }
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function resolveRange(string $period, Request $request): array
+    {
+        return match ($period) {
+            'today' => [now()->startOfDay(), now()->endOfDay()],
+            'month' => [now()->startOfMonth(), now()->endOfMonth()],
+            'custom' => [
+                Carbon::parse($request->get('from') ?? now()->startOfWeek())->startOfDay(),
+                Carbon::parse($request->get('to') ?? now())->endOfDay(),
+            ],
+            default => [now()->startOfWeek(), now()->endOfWeek()],
+        };
+    }
+
+    /**
+     * Agrupa líneas vendidas por categoría de catálogo, con desglose por
+     * artículo/servicio dentro de cada una, para el drill-down del reporte.
+     */
+    private function groupByCategory($lines, float $ventasBrutas): array
+    {
+        $porCategoria = $lines->groupBy(fn($line) => $line->item?->categoria?->nombre ?? 'Sin categoría');
+
+        $rows = $porCategoria->map(function ($group, $nombre) use ($ventasBrutas) {
+            $total = (float) $group->sum('subtotal');
+            $itemsAgrupados = $group->groupBy(fn($l) => $l->nombre_snapshot)->map(fn($g) => [
+                'nombre' => $g->first()->nombre_snapshot,
+                'cantidad' => (float) $g->sum('cantidad'),
+                'total' => (float) $g->sum('subtotal'),
+            ])->sortByDesc('total')->values()->all();
+
+            return [
+                'nombre' => $nombre,
+                'cantidad' => (float) $group->sum('cantidad'),
+                'total' => $total,
+                'porcentaje' => $ventasBrutas > 0 ? round($total / $ventasBrutas * 100) : 0,
+                'items' => $itemsAgrupados,
+            ];
+        })->values()->all();
+
+        usort($rows, fn($a, $b) => $b['total'] <=> $a['total']);
+
+        return $rows;
+    }
+}

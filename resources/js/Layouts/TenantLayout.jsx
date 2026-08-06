@@ -16,6 +16,7 @@ const nav = [
         { label: 'Catálogo',    href: 'pos.catalog' },
         { label: 'Descuentos',  href: 'pos.discounts.index' },
     ]},
+    { label: 'Reporte financiero', href: 'reports.financial', icon: 'ti-report-money',   module: 'pos' },
     { label: 'Landing',         href: 'landing.editor',     icon: 'ti-world',            module: null },
     { label: 'Configuración',   href: 'settings.index',     icon: 'ti-settings',         module: null },
 ];

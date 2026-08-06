@@ -23,6 +23,7 @@ class PosStockMovement extends Model
         'stock_anterior',
         'stock_nuevo',
         'user_id',
+        'created_at',
     ];
 
     protected $casts = [

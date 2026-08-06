@@ -21,6 +21,7 @@ class PosCashMovement extends Model
         'tipo',
         'monto',
         'comentario',
+        'created_at',
     ];
 
     protected $casts = [

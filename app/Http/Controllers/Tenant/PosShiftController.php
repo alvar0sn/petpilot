@@ -94,6 +94,12 @@ class PosShiftController extends Controller
             'tipo' => $data['tipo'],
             'monto' => $data['monto'],
             'comentario' => $data['comentario'],
+            // La columna usa useCurrent() a nivel de BD, que en SQLite/Postgres
+            // siempre es UTC — con APP_TIMEZONE distinto de UTC (America/Mexico_City)
+            // eso corre la fecha varias horas y rompe cualquier filtro por día.
+            // Se fija explícito en la zona de la app para que quede consistente
+            // con el resto de timestamps (cobrado_at, etc.).
+            'created_at' => now(),
         ]);
 
         return back()->with('success', 'Movimiento registrado.');

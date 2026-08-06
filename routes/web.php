@@ -14,6 +14,7 @@ use App\Http\Controllers\Tenant\WalkBookingController;
 use App\Http\Controllers\Auth\TenantAuthController;
 use App\Http\Controllers\Portal\OwnerAuthController;
 use App\Http\Controllers\Portal\OwnerPortalController;
+use App\Http\Controllers\Tenant\FinancialReportController;
 use App\Http\Controllers\Tenant\PosDiscountController;
 use App\Http\Controllers\Tenant\PosShiftController;
 use App\Http\Controllers\Tenant\PosTicketController;
@@ -98,6 +99,9 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('pos/discounts', [PosDiscountController::class, 'store'])->name('pos.discounts.store');
         Route::put('pos/discounts/{discount}', [PosDiscountController::class, 'update'])->name('pos.discounts.update');
         Route::delete('pos/discounts/{discount}', [PosDiscountController::class, 'destroy'])->name('pos.discounts.destroy');
+
+        Route::get('reportes/financiero', [FinancialReportController::class, 'index'])->name('reports.financial');
+        Route::get('reportes/financiero/exportar', [FinancialReportController::class, 'export'])->name('reports.financial.export');
     });
 
     // Membresías

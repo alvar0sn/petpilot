@@ -22,6 +22,7 @@ class PosTicketRefund extends Model
         'user_id',
         'monto',
         'motivo',
+        'created_at',
     ];
 
     protected $casts = [

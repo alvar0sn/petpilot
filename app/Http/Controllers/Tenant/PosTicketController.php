@@ -336,6 +336,9 @@ class PosTicketController extends Controller
                 'user_id' => auth()->id(),
                 'monto' => $data['monto'],
                 'motivo' => $data['motivo'],
+                // ver nota en PosShiftController::addMovement() — useCurrent() es UTC,
+                // se fija explícito en la zona de la app para filtrar por fecha bien.
+                'created_at' => now(),
             ]);
 
             $ticket->increment('refunded_amount', $data['monto']);
@@ -414,6 +417,7 @@ class PosTicketController extends Controller
             'stock_anterior' => $stockAntes,
             'stock_nuevo' => $stockAntes - $cantidad,
             'user_id' => auth()->id(),
+            'created_at' => now(),
         ]);
     }
 
@@ -438,6 +442,7 @@ class PosTicketController extends Controller
             'stock_anterior' => $stockAntes,
             'stock_nuevo' => $stockAntes + $cantidad,
             'user_id' => auth()->id(),
+            'created_at' => now(),
         ]);
     }
 
