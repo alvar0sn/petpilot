@@ -602,9 +602,9 @@ function RecetaConfigTab({ generalConfig, onGoToGeneral }) {
             <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5 space-y-3">
                 <h3 className="font-semibold text-zinc-700">Plantilla de receta</h3>
                 <p className="text-sm text-zinc-500">
-                    Usa el logo, la dirección, el teléfono, la cédula y el veterinario configurados en{' '}
+                    Logo, dirección, teléfono, cédula y veterinario vienen de{' '}
                     <button type="button" onClick={onGoToGeneral} className="text-zinc-800 font-medium underline underline-offset-2">General</button>.
-                    Motivo de consulta, diagnóstico y tratamiento se destacan como lo más importante de la receta; peso, temperatura, vacuna, desparasitación y próxima consulta se muestran de forma compacta. Todo se llena automáticamente con lo registrado en cada visita veterinaria.
+                    {' '}El resto se llena automáticamente con lo registrado en cada visita veterinaria.
                 </p>
                 <a href={route('settings.receta.sample')}
                     className="inline-flex items-center gap-1.5 bg-zinc-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-zinc-700 transition-colors">
@@ -1009,15 +1009,15 @@ function LinksTab({ slug }) {
 
 export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, generalConfig, walkConfig, teamMembers, razas }) {
     const { auth, tenant } = usePage().props;
-    const [tab, setTab] = useState('crm');
+    const [tab, setTab] = useState('general');
 
     const tabs = [
-        { id: 'crm', label: 'CRM' },
-        { id: 'grooming', label: 'Grooming' },
-        { id: 'payments', label: 'Métodos de pago' },
         { id: 'general', label: 'General' },
+        { id: 'crm', label: 'CRM' },
+        { id: 'payments', label: 'Métodos de pago' },
         { id: 'ticket', label: 'Ticket' },
         { id: 'recetas', label: 'Recetas' },
+        { id: 'grooming', label: 'Grooming' },
         { id: 'walks', label: 'Paseos' },
         { id: 'team', label: 'Equipo' },
         { id: 'links', label: 'Links' },
