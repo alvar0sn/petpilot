@@ -250,6 +250,10 @@ class SettingsController extends Controller
             'fecha'   => now()->translatedFormat('d \\d\\e F \\d\\e Y'),
         ], [
             'peso'               => '12.5',
+            'temperatura'        => '38.5',
+            'motivo'             => 'Vómito y decaimiento desde hace 2 días.',
+            'diagnostico'        => 'Gastroenteritis leve.',
+            'medicamentos'       => "Metronidazol 250mg — 1/2 tableta cada 12h por 5 días.\nOmeprazol 10mg — 1 tableta cada 24h por 7 días.",
             'vacuna_nombre'      => 'Óctuple',
             'vacuna_lote'        => 'AB-1234',
             'vacuna_laboratorio' => 'Zoetis',
@@ -258,7 +262,7 @@ class SettingsController extends Controller
             'despa_via'          => 'Oral',
             'despa_proxima'      => now()->addMonths(3)->toDateString(),
             'consulta_proxima'   => now()->addWeeks(2)->toDateString(),
-            'notas'              => 'Ejemplo de indicaciones para la receta.',
+            'notas'              => 'Dieta blanda por 3 días. Regresar si persisten los síntomas.',
         ]);
 
         return $pdf->download('receta-ejemplo.pdf');

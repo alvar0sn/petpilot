@@ -587,11 +587,14 @@ function GeneralConfigTab({ generalConfig }) {
 function RecetaConfigTab({ generalConfig, onGoToGeneral }) {
     const g = generalConfig;
     const rec = {
-        peso: '12.5',
+        peso: '12.5', temperatura: '38.5',
+        motivo: 'Vómito y decaimiento desde hace 2 días.',
+        diagnostico: 'Gastroenteritis leve.',
+        medicamentos: 'Metronidazol 250mg — 1/2 tableta cada 12h por 5 días.\nOmeprazol 10mg — 1 tableta cada 24h por 7 días.',
+        notas: 'Dieta blanda por 3 días. Regresar si persisten los síntomas.',
         vacuna_nombre: 'Óctuple', vacuna_lote: 'AB-1234', vacuna_laboratorio: 'Zoetis', vacuna_proxima: '15/08/2027',
         despa_producto: 'Drontal Plus', despa_via: 'Oral', despa_proxima: '15/11/2026',
         consulta_proxima: '20/08/2026',
-        notas: 'Ejemplo de indicaciones para la receta.',
     };
 
     return (
@@ -599,9 +602,9 @@ function RecetaConfigTab({ generalConfig, onGoToGeneral }) {
             <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5 space-y-3">
                 <h3 className="font-semibold text-zinc-700">Plantilla de receta</h3>
                 <p className="text-sm text-zinc-500">
-                    Usa el logo, la dirección, la cédula y el veterinario configurados en{' '}
+                    Usa el logo, la dirección, el teléfono, la cédula y el veterinario configurados en{' '}
                     <button type="button" onClick={onGoToGeneral} className="text-zinc-800 font-medium underline underline-offset-2">General</button>.
-                    Los campos del cuerpo (peso, vacuna, desparasitación, próxima consulta, notas) se llenan automáticamente con lo registrado en cada visita veterinaria.
+                    Motivo de consulta, diagnóstico y tratamiento se destacan como lo más importante de la receta; peso, temperatura, vacuna, desparasitación y próxima consulta se muestran de forma compacta. Todo se llena automáticamente con lo registrado en cada visita veterinaria.
                 </p>
                 <a href={route('settings.receta.sample')}
                     className="inline-flex items-center gap-1.5 bg-zinc-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-zinc-700 transition-colors">
@@ -611,46 +614,68 @@ function RecetaConfigTab({ generalConfig, onGoToGeneral }) {
 
             <div>
                 <p className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Vista previa</p>
-                <div className="bg-white border border-zinc-200 shadow-sm rounded-lg p-6 text-sm" style={{ fontSize: '12px' }}>
-                    <div className="flex items-center gap-3 border-b-2 border-zinc-900 pb-3 mb-4">
-                        {g.logo_url ? (
-                            <img src={g.logo_url} alt="Logo" className="h-12 max-w-[70px] object-contain" />
-                        ) : (
-                            <div className="h-12 w-12 rounded bg-zinc-100" />
-                        )}
-                        <div>
-                            <p className="font-bold text-base">Tu negocio</p>
-                            {(g.direccion || g.telefono) && (
-                                <p className="text-zinc-500 text-xs">
-                                    {g.direccion}{g.direccion && g.telefono ? ' — Tel. ' : (g.telefono ? 'Tel. ' : '')}{g.telefono}
-                                </p>
+                <div className="bg-white border border-zinc-200 shadow-sm rounded-lg p-5" style={{ fontSize: '11px' }}>
+                    <div className="flex items-start justify-between gap-3 border-b-2 border-zinc-900 pb-2.5 mb-3">
+                        <div className="flex items-center gap-2.5">
+                            {g.logo_url ? (
+                                <img src={g.logo_url} alt="Logo" className="h-9 max-w-[56px] object-contain" />
+                            ) : (
+                                <div className="h-9 w-9 rounded bg-zinc-100" />
                             )}
-                            {g.nombre_veterinario && (
-                                <p className="text-zinc-500 text-xs">
-                                    {g.nombre_veterinario}{g.cedula_profesional ? ` — Céd. Prof. ${g.cedula_profesional}` : ''}
-                                </p>
-                            )}
+                            <div>
+                                <p className="font-bold text-sm">{g.nombre_negocio || 'Tu negocio'}</p>
+                                {(g.direccion || g.telefono) && (
+                                    <p className="text-zinc-500 text-[10px]">
+                                        {g.direccion}{g.direccion && g.telefono ? ' — Tel. ' : (g.telefono ? 'Tel. ' : '')}{g.telefono}
+                                    </p>
+                                )}
+                                {g.nombre_veterinario && (
+                                    <p className="text-zinc-500 text-[10px]">
+                                        {g.nombre_veterinario}{g.cedula_profesional ? ` — Céd. Prof. ${g.cedula_profesional}` : ''}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                            <p className="font-bold uppercase text-[10px] tracking-wide">Receta médica</p>
+                            <p className="text-zinc-400 text-[10px]">6 ago 2026</p>
                         </div>
                     </div>
-                    <p className="text-center font-semibold uppercase tracking-wide text-sm mb-4">Receta médica veterinaria</p>
-                    <div className="flex justify-between text-xs mb-1"><span className="text-zinc-500">Paciente</span><span>Firulais (ejemplo)</span></div>
-                    <div className="flex justify-between text-xs mb-4"><span className="text-zinc-500">Propietario</span><span>Juan Pérez</span></div>
+
+                    <div className="bg-zinc-50 rounded px-3 py-1.5 flex gap-5 mb-3 text-[10px]">
+                        <div><span className="text-zinc-400 uppercase text-[8px] block">Paciente</span><span className="font-semibold">Firulais (ejemplo)</span></div>
+                        <div><span className="text-zinc-400 uppercase text-[8px] block">Propietario</span><span className="font-semibold">Juan Pérez</span></div>
+                        <div><span className="text-zinc-400 uppercase text-[8px] block">Peso</span><span className="font-semibold">{rec.peso} kg</span></div>
+                        <div><span className="text-zinc-400 uppercase text-[8px] block">Temp.</span><span className="font-semibold">{rec.temperatura} °C</span></div>
+                    </div>
+
                     {[
-                        ['Peso', `${rec.peso} kg`],
-                        ['Vacuna aplicada', `${rec.vacuna_nombre} — Lote: ${rec.vacuna_lote} — Lab: ${rec.vacuna_laboratorio}`],
-                        ['Próxima vacuna', rec.vacuna_proxima],
-                        ['Desparasitación', `${rec.despa_producto} — Vía: ${rec.despa_via}`],
-                        ['Próxima desparasitación', rec.despa_proxima],
-                        ['Próxima consulta', rec.consulta_proxima],
-                        ['Indicaciones / Notas', rec.notas],
+                        ['Motivo de consulta', rec.motivo],
+                        ['Diagnóstico', rec.diagnostico],
                     ].map(([label, valor], i) => (
-                        <div key={i} className="mb-2.5">
-                            <p className="text-[10px] uppercase tracking-wide text-zinc-400">{label}</p>
-                            <p className="border-b border-zinc-200 pb-1">{valor}</p>
+                        <div key={i} className="border border-zinc-200 rounded p-2 mb-2">
+                            <p className="text-[8.5px] uppercase tracking-wide font-semibold mb-0.5">{label}</p>
+                            <p className="text-[13px] leading-snug">{valor}</p>
                         </div>
                     ))}
-                    <div className="text-center mt-10">
-                        <p className="border-t border-zinc-900 inline-block px-8 pt-1.5 text-xs">{g.nombre_veterinario || 'Firma del veterinario'}</p>
+                    <div className="border-[1.5px] border-zinc-900 rounded p-2 mb-2">
+                        <p className="text-[8.5px] uppercase tracking-wide font-semibold mb-0.5">Tratamiento / Medicamentos</p>
+                        <p className="text-[13px] leading-snug whitespace-pre-line">{rec.medicamentos}</p>
+                    </div>
+                    <div className="mb-3">
+                        <p className="text-[8px] uppercase tracking-wide text-zinc-400 mb-0.5">Notas adicionales</p>
+                        <p className="text-[11px] border-b border-zinc-200 pb-1">{rec.notas}</p>
+                    </div>
+
+                    <div className="bg-zinc-50 border border-zinc-100 rounded px-2.5 py-1.5 text-[8.5px] text-zinc-600 space-y-0.5">
+                        <p className="text-zinc-400 uppercase text-[7.5px] mb-0.5">Vacunación · Desparasitación · Seguimiento</p>
+                        <p><b className="text-zinc-800">Vacuna:</b> {rec.vacuna_nombre} · Lote {rec.vacuna_lote} · Lab {rec.vacuna_laboratorio} · Próxima: {rec.vacuna_proxima}</p>
+                        <p><b className="text-zinc-800">Desparasitación:</b> {rec.despa_producto} · Vía {rec.despa_via} · Próxima: {rec.despa_proxima}</p>
+                        <p><b className="text-zinc-800">Próxima consulta:</b> {rec.consulta_proxima}</p>
+                    </div>
+
+                    <div className="text-center mt-8">
+                        <p className="border-t border-zinc-900 inline-block px-6 pt-1 text-[10px]">{g.nombre_veterinario || 'Firma del veterinario'}</p>
                     </div>
                 </div>
             </div>
