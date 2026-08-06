@@ -526,6 +526,7 @@ function GeneralConfigTab({ generalConfig }) {
         const fd = new FormData();
         if (logoFile) fd.append('logo', logoFile);
         fd.append('direccion', preview.direccion ?? '');
+        fd.append('telefono', preview.telefono ?? '');
         fd.append('cedula_profesional', preview.cedula_profesional ?? '');
         fd.append('nombre_veterinario', preview.nombre_veterinario ?? '');
         fd.append('_method', 'POST');
@@ -557,6 +558,11 @@ function GeneralConfigTab({ generalConfig }) {
                 <input className="w-full border-gray-300 rounded-lg text-sm" placeholder="Calle, número, colonia, ciudad"
                     value={p.direccion ?? ''} onChange={e => setPreview(prev => ({ ...prev, direccion: e.target.value }))} />
             </div>
+            <div>
+                <label className="block text-sm text-zinc-600 mb-1">Teléfono</label>
+                <input className="w-full border-gray-300 rounded-lg text-sm font-mono" placeholder="55 1234 5678"
+                    value={p.telefono ?? ''} onChange={e => setPreview(prev => ({ ...prev, telefono: e.target.value }))} />
+            </div>
             <div className="grid grid-cols-2 gap-3">
                 <div>
                     <label className="block text-sm text-zinc-600 mb-1">Nombre del veterinario</label>
@@ -569,7 +575,7 @@ function GeneralConfigTab({ generalConfig }) {
                         value={p.cedula_profesional ?? ''} onChange={e => setPreview(prev => ({ ...prev, cedula_profesional: e.target.value }))} />
                 </div>
             </div>
-            <p className="text-xs text-zinc-400">La dirección, el veterinario y la cédula aparecen en el encabezado de las recetas (pestaña "Recetas").</p>
+            <p className="text-xs text-zinc-400">La dirección, el teléfono, el veterinario y la cédula aparecen en el encabezado de las recetas (pestaña "Recetas").</p>
             <button type="submit" disabled={saving}
                 className="w-full bg-zinc-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
                 {saving ? 'Guardando…' : ok ? '✓ Guardado' : 'Guardar información general'}
@@ -614,7 +620,11 @@ function RecetaConfigTab({ generalConfig, onGoToGeneral }) {
                         )}
                         <div>
                             <p className="font-bold text-base">Tu negocio</p>
-                            {g.direccion && <p className="text-zinc-500 text-xs">{g.direccion}</p>}
+                            {(g.direccion || g.telefono) && (
+                                <p className="text-zinc-500 text-xs">
+                                    {g.direccion}{g.direccion && g.telefono ? ' — Tel. ' : (g.telefono ? 'Tel. ' : '')}{g.telefono}
+                                </p>
+                            )}
                             {g.nombre_veterinario && (
                                 <p className="text-zinc-500 text-xs">
                                     {g.nombre_veterinario}{g.cedula_profesional ? ` — Céd. Prof. ${g.cedula_profesional}` : ''}
@@ -1002,9 +1012,9 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
             {tab === 'crm' && <RazasSection razas={razas ?? []} />}
             {tab === 'grooming' && <GroomingTab stations={stations ?? []} checklistItems={checklistItems ?? []} />}
             {tab === 'payments' && <PaymentMethodsTab paymentMethods={paymentMethods} />}
-            {tab === 'general' && <GeneralConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', cedula_profesional: '', nombre_veterinario: '' }} />}
+            {tab === 'general' && <GeneralConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', telefono: '', cedula_profesional: '', nombre_veterinario: '' }} />}
             {tab === 'ticket' && <TicketConfigTab ticketConfig={ticketConfig ?? { color_primario: '#18181b', color_texto: '#1f2937', color_fondo: '#ffffff', mensaje_pie: '', logo_url: null }} onGoToGeneral={() => setTab('general')} />}
-            {tab === 'recetas' && <RecetaConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', cedula_profesional: '', nombre_veterinario: '' }} onGoToGeneral={() => setTab('general')} />}
+            {tab === 'recetas' && <RecetaConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', telefono: '', cedula_profesional: '', nombre_veterinario: '' }} onGoToGeneral={() => setTab('general')} />}
             {tab === 'walks' && <WalksConfigTab walkConfig={walkConfig ?? { horas_anticipacion: 2, dias_adelante: 14 }} />}
             {tab === 'team' && <TeamTab teamMembers={teamMembers ?? []} currentUserId={auth.user?.id} />}
             {tab === 'links' && <LinksTab slug={tenant?.slug} />}

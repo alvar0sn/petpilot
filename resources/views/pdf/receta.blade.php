@@ -32,7 +32,9 @@
         <div class="info-col">
             <div class="negocio-nombre">{{ $negocio['nombre'] }}</div>
             @if($negocio['direccion'])
-                <div class="negocio-detalle">{{ $negocio['direccion'] }}</div>
+                <div class="negocio-detalle">{{ $negocio['direccion'] }}{{ $negocio['telefono'] ? ' — Tel. ' . $negocio['telefono'] : '' }}</div>
+            @elseif($negocio['telefono'])
+                <div class="negocio-detalle">Tel. {{ $negocio['telefono'] }}</div>
             @endif
             @if($negocio['veterinario'])
                 <div class="negocio-detalle">{{ $negocio['veterinario'] }}{{ $negocio['cedula'] ? ' — Céd. Prof. ' . $negocio['cedula'] : '' }}</div>

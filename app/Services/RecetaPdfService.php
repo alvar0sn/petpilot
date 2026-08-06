@@ -35,6 +35,7 @@ class RecetaPdfService
             'negocio' => [
                 'nombre'      => $tenant->nombre,
                 'direccion'   => $tenant->getSetting('receta.direccion'),
+                'telefono'    => $tenant->getSetting('receta.telefono'),
                 'cedula'      => $tenant->getSetting('receta.cedula_profesional'),
                 'veterinario' => $tenant->getSetting('receta.nombre_veterinario'),
                 'logo'        => $logo,

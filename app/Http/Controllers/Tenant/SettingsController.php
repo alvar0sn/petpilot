@@ -50,6 +50,7 @@ class SettingsController extends Controller
             'generalConfig' => [
                 'logo_url'           => $logoUrl,
                 'direccion'          => $tenant->getSetting('receta.direccion') ?? '',
+                'telefono'           => $tenant->getSetting('receta.telefono') ?? '',
                 'cedula_profesional' => $tenant->getSetting('receta.cedula_profesional') ?? '',
                 'nombre_veterinario' => $tenant->getSetting('receta.nombre_veterinario') ?? '',
             ],
@@ -215,6 +216,7 @@ class SettingsController extends Controller
         $data = $request->validate([
             'logo'                => 'nullable|image|max:2048',
             'direccion'           => 'nullable|string|max:255',
+            'telefono'            => 'nullable|string|max:30',
             'cedula_profesional'  => 'nullable|string|max:50',
             'nombre_veterinario'  => 'nullable|string|max:150',
         ]);
@@ -233,6 +235,7 @@ class SettingsController extends Controller
 
         $tenant = app('current_tenant');
         $tenant->setSetting('receta.direccion', $data['direccion'] ?? null);
+        $tenant->setSetting('receta.telefono', $data['telefono'] ?? null);
         $tenant->setSetting('receta.cedula_profesional', $data['cedula_profesional'] ?? null);
         $tenant->setSetting('receta.nombre_veterinario', $data['nombre_veterinario'] ?? null);
 
