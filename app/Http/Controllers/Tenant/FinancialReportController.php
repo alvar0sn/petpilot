@@ -109,6 +109,127 @@ class FinancialReportController extends Controller
         $period = $request->get('period', 'week');
         [$from, $to] = $this->resolveRange($period, $request);
 
+        // Un solo día (ej. "Hoy"): detalle transacción por transacción, con el
+        // cliente/concepto en la columna A. Más de un día: resumen diario
+        // agregado por categoría, como ya se tenía.
+        if ($from->isSameDay($to)) {
+            return $this->exportTransactions($from, $to);
+        }
+
+        return $this->exportDaily($from, $to);
+    }
+
+    private function exportTransactions(Carbon $from, Carbon $to): StreamedResponse
+    {
+        $tickets = PosTicket::where('estado', 'pagado')
+            ->whereBetween('cobrado_at', [$from, $to])
+            ->with(['owner:id,nombre,apellidos', 'payments.paymentMethod:id,nombre'])
+            ->get();
+
+        $movimientos = PosCashMovement::whereBetween('created_at', [$from, $to])->get();
+        $reembolsos = PosTicketRefund::whereBetween('created_at', [$from, $to])
+            ->with(['ticket:id,folio,owner_id', 'ticket.owner:id,nombre,apellidos', 'paymentMethod:id,nombre'])
+            ->get();
+
+        $metodos = PosPaymentMethod::where('activo', true)->orderBy('orden')->pluck('nombre')->all();
+        $vacioPorMetodo = array_fill_keys($metodos, 0.0);
+
+        $rows = collect();
+
+        foreach ($tickets as $t) {
+            $porMetodo = $vacioPorMetodo;
+            foreach ($t->payments as $pago) {
+                $nombre = $pago->paymentMethod?->nombre;
+                if ($nombre === null || !array_key_exists($nombre, $porMetodo)) continue;
+                $porMetodo[$nombre] += (float) $pago->monto;
+            }
+            $rows->push([
+                'hora' => $t->cobrado_at,
+                'concepto' => $t->owner ? trim("{$t->owner->nombre} {$t->owner->apellidos}") : 'Sin cliente',
+                'tipo' => 'Venta',
+                'metodo' => $t->payments->pluck('paymentMethod.nombre')->filter()->unique()->implode(' + '),
+                'folio' => $t->folio,
+                'ingreso' => (float) $t->total,
+                'egreso' => 0.0,
+                'por_metodo' => $porMetodo,
+            ]);
+        }
+
+        foreach ($movimientos->where('tipo', 'deposito') as $m) {
+            $rows->push([
+                'hora' => $m->created_at,
+                'concepto' => $m->comentario ?: 'Depósito',
+                'tipo' => 'Depósito',
+                'metodo' => '',
+                'folio' => '',
+                'ingreso' => (float) $m->monto,
+                'egreso' => 0.0,
+                'por_metodo' => $vacioPorMetodo,
+            ]);
+        }
+
+        foreach ($movimientos->where('tipo', 'salida') as $m) {
+            $rows->push([
+                'hora' => $m->created_at,
+                'concepto' => $m->comentario ?: 'Salida',
+                'tipo' => 'Salida',
+                'metodo' => '',
+                'folio' => '',
+                'ingreso' => 0.0,
+                'egreso' => (float) $m->monto,
+                'por_metodo' => $vacioPorMetodo,
+            ]);
+        }
+
+        foreach ($reembolsos as $r) {
+            $nombreMetodo = $r->paymentMethod?->nombre;
+            $porMetodo = $vacioPorMetodo;
+            if ($nombreMetodo !== null && array_key_exists($nombreMetodo, $porMetodo)) {
+                $porMetodo[$nombreMetodo] = (float) $r->monto;
+            }
+            $rows->push([
+                'hora' => $r->created_at,
+                'concepto' => 'Reembolso — ' . ($r->ticket?->owner ? trim("{$r->ticket->owner->nombre} {$r->ticket->owner->apellidos}") : 'Sin cliente'),
+                'tipo' => 'Reembolso',
+                'metodo' => $nombreMetodo ?? '',
+                'folio' => $r->ticket?->folio ?? '',
+                'ingreso' => 0.0,
+                'egreso' => (float) $r->monto,
+                'por_metodo' => $porMetodo,
+            ]);
+        }
+
+        $rows = $rows->sortBy('hora')->values();
+
+        $filename = "reporte-financiero-{$from->toDateString()}.csv";
+
+        return response()->streamDownload(function () use ($rows, $metodos) {
+            $out = fopen('php://output', 'w');
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($out, array_merge(['Cliente o concepto', 'Tipo', 'Método', 'Folio', 'Hora', 'Ingreso', 'Egreso'], $metodos), ',', '"', '');
+
+            foreach ($rows as $r) {
+                $row = [
+                    $r['concepto'],
+                    $r['tipo'],
+                    $r['metodo'],
+                    $r['folio'],
+                    $r['hora']->format('H:i'),
+                    number_format($r['ingreso'], 2, '.', ''),
+                    number_format($r['egreso'], 2, '.', ''),
+                ];
+                foreach ($metodos as $m) {
+                    $row[] = number_format($r['por_metodo'][$m], 2, '.', '');
+                }
+                fputcsv($out, $row, ',', '"', '');
+            }
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function exportDaily(Carbon $from, Carbon $to): StreamedResponse
+    {
         $tickets = PosTicket::where('estado', 'pagado')
             ->whereBetween('cobrado_at', [$from, $to])
             ->with('lines.item.categoria')
@@ -135,15 +256,24 @@ class FinancialReportController extends Controller
             $categorias = ['Sin categoría'];
         }
 
+        // Métodos de pago activos del tenant (Efectivo, Tarjeta, Transferencia, etc.)
+        // — columnas dinámicas al final con lo cobrado ese día por cada uno.
+        $metodos = PosPaymentMethod::where('activo', true)->orderBy('orden')->pluck('nombre')->all();
+
+        $pagos = PosPayment::whereIn('ticket_id', $tickets->pluck('id'))
+            ->with('paymentMethod:id,nombre')
+            ->get();
+
         $filename = "reporte-financiero-{$from->toDateString()}_a_{$to->toDateString()}.csv";
 
-        return response()->streamDownload(function () use ($from, $to, $tickets, $movimientos, $reembolsos, $categorias) {
+        return response()->streamDownload(function () use ($from, $to, $tickets, $movimientos, $reembolsos, $categorias, $metodos, $pagos) {
             $out = fopen('php://output', 'w');
             fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($out, array_merge(['Día'], $categorias, ['Ventas', 'Otros ingresos', 'Egresos', 'Balance']), ',', '"', '');
+            fputcsv($out, array_merge(['Día'], $categorias, ['Ventas', 'Otros ingresos', 'Egresos', 'Balance'], $metodos), ',', '"', '');
 
             foreach (CarbonPeriod::create($from->copy()->startOfDay(), $to->copy()->startOfDay()) as $day) {
                 $dayTickets = $tickets->filter(fn($t) => $t->cobrado_at->isSameDay($day));
+                $dayTicketIds = $dayTickets->pluck('id');
 
                 $porCategoriaDia = array_fill_keys($categorias, 0.0);
                 foreach ($dayTickets as $t) {
@@ -152,6 +282,13 @@ class FinancialReportController extends Controller
                         if (!array_key_exists($nombre, $porCategoriaDia)) continue;
                         $porCategoriaDia[$nombre] += (float) $line->subtotal;
                     }
+                }
+
+                $porMetodoDia = array_fill_keys($metodos, 0.0);
+                foreach ($pagos->whereIn('ticket_id', $dayTicketIds) as $pago) {
+                    $nombre = $pago->paymentMethod?->nombre;
+                    if ($nombre === null || !array_key_exists($nombre, $porMetodoDia)) continue;
+                    $porMetodoDia[$nombre] += (float) $pago->monto;
                 }
 
                 $ventasDia = (float) $dayTickets->sum('total');
@@ -170,6 +307,9 @@ class FinancialReportController extends Controller
                 $row[] = number_format($depositosDia, 2, '.', '');
                 $row[] = number_format($egresosDia, 2, '.', '');
                 $row[] = number_format($balanceDia, 2, '.', '');
+                foreach ($metodos as $m) {
+                    $row[] = number_format($porMetodoDia[$m], 2, '.', '');
+                }
 
                 fputcsv($out, $row, ',', '"', '');
             }
