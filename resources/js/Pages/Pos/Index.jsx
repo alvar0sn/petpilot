@@ -7,6 +7,23 @@ function fmt(n) {
     return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+function ErrorBanner({ message, onDismiss }) {
+    useEffect(() => {
+        if (!message) return;
+        const t = setTimeout(onDismiss, 5000);
+        return () => clearTimeout(t);
+    }, [message]);
+
+    if (!message) return null;
+
+    return (
+        <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-lg mb-2">
+            <span>{message}</span>
+            <button onClick={onDismiss} className="text-red-400 hover:text-red-600 shrink-0">✕</button>
+        </div>
+    );
+}
+
 // ─── Owner search ────────────────────────────────────────────────────────────
 
 function OwnerSearch({ onSelect, placeholder = 'Buscar cliente...', autoFocus = false }) {
@@ -209,6 +226,7 @@ function MobileCart({ ticket, paymentMethods, discounts, onRefresh, onClear, onB
     const [notes, setNotes] = useState(ticket.notas ?? '');
     const [showPayment, setShowPayment] = useState(false);
     const [paidState, setPaidState] = useState(null);
+    const [error, setError] = useState(null);
 
     async function assignOwner(owner) {
         setSearchingOwner(false);
@@ -236,7 +254,7 @@ function MobileCart({ ticket, paymentMethods, discounts, onRefresh, onClear, onB
         try {
             const r = await axios.patch(route('pos.tickets.lines.update', ticket.id), { line_id: lineId, cantidad: newQty });
             onRefresh(r.data.ticket);
-        } catch (e) { console.error('changeQty:', e); }
+        } catch (e) { setError(e.response?.data?.error ?? 'No se pudo actualizar la cantidad.'); }
         finally { setProcessing(false); }
     }
 
@@ -308,6 +326,7 @@ function MobileCart({ ticket, paymentMethods, discounts, onRefresh, onClear, onB
 
                     {/* Lines */}
                     <div className="px-4 space-y-4 pb-4">
+                        <ErrorBanner message={error} onDismiss={() => setError(null)} />
                         {ticket.lines?.length === 0 && (
                             <p className="text-sm text-gray-400 text-center py-6">Sin artículos</p>
                         )}
@@ -394,6 +413,7 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
     const [processing, setProcessing] = useState(false);
     const [paidState, setPaidState] = useState(null);
     const [searchingOwner, setSearchingOwner] = useState(false);
+    const [error, setError] = useState(null);
 
     async function assignOwner(owner) {
         setSearchingOwner(false);
@@ -427,7 +447,7 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
         try {
             const r = await axios.patch(route('pos.tickets.lines.update', ticket.id), { line_id: lineId, cantidad: newQty });
             onRefresh(r.data.ticket);
-        } catch (e) { console.error('changeQty:', e); }
+        } catch (e) { setError(e.response?.data?.error ?? 'No se pudo actualizar la cantidad.'); }
         finally { setProcessing(false); }
     }
 
@@ -475,6 +495,7 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
             </div>
 
             <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
+                <ErrorBanner message={error} onDismiss={() => setError(null)} />
                 {ticket.lines?.map(line => (
                     <div key={line.id} className="flex items-center gap-2 text-sm">
                         <div className="flex-1 min-w-0">
@@ -545,31 +566,39 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
                         Cobrar {fmt(ticket.total)}
                     </button>
                 </div>
-            ) : (
-                <div className="px-4 pb-4 space-y-3">
-                    {payments.map((p, i) => (
-                        <div key={i} className="grid grid-cols-2 gap-2">
-                            <select className="border-gray-300 rounded-lg text-sm" value={p.payment_method_id} onChange={e => {
-                                const np = [...payments]; np[i].payment_method_id = e.target.value; setPayments(np);
-                            }}>
-                                {paymentMethods.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
-                            </select>
-                            <input type="number" step="0.01" className="border-gray-300 rounded-lg text-sm font-mono" value={p.monto} onChange={e => {
-                                const np = [...payments]; np[i].monto = e.target.value; setPayments(np);
-                            }} />
+            ) : null}
+
+            {payMode && !paidState && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5 space-y-3">
+                        <div className="text-center mb-1">
+                            <p className="text-3xl font-bold text-gray-900">{fmt(ticket.total)}</p>
+                            <p className="text-sm text-gray-400 mt-1">Ticket #{ticket.folio}</p>
                         </div>
-                    ))}
-                    {Math.abs(remainingToPay) > 0.01 && (
-                        <button onClick={() => setPayments([...payments, { payment_method_id: paymentMethods[0]?.id ?? '', monto: String(Math.max(0, remainingToPay).toFixed(2)) }])}
-                            className="text-xs text-indigo-600 underline">+ Agregar método de pago</button>
-                    )}
-                    {remainingToPay > 0.01 && <p className="text-xs text-orange-600">Falta: {fmt(remainingToPay)}</p>}
-                    <div className="flex gap-2">
-                        <button onClick={() => setPayMode(false)} className="flex-1 border py-2 rounded-lg text-sm">Cancelar</button>
-                        <button onClick={pay} disabled={Math.abs(remainingToPay) > 0.01 || processing}
-                            className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-40">
-                            {processing ? 'Procesando...' : 'Confirmar pago'}
-                        </button>
+                        {payments.map((p, i) => (
+                            <div key={i} className="grid grid-cols-2 gap-2">
+                                <select className="border-gray-300 rounded-lg text-sm" value={p.payment_method_id} onChange={e => {
+                                    const np = [...payments]; np[i].payment_method_id = e.target.value; setPayments(np);
+                                }}>
+                                    {paymentMethods.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                                </select>
+                                <input type="number" step="0.01" className="border-gray-300 rounded-lg text-sm font-mono" value={p.monto} onChange={e => {
+                                    const np = [...payments]; np[i].monto = e.target.value; setPayments(np);
+                                }} />
+                            </div>
+                        ))}
+                        {Math.abs(remainingToPay) > 0.01 && (
+                            <button onClick={() => setPayments([...payments, { payment_method_id: paymentMethods[0]?.id ?? '', monto: String(Math.max(0, remainingToPay).toFixed(2)) }])}
+                                className="text-xs text-indigo-600 underline">+ Agregar método de pago</button>
+                        )}
+                        {remainingToPay > 0.01 && <p className="text-xs text-orange-600">Falta: {fmt(remainingToPay)}</p>}
+                        <div className="flex gap-2 pt-1">
+                            <button onClick={() => setPayMode(false)} className="flex-1 border py-2 rounded-lg text-sm">Cancelar</button>
+                            <button onClick={pay} disabled={Math.abs(remainingToPay) > 0.01 || processing}
+                                className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-40">
+                                {processing ? 'Procesando...' : 'Confirmar pago'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -583,6 +612,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
     const [currentTicket, setCurrentTicket] = useState(null);
     const [processing, setProcessing] = useState(false);
     const [mobileView, setMobileView] = useState('catalog'); // 'catalog' | 'cart'
+    const [catalogError, setCatalogError] = useState(null);
 
     // Ref mirrors currentTicket state so callbacks always see the latest value
     const ticketRef = useRef(null);
@@ -627,8 +657,9 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
         try {
             const r = await axios.post(route('pos.tickets.lines.add', ticket.id), { item_id: item.id, cantidad: 1 });
             updateTicket(r.data.ticket);
+            setCatalogError(null);
         } catch (e) {
-            console.error('addLine error:', e.response?.data ?? e.message);
+            setCatalogError(e.response?.data?.error ?? 'No se pudo agregar el artículo.');
         }
     }
 
@@ -671,6 +702,8 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                                 className="w-full bg-zinc-900 text-white py-3 rounded-xl text-sm font-semibold mb-3 disabled:opacity-50">
                                 + Nueva venta
                             </button>
+
+                            <ErrorBanner message={catalogError} onDismiss={() => setCatalogError(null)} />
 
                             <MobileCatalog catalog={catalog} onAdd={addItem} />
                         </div>
@@ -727,6 +760,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                             ))}
                         </div>
                     )}
+                    <ErrorBanner message={catalogError} onDismiss={() => setCatalogError(null)} />
                     <div className="flex-1 overflow-hidden">
                         {catalog.length > 0 ? (
                             <CatalogPanel catalog={catalog} onAdd={addItem} />

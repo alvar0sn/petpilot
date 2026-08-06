@@ -94,26 +94,34 @@ class PosTicketController extends Controller
             'cantidad' => 'required|integer|min:1',
         ]);
 
-        $item = PosCatalogItem::findOrFail($data['item_id']);
+        try {
+            DB::transaction(function () use ($ticket, $data) {
+                $item = PosCatalogItem::findOrFail($data['item_id']);
 
-        $existing = PosTicketLine::where('ticket_id', $ticket->id)->where('item_id', $item->id)->first();
+                $this->reserveStock($item->id, $data['cantidad'], $ticket->id);
 
-        if ($existing) {
-            $newCantidad = (float) $existing->cantidad + (int) $data['cantidad'];
-            $existing->update([
-                'cantidad' => $newCantidad,
-                'subtotal' => round((float) $existing->precio_snapshot * $newCantidad, 2),
-            ]);
-        } else {
-            PosTicketLine::create([
-                'ticket_id'       => $ticket->id,
-                'item_id'         => $item->id,
-                'nombre_snapshot' => $item->nombre,
-                'precio_snapshot' => $item->precio,
-                'costo_snapshot'  => $item->costo ?? 0,
-                'cantidad'        => $data['cantidad'],
-                'subtotal'        => round((float) $item->precio * $data['cantidad'], 2),
-            ]);
+                $existing = PosTicketLine::where('ticket_id', $ticket->id)->where('item_id', $item->id)->first();
+
+                if ($existing) {
+                    $newCantidad = (float) $existing->cantidad + (int) $data['cantidad'];
+                    $existing->update([
+                        'cantidad' => $newCantidad,
+                        'subtotal' => round((float) $existing->precio_snapshot * $newCantidad, 2),
+                    ]);
+                } else {
+                    PosTicketLine::create([
+                        'ticket_id'       => $ticket->id,
+                        'item_id'         => $item->id,
+                        'nombre_snapshot' => $item->nombre,
+                        'precio_snapshot' => $item->precio,
+                        'costo_snapshot'  => $item->costo ?? 0,
+                        'cantidad'        => $data['cantidad'],
+                        'subtotal'        => round((float) $item->precio * $data['cantidad'], 2),
+                    ]);
+                }
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
         }
 
         $this->recalculate($ticket);
@@ -127,7 +135,13 @@ class PosTicketController extends Controller
 
         $data = $request->validate(['line_id' => 'required|exists:pos_ticket_lines,id']);
 
-        PosTicketLine::where('id', $data['line_id'])->where('ticket_id', $ticket->id)->delete();
+        DB::transaction(function () use ($ticket, $data) {
+            $line = PosTicketLine::where('id', $data['line_id'])->where('ticket_id', $ticket->id)->first();
+            if ($line) {
+                $this->releaseStock($line->item_id, $line->cantidad, $ticket->id);
+                $line->delete();
+            }
+        });
 
         $this->recalculate($ticket);
 
@@ -143,11 +157,25 @@ class PosTicketController extends Controller
             'cantidad' => 'required|integer|min:1',
         ]);
 
-        $line = PosTicketLine::where('id', $data['line_id'])->where('ticket_id', $ticket->id)->firstOrFail();
-        $line->update([
-            'cantidad' => $data['cantidad'],
-            'subtotal' => round((float) $line->precio_snapshot * $data['cantidad'], 2),
-        ]);
+        try {
+            DB::transaction(function () use ($ticket, $data) {
+                $line = PosTicketLine::where('id', $data['line_id'])->where('ticket_id', $ticket->id)->firstOrFail();
+                $delta = $data['cantidad'] - (float) $line->cantidad;
+
+                if ($delta > 0) {
+                    $this->reserveStock($line->item_id, $delta, $ticket->id);
+                } elseif ($delta < 0) {
+                    $this->releaseStock($line->item_id, abs($delta), $ticket->id);
+                }
+
+                $line->update([
+                    'cantidad' => $data['cantidad'],
+                    'subtotal' => round((float) $line->precio_snapshot * $data['cantidad'], 2),
+                ]);
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
 
         $this->recalculate($ticket);
 
@@ -206,23 +234,8 @@ class PosTicketController extends Controller
                 ]);
             }
 
-            // Descontar stock de productos
-            foreach ($ticket->lines as $line) {
-                $item = PosCatalogItem::find($line->item_id);
-                if ($item && $item->tipo === 'producto') {
-                    $stockAntes = $item->stock;
-                    $item->decrement('stock', $line->cantidad);
-                    PosStockMovement::create([
-                        'item_id' => $item->id,
-                        'ticket_id' => $ticket->id,
-                        'tipo' => 'venta',
-                        'cantidad' => -$line->cantidad,
-                        'stock_anterior' => $stockAntes,
-                        'stock_nuevo' => $stockAntes - $line->cantidad,
-                        'user_id' => auth()->id(),
-                    ]);
-                }
-            }
+            // El stock de productos ya se reservó al agregar los renglones al ticket
+            // (ver addLine/updateLine) — aquí ya no hay nada que descontar.
 
             $ticket->update([
                 'estado' => 'pagado',
@@ -284,7 +297,14 @@ class PosTicketController extends Controller
 
     public function cancel(Request $request, PosTicket $ticket): RedirectResponse
     {
-        $ticket->update(['estado' => 'cancelado']);
+        abort_if($ticket->estado !== 'abierto', 403, 'Solo se pueden cancelar tickets abiertos.');
+
+        DB::transaction(function () use ($ticket) {
+            foreach ($ticket->lines as $line) {
+                $this->releaseStock($line->item_id, $line->cantidad, $ticket->id);
+            }
+            $ticket->update(['estado' => 'cancelado']);
+        });
 
         return redirect()->route('pos.index')->with('success', "Ticket #{$ticket->folio} cancelado.");
     }
@@ -364,6 +384,61 @@ class PosTicketController extends Controller
     private function authorize_ticket(PosTicket $ticket): void
     {
         abort_if($ticket->estado !== 'abierto', 403, 'El ticket ya fue procesado.');
+    }
+
+    /**
+     * Reserva (descuenta) stock de un item tipo 'producto' de forma atómica.
+     * No hace nada si el item no existe o no es un producto con stock. Lanza
+     * RuntimeException si no alcanza — el llamador debe correr esto dentro de
+     * un DB::transaction() para que el lockForUpdate() sirva de algo.
+     */
+    private function reserveStock(?int $itemId, float $cantidad, ?int $ticketId, string $tipo = 'venta'): void
+    {
+        if (!$itemId) return;
+
+        $item = PosCatalogItem::where('id', $itemId)->lockForUpdate()->first();
+        if (!$item || $item->tipo !== 'producto') return;
+
+        if ($item->stock < $cantidad) {
+            throw new \RuntimeException("Stock insuficiente de \"{$item->nombre}\" (disponible: {$item->stock}).");
+        }
+
+        $stockAntes = $item->stock;
+        $item->decrement('stock', $cantidad);
+
+        PosStockMovement::create([
+            'item_id' => $item->id,
+            'ticket_id' => $ticketId,
+            'tipo' => $tipo,
+            'cantidad' => -$cantidad,
+            'stock_anterior' => $stockAntes,
+            'stock_nuevo' => $stockAntes - $cantidad,
+            'user_id' => auth()->id(),
+        ]);
+    }
+
+    /**
+     * Libera (devuelve) stock reservado previamente por reserveStock(). Nunca falla.
+     */
+    private function releaseStock(?int $itemId, float $cantidad, ?int $ticketId, string $tipo = 'cancelacion'): void
+    {
+        if (!$itemId || $cantidad <= 0) return;
+
+        $item = PosCatalogItem::where('id', $itemId)->lockForUpdate()->first();
+        if (!$item || $item->tipo !== 'producto') return;
+
+        $stockAntes = $item->stock;
+        $item->increment('stock', $cantidad);
+
+        PosStockMovement::create([
+            'item_id' => $item->id,
+            'ticket_id' => $ticketId,
+            'tipo' => $tipo,
+            'cantidad' => $cantidad,
+            'stock_anterior' => $stockAntes,
+            'stock_nuevo' => $stockAntes + $cantidad,
+            'user_id' => auth()->id(),
+        ]);
     }
 
     private function recalculate(PosTicket $ticket): void
