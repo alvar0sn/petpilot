@@ -1,5 +1,5 @@
 import TenantLayout from '@/Layouts/TenantLayout';
-import { Link, router, usePage } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
@@ -20,6 +20,51 @@ function ErrorBanner({ message, onDismiss }) {
         <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-lg mb-2">
             <span>{message}</span>
             <button onClick={onDismiss} className="text-red-400 hover:text-red-600 shrink-0">✕</button>
+        </div>
+    );
+}
+
+function CashMovementModal({ shiftId, onClose }) {
+    const form = useForm({ tipo: 'deposito', monto: '', comentario: '' });
+
+    function submit(e) {
+        e.preventDefault();
+        form.post(route('pos.shift.movement', shiftId), { onSuccess: onClose, preserveScroll: true });
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5 space-y-3">
+                <h3 className="font-semibold text-gray-800">Movimiento de caja</h3>
+                <form onSubmit={submit} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+                            <select className="w-full border-gray-300 rounded-lg text-sm" value={form.data.tipo} onChange={e => form.setData('tipo', e.target.value)}>
+                                <option value="deposito">Depósito</option>
+                                <option value="salida">Salida</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Monto</label>
+                            <input type="number" step="0.01" className="w-full border-gray-300 rounded-lg text-sm"
+                                value={form.data.monto} onChange={e => form.setData('monto', e.target.value)} />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Comentario</label>
+                        <input className="w-full border-gray-300 rounded-lg text-sm" value={form.data.comentario} onChange={e => form.setData('comentario', e.target.value)} />
+                    </div>
+                    {form.errors.monto && <p className="text-red-500 text-xs">{form.errors.monto}</p>}
+                    <div className="flex gap-2 pt-1">
+                        <button type="button" onClick={onClose} className="flex-1 border py-2 rounded-lg text-sm">Cancelar</button>
+                        <button type="submit" disabled={form.processing}
+                            className="flex-1 bg-zinc-900 text-white py-2 rounded-lg text-sm font-semibold hover:bg-zinc-700 disabled:opacity-50">
+                            {form.processing ? 'Guardando...' : 'Registrar'}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }
@@ -613,6 +658,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
     const [processing, setProcessing] = useState(false);
     const [mobileView, setMobileView] = useState('catalog'); // 'catalog' | 'cart'
     const [catalogError, setCatalogError] = useState(null);
+    const [showCashMovement, setShowCashMovement] = useState(false);
 
     // Ref mirrors currentTicket state so callbacks always see the latest value
     const ticketRef = useRef(null);
@@ -698,10 +744,16 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                             )}
 
                             {/* Nueva venta — always visible above search */}
-                            <button onClick={newTicket} disabled={processing}
-                                className="w-full bg-zinc-900 text-white py-3 rounded-xl text-sm font-semibold mb-3 disabled:opacity-50">
-                                + Nueva venta
-                            </button>
+                            <div className="flex gap-2 mb-3">
+                                <button onClick={newTicket} disabled={processing}
+                                    className="flex-1 bg-zinc-900 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50">
+                                    + Nueva venta
+                                </button>
+                                <button onClick={() => setShowCashMovement(true)}
+                                    className="bg-white border border-gray-200 text-gray-600 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-gray-50">
+                                    Caja
+                                </button>
+                            </div>
 
                             <ErrorBanner message={catalogError} onDismiss={() => setCatalogError(null)} />
 
@@ -746,6 +798,10 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                                 className="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
                                 + Nueva venta
                             </button>
+                            <button onClick={() => setShowCashMovement(true)}
+                                className="text-xs border px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-600">
+                                Movimiento de caja
+                            </button>
                             <Link href={route('pos.history')} className="text-xs border px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-600">Historial</Link>
                             <Link href={route('pos.shift.index')} className="text-xs border px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-600">Turno</Link>
                         </div>
@@ -783,6 +839,10 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                     )}
                 </div>
             </div>
+
+            {showCashMovement && (
+                <CashMovementModal shiftId={activeShift.id} onClose={() => setShowCashMovement(false)} />
+            )}
         </TenantLayout>
     );
 }

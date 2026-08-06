@@ -142,6 +142,7 @@ class PosShiftController extends Controller
             ->get();
 
         $ventasPorLinea = $this->groupLines($lines);
+        $porCategoria = $this->groupByCategory($lines);
 
         $refunds = PosTicketRefund::where('shift_id', $shift->id)
             ->with(['ticket:id,folio,owner_id', 'ticket.owner:id,nombre,apellidos', 'user:id,nombre,apellido', 'paymentMethod:id,nombre'])
@@ -216,6 +217,7 @@ class PosShiftController extends Controller
             'membresias' => $ventasPorLinea['membresias'],
             'servicios' => $ventasPorLinea['servicios'],
             'otros' => $ventasPorLinea['otros'],
+            'porCategoria' => $porCategoria,
             'reembolsos' => $refunds,
             'tickets' => $tickets,
             'paymentMethods' => PosPaymentMethod::where('activo', true)->orderBy('orden')->get(['id', 'nombre']),
@@ -257,5 +259,25 @@ class PosShiftController extends Controller
         }
 
         return $buckets;
+    }
+
+    /**
+     * Agrupa líneas de ticket vendidas en el turno por categoría del catálogo
+     * (independientemente de tipo producto/servicio) — 'Sin categoría' para
+     * líneas cuyo item de catálogo fue borrado.
+     */
+    private function groupByCategory($lines): array
+    {
+        $grouped = $lines->groupBy(fn($line) => $line->item?->categoria?->nombre ?? 'Sin categoría');
+
+        $rows = $grouped->map(fn($group, $nombre) => [
+            'nombre' => $nombre,
+            'cantidad' => (float) $group->sum('cantidad'),
+            'total' => (float) $group->sum('subtotal'),
+        ])->values()->all();
+
+        usort($rows, fn($a, $c) => $c['total'] <=> $a['total']);
+
+        return $rows;
     }
 }
