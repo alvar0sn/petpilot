@@ -271,6 +271,15 @@ class VetController extends Controller
 
     public function storeRecepcion(Request $request, Appointment $appointment): RedirectResponse
     {
+        $cerrada = $appointment->estado === 'completada';
+        $esAdmin = auth()->user()->role === 'tenant_admin';
+
+        // Una vez completada la consulta, la ficha (base de la receta que puede
+        // haber recibido el dueño) ya no se edita libremente — solo un admin,
+        // y queda registrado en notas internas para que no haya confusión entre
+        // lo que se envió y lo que quedó guardado después.
+        abort_if($cerrada && !$esAdmin, 403, 'Esta consulta ya fue completada. Solo un administrador puede editar la ficha.');
+
         $data = $request->validate([
             'peso'               => 'nullable|numeric|min:0|max:999',
             'temperatura'        => 'nullable|numeric|min:0|max:50',
@@ -290,7 +299,15 @@ class VetController extends Controller
             'consulta_proxima'   => 'nullable|date',
         ]);
 
-        $appointment->update(['recepcion' => $data]);
+        $updates = ['recepcion' => $data];
+
+        if ($cerrada) {
+            $usuario = trim(auth()->user()->nombre . ' ' . auth()->user()->apellido);
+            $bitacora = '⚠ Ficha editada tras completar la consulta — ' . $usuario . ', ' . now()->format('d/m/Y H:i') . '.';
+            $updates['notas_internas'] = trim(($appointment->notas_internas ? $appointment->notas_internas . "\n" : '') . $bitacora);
+        }
+
+        $appointment->update($updates);
 
         $petUpdates = [];
         if (!empty($data['peso']))             $petUpdates['peso'] = $data['peso'];
@@ -301,7 +318,9 @@ class VetController extends Controller
             Pet::where('id', $appointment->pet_id)->update($petUpdates);
         }
 
-        return back()->with('success', 'Ficha de atención guardada.');
+        return back()->with('success', $cerrada
+            ? 'Ficha actualizada. Se registró el cambio en notas internas.'
+            : 'Ficha de atención guardada.');
     }
 
     public function complete(Appointment $appointment): RedirectResponse

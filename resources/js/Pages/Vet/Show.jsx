@@ -1,7 +1,7 @@
 import AppointmentTimePicker from '@/Components/AppointmentTimePicker';
 import TenantLayout from '@/Layouts/TenantLayout';
 import { compressImage } from '@/utils/compressImage';
-import { Link, router, useForm } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 
 function fmt(n) {
@@ -49,8 +49,12 @@ const estadoLabel = {
 };
 
 export default function VetShow({ appointment, veterinarios, catalogItems }) {
+    const { auth } = usePage().props;
     const appt = appointment;
     const canEdit = ['pendiente', 'confirmada'].includes(appt.estado);
+    const isAdmin = auth.user?.role === 'tenant_admin';
+    const cerrada = appt.estado === 'completada';
+    const recepcionLocked = cerrada && !isAdmin;
 
     const form = useForm({
         fecha:          appt.fecha,
@@ -337,7 +341,19 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
             {/* Ficha de atención */}
             <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5 mb-4">
                 <h2 className="font-semibold text-zinc-800 text-sm mb-4">Ficha de atención</h2>
-                <div className="space-y-5">
+
+                {recepcionLocked && (
+                    <div className="mb-4 text-sm bg-zinc-50 border border-zinc-200 text-zinc-600 rounded-lg p-3">
+                        Esta consulta ya fue completada — la ficha ya no se puede editar. Solo un administrador puede hacer cambios.
+                    </div>
+                )}
+                {cerrada && isAdmin && (
+                    <div className="mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-3">
+                        ⚠ Esta consulta ya fue completada. Si guardas cambios aquí, se registrará automáticamente en las notas internas para evitar confusión con lo que ya se le compartió al dueño.
+                    </div>
+                )}
+
+                <fieldset disabled={recepcionLocked} className="space-y-5">
                     <div>
                         <label className="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">Peso actual (kg)</label>
                         <input type="number" step="0.01" min="0" max="999" className="w-32 border-gray-300 rounded-lg text-sm"
@@ -452,7 +468,9 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                             placeholder="Observaciones, recomendaciones..."
                             value={recForm.data.notas} onChange={e => recForm.setData('notas', e.target.value)} />
                     </div>
+                </fieldset>
 
+                <div className="space-y-5">
                     <div className="border-t border-zinc-100 pt-4">
                         <p className="text-xs font-semibold text-zinc-400 mb-3 uppercase tracking-wide">Fotos del servicio</p>
                         {appt.photos?.length > 0 ? (
@@ -484,12 +502,14 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                         </form>
                     </div>
 
-                    <form onSubmit={saveRecepcion} className="flex justify-end">
-                        <button type="submit" disabled={recForm.processing}
-                            className="bg-zinc-900 text-white px-5 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
-                            {recForm.processing ? 'Guardando...' : 'Guardar ficha'}
-                        </button>
-                    </form>
+                    {!recepcionLocked && (
+                        <form onSubmit={saveRecepcion} className="flex justify-end">
+                            <button type="submit" disabled={recForm.processing}
+                                className="bg-zinc-900 text-white px-5 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
+                                {recForm.processing ? 'Guardando...' : 'Guardar ficha'}
+                            </button>
+                        </form>
+                    )}
 
                     {canEdit && (
                         <form onSubmit={doComplete} className="flex justify-end border-t border-zinc-100 pt-4">
