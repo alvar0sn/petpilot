@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Models\PosCashMovement;
+use App\Models\PosCategory;
 use App\Models\PosPayment;
 use App\Models\PosPaymentMethod;
 use App\Models\PosShift;
@@ -116,14 +117,20 @@ class FinancialReportController extends Controller
         $movimientos = PosCashMovement::whereBetween('created_at', [$from, $to])->get();
         $reembolsos = PosTicketRefund::whereBetween('created_at', [$from, $to])->get();
 
-        // Columnas dinámicas: unión de todas las categorías con ventas en el período
-        $categorias = $tickets->flatMap(fn($t) => $t->lines)
-            ->pluck('item.categoria.nombre')
-            ->filter()
+        // Todas las categorías activas del catálogo, siempre — así las columnas
+        // del CSV son consistentes entre periodos distintos aunque una categoría
+        // no haya tenido ventas ese rango (se reporta en 0, no se omite la columna).
+        // Se agregan también categorías del período que ya no estén activas (por
+        // si se desactivó una con ventas históricas) y 'Sin categoría' si aplica,
+        // para no perder ninguna venta real del rango consultado.
+        $categoriasActivas = PosCategory::where('activo', true)->orderBy('orden')->pluck('nombre')->all();
+        $categoriasDelPeriodo = $tickets->flatMap(fn($t) => $t->lines)
+            ->map(fn($l) => $l->item?->categoria?->nombre ?? 'Sin categoría')
             ->unique()
-            ->sort()
             ->values()
             ->all();
+
+        $categorias = array_values(array_unique(array_merge($categoriasActivas, $categoriasDelPeriodo)));
         if (empty($categorias)) {
             $categorias = ['Sin categoría'];
         }
