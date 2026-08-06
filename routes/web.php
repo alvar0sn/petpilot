@@ -182,6 +182,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('veterinaria/{appointment}/cancel', [VetController::class, 'cancel'])->name('vet.cancel');
         Route::post('veterinaria/{appointment}/no-show', [VetController::class, 'noShow'])->name('vet.noShow');
         Route::post('veterinaria/{appointment}/recepcion', [VetController::class, 'storeRecepcion'])->name('vet.recepcion');
+        Route::get('veterinaria/{appointment}/receta', [VetController::class, 'downloadReceta'])->name('vet.receta');
         Route::post('veterinaria/{appointment}/photos', [VetController::class, 'storePhoto'])->name('vet.photos.store');
         Route::delete('veterinaria/{appointment}/photos/{photo}', [VetController::class, 'destroyPhoto'])->name('vet.photos.destroy');
     });
@@ -206,6 +207,8 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
     Route::put('settings/payment-methods/{method}', [SettingsController::class, 'updatePaymentMethod'])->name('settings.payment_methods.update');
     Route::delete('settings/payment-methods/{method}', [SettingsController::class, 'destroyPaymentMethod'])->name('settings.payment_methods.destroy');
     Route::post('settings/ticket-config', [SettingsController::class, 'updateTicketConfig'])->name('settings.ticket.update');
+    Route::post('settings/general', [SettingsController::class, 'updateGeneral'])->name('settings.general.update');
+    Route::get('settings/receta/muestra', [SettingsController::class, 'recetaSample'])->name('settings.receta.sample');
     Route::post('settings/walk-config', [SettingsController::class, 'updateWalkConfig'])->name('settings.walk.update');
 
     // Team management & razas — tenant_admin only

@@ -14,11 +14,13 @@ use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
 use App\Models\User;
+use App\Services\RecetaPdfService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -201,6 +203,21 @@ class VetController extends Controller
                 ->orderBy('nombre')
                 ->get(['id', 'nombre', 'precio']),
         ]);
+    }
+
+    public function downloadReceta(Appointment $appointment): \Symfony\Component\HttpFoundation\Response
+    {
+        $appointment->load('pet.owner');
+
+        $pdf = RecetaPdfService::build([
+            'mascota' => $appointment->pet?->nombre,
+            'dueño'   => $appointment->pet?->owner?->nombre_completo,
+            'fecha'   => $appointment->fecha->translatedFormat('d \\d\\e F \\d\\e Y'),
+        ], $appointment->recepcion ?? []);
+
+        $filename = 'receta-' . Str::slug($appointment->pet?->nombre ?? 'mascota') . '-' . $appointment->fecha->toDateString() . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     public function update(Request $request, Appointment $appointment): RedirectResponse

@@ -11,6 +11,7 @@ use App\Models\PosPaymentMethod;
 use App\Models\PosTicketConfig;
 use App\Models\Raza;
 use App\Models\User;
+use App\Services\RecetaPdfService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -30,6 +31,8 @@ class SettingsController extends Controller
         $paymentMethods = PosPaymentMethod::orderBy('orden')->get();
 
         $ticketConfig = PosTicketConfig::first();
+        $tenant = app('current_tenant');
+        $logoUrl = $ticketConfig?->logo_path ? Storage::disk(media_disk())->url($ticketConfig->logo_path) : null;
 
         return Inertia::render('Settings/Index', [
             'categories'    => $categories,
@@ -38,11 +41,17 @@ class SettingsController extends Controller
             'stations'      => GroomingStation::orderBy('orden')->orderBy('nombre')->get(['id', 'nombre', 'activo', 'orden']),
             'checklistItems'=> ChecklistItem::orderBy('orden')->orderBy('nombre')->get(['id', 'nombre', 'activo', 'orden']),
             'ticketConfig'  => [
-                'logo_url'       => $ticketConfig?->logo_path ? Storage::disk(media_disk())->url($ticketConfig->logo_path) : null,
+                'logo_url'       => $logoUrl,
                 'color_primario' => $ticketConfig?->color_primario ?? '#4f46e5',
                 'color_texto'    => $ticketConfig?->color_texto    ?? '#1f2937',
                 'color_fondo'    => $ticketConfig?->color_fondo    ?? '#ffffff',
                 'mensaje_pie'    => $ticketConfig?->mensaje_pie    ?? '',
+            ],
+            'generalConfig' => [
+                'logo_url'           => $logoUrl,
+                'direccion'          => $tenant->getSetting('receta.direccion') ?? '',
+                'cedula_profesional' => $tenant->getSetting('receta.cedula_profesional') ?? '',
+                'nombre_veterinario' => $tenant->getSetting('receta.nombre_veterinario') ?? '',
             ],
             'walkConfig' => [
                 'horas_anticipacion' => (int) (app('current_tenant')->getSetting('paseos.horas_anticipacion') ?? 2),
@@ -179,7 +188,6 @@ class SettingsController extends Controller
     public function updateTicketConfig(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'logo'           => 'nullable|image|max:2048',
             'color_primario' => 'required|string|max:20',
             'color_texto'    => 'required|string|max:20',
             'color_fondo'    => 'required|string|max:20',
@@ -187,17 +195,6 @@ class SettingsController extends Controller
         ]);
 
         $config = PosTicketConfig::firstOrNew([]);
-
-        if ($request->hasFile('logo')) {
-            if ($config->logo_path) {
-                Storage::disk(media_disk())->delete($config->logo_path);
-            }
-            $config->logo_path = $request->file('logo')->store(
-                'ticket-logos/' . currentTenant()->id,
-                media_disk()
-            );
-        }
-
         $config->fill([
             'color_primario' => $data['color_primario'],
             'color_texto'    => $data['color_texto'],
@@ -207,6 +204,61 @@ class SettingsController extends Controller
         $config->save();
 
         return back()->with('success', 'Configuración de ticket actualizada.');
+    }
+
+    /**
+     * Logo del negocio (compartido por ticket y recetas) + datos generales
+     * usados en la receta (dirección, cédula profesional, veterinario).
+     */
+    public function updateGeneral(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'logo'                => 'nullable|image|max:2048',
+            'direccion'           => 'nullable|string|max:255',
+            'cedula_profesional'  => 'nullable|string|max:50',
+            'nombre_veterinario'  => 'nullable|string|max:150',
+        ]);
+
+        if ($request->hasFile('logo')) {
+            $config = PosTicketConfig::firstOrNew([]);
+            if ($config->logo_path) {
+                Storage::disk(media_disk())->delete($config->logo_path);
+            }
+            $config->logo_path = $request->file('logo')->store(
+                'ticket-logos/' . currentTenant()->id,
+                media_disk()
+            );
+            $config->save();
+        }
+
+        $tenant = app('current_tenant');
+        $tenant->setSetting('receta.direccion', $data['direccion'] ?? null);
+        $tenant->setSetting('receta.cedula_profesional', $data['cedula_profesional'] ?? null);
+        $tenant->setSetting('receta.nombre_veterinario', $data['nombre_veterinario'] ?? null);
+
+        return back()->with('success', 'Información general actualizada.');
+    }
+
+    public function recetaSample(): \Symfony\Component\HttpFoundation\Response
+    {
+        $pdf = RecetaPdfService::build([
+            'mascota' => 'Firulais (ejemplo)',
+            'dueño'   => 'Juan Pérez',
+            'fecha'   => now()->translatedFormat('d \\d\\e F \\d\\e Y'),
+        ], [
+            'peso'               => '12.5',
+            'vacuna_nombre'      => 'Óctuple',
+            'vacuna_lote'        => 'AB-1234',
+            'vacuna_laboratorio' => 'Zoetis',
+            'vacuna_proxima'     => now()->addYear()->toDateString(),
+            'despa_producto'     => 'Drontal Plus',
+            'despa_via'          => 'Oral',
+            'despa_proxima'      => now()->addMonths(3)->toDateString(),
+            'consulta_proxima'   => now()->addWeeks(2)->toDateString(),
+            'notas'              => 'Ejemplo de indicaciones para la receta.',
+        ]);
+
+        return $pdf->download('receta-ejemplo.pdf');
     }
 
     public function catalogSample(): HttpResponse

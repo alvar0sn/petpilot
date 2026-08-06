@@ -397,25 +397,16 @@ function PaymentMethodsTab({ paymentMethods }) {
     );
 }
 
-function TicketConfigTab({ ticketConfig }) {
+function TicketConfigTab({ ticketConfig, onGoToGeneral }) {
     const [preview, setPreview] = useState(ticketConfig);
-    const [logoFile, setLogoFile] = useState(null);
     const [saving, setSaving] = useState(false);
     const [ok, setOk] = useState(false);
-
-    function handleLogoChange(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        setLogoFile(file);
-        setPreview(p => ({ ...p, logo_url: URL.createObjectURL(file) }));
-    }
 
     async function handleSubmit(e) {
         e.preventDefault();
         setSaving(true);
         setOk(false);
         const fd = new FormData();
-        if (logoFile) fd.append('logo', logoFile);
         fd.append('color_primario', preview.color_primario);
         fd.append('color_texto', preview.color_texto);
         fd.append('color_fondo', preview.color_fondo);
@@ -438,11 +429,15 @@ function TicketConfigTab({ ticketConfig }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <form onSubmit={handleSubmit} className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5 space-y-4">
                 <h3 className="font-semibold text-zinc-700">Personalización del ticket público</h3>
-                <div>
-                    <label className="block text-sm text-zinc-600 mb-1">Logo de la empresa</label>
-                    {p.logo_url && <img src={p.logo_url} alt="Logo" className="h-12 mb-2 rounded object-contain" />}
-                    <input type="file" accept="image/*" onChange={handleLogoChange}
-                        className="text-sm text-zinc-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-zinc-100 file:text-zinc-700" />
+                <div className="flex items-center gap-3 bg-zinc-50 border border-zinc-100 rounded-lg p-3">
+                    {p.logo_url ? (
+                        <img src={p.logo_url} alt="Logo" className="h-10 rounded object-contain" />
+                    ) : (
+                        <div className="h-10 w-10 rounded bg-zinc-200" />
+                    )}
+                    <p className="text-xs text-zinc-500 flex-1">
+                        El logo se configura desde <button type="button" onClick={onGoToGeneral} className="text-zinc-800 font-medium underline underline-offset-2">Configuración → General</button>.
+                    </p>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                     {[
@@ -505,6 +500,148 @@ function TicketConfigTab({ ticketConfig }) {
                             {p.mensaje_pie}
                         </div>
                     )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function GeneralConfigTab({ generalConfig }) {
+    const [preview, setPreview] = useState(generalConfig);
+    const [logoFile, setLogoFile] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [ok, setOk] = useState(false);
+
+    function handleLogoChange(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        setLogoFile(file);
+        setPreview(p => ({ ...p, logo_url: URL.createObjectURL(file) }));
+    }
+
+    async function handleSubmit(e) {
+        e.preventDefault();
+        setSaving(true);
+        setOk(false);
+        const fd = new FormData();
+        if (logoFile) fd.append('logo', logoFile);
+        fd.append('direccion', preview.direccion ?? '');
+        fd.append('cedula_profesional', preview.cedula_profesional ?? '');
+        fd.append('nombre_veterinario', preview.nombre_veterinario ?? '');
+        fd.append('_method', 'POST');
+        try {
+            const { default: axios } = await import('axios');
+            await axios.post(route('settings.general.update'), fd, {
+                headers: { 'X-CSRF-TOKEN': document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '' },
+            });
+            setOk(true);
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    const p = preview;
+
+    return (
+        <form onSubmit={handleSubmit} className="max-w-lg bg-white border border-zinc-100 shadow-sm rounded-xl p-5 space-y-4">
+            <h3 className="font-semibold text-zinc-700">Información general del negocio</h3>
+            <p className="text-xs text-zinc-400 -mt-2">Este logo se usa en el ticket de venta y en las recetas veterinarias.</p>
+            <div>
+                <label className="block text-sm text-zinc-600 mb-1">Logo de la empresa</label>
+                {p.logo_url && <img src={p.logo_url} alt="Logo" className="h-14 mb-2 rounded object-contain" />}
+                <input type="file" accept="image/*" onChange={handleLogoChange}
+                    className="text-sm text-zinc-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-zinc-100 file:text-zinc-700" />
+            </div>
+            <div>
+                <label className="block text-sm text-zinc-600 mb-1">Dirección del negocio</label>
+                <input className="w-full border-gray-300 rounded-lg text-sm" placeholder="Calle, número, colonia, ciudad"
+                    value={p.direccion ?? ''} onChange={e => setPreview(prev => ({ ...prev, direccion: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+                <div>
+                    <label className="block text-sm text-zinc-600 mb-1">Nombre del veterinario</label>
+                    <input className="w-full border-gray-300 rounded-lg text-sm" placeholder="Dr. Juan Pérez"
+                        value={p.nombre_veterinario ?? ''} onChange={e => setPreview(prev => ({ ...prev, nombre_veterinario: e.target.value }))} />
+                </div>
+                <div>
+                    <label className="block text-sm text-zinc-600 mb-1">Cédula profesional</label>
+                    <input className="w-full border-gray-300 rounded-lg text-sm" placeholder="1234567"
+                        value={p.cedula_profesional ?? ''} onChange={e => setPreview(prev => ({ ...prev, cedula_profesional: e.target.value }))} />
+                </div>
+            </div>
+            <p className="text-xs text-zinc-400">La dirección, el veterinario y la cédula aparecen en el encabezado de las recetas (pestaña "Recetas").</p>
+            <button type="submit" disabled={saving}
+                className="w-full bg-zinc-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
+                {saving ? 'Guardando…' : ok ? '✓ Guardado' : 'Guardar información general'}
+            </button>
+        </form>
+    );
+}
+
+function RecetaConfigTab({ generalConfig, onGoToGeneral }) {
+    const g = generalConfig;
+    const rec = {
+        peso: '12.5',
+        vacuna_nombre: 'Óctuple', vacuna_lote: 'AB-1234', vacuna_laboratorio: 'Zoetis', vacuna_proxima: '15/08/2027',
+        despa_producto: 'Drontal Plus', despa_via: 'Oral', despa_proxima: '15/11/2026',
+        consulta_proxima: '20/08/2026',
+        notas: 'Ejemplo de indicaciones para la receta.',
+    };
+
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5 space-y-3">
+                <h3 className="font-semibold text-zinc-700">Plantilla de receta</h3>
+                <p className="text-sm text-zinc-500">
+                    Usa el logo, la dirección, la cédula y el veterinario configurados en{' '}
+                    <button type="button" onClick={onGoToGeneral} className="text-zinc-800 font-medium underline underline-offset-2">General</button>.
+                    Los campos del cuerpo (peso, vacuna, desparasitación, próxima consulta, notas) se llenan automáticamente con lo registrado en cada visita veterinaria.
+                </p>
+                <a href={route('settings.receta.sample')}
+                    className="inline-flex items-center gap-1.5 bg-zinc-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-zinc-700 transition-colors">
+                    ↓ Descargar receta de ejemplo (PDF)
+                </a>
+            </div>
+
+            <div>
+                <p className="text-xs text-zinc-400 uppercase tracking-wider mb-2">Vista previa</p>
+                <div className="bg-white border border-zinc-200 shadow-sm rounded-lg p-6 text-sm" style={{ fontSize: '12px' }}>
+                    <div className="flex items-center gap-3 border-b-2 border-zinc-900 pb-3 mb-4">
+                        {g.logo_url ? (
+                            <img src={g.logo_url} alt="Logo" className="h-12 max-w-[70px] object-contain" />
+                        ) : (
+                            <div className="h-12 w-12 rounded bg-zinc-100" />
+                        )}
+                        <div>
+                            <p className="font-bold text-base">Tu negocio</p>
+                            {g.direccion && <p className="text-zinc-500 text-xs">{g.direccion}</p>}
+                            {g.nombre_veterinario && (
+                                <p className="text-zinc-500 text-xs">
+                                    {g.nombre_veterinario}{g.cedula_profesional ? ` — Céd. Prof. ${g.cedula_profesional}` : ''}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <p className="text-center font-semibold uppercase tracking-wide text-sm mb-4">Receta médica veterinaria</p>
+                    <div className="flex justify-between text-xs mb-1"><span className="text-zinc-500">Paciente</span><span>Firulais (ejemplo)</span></div>
+                    <div className="flex justify-between text-xs mb-4"><span className="text-zinc-500">Propietario</span><span>Juan Pérez</span></div>
+                    {[
+                        ['Peso', `${rec.peso} kg`],
+                        ['Vacuna aplicada', `${rec.vacuna_nombre} — Lote: ${rec.vacuna_lote} — Lab: ${rec.vacuna_laboratorio}`],
+                        ['Próxima vacuna', rec.vacuna_proxima],
+                        ['Desparasitación', `${rec.despa_producto} — Vía: ${rec.despa_via}`],
+                        ['Próxima desparasitación', rec.despa_proxima],
+                        ['Próxima consulta', rec.consulta_proxima],
+                        ['Indicaciones / Notas', rec.notas],
+                    ].map(([label, valor], i) => (
+                        <div key={i} className="mb-2.5">
+                            <p className="text-[10px] uppercase tracking-wide text-zinc-400">{label}</p>
+                            <p className="border-b border-zinc-200 pb-1">{valor}</p>
+                        </div>
+                    ))}
+                    <div className="text-center mt-10">
+                        <p className="border-t border-zinc-900 inline-block px-8 pt-1.5 text-xs">{g.nombre_veterinario || 'Firma del veterinario'}</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -835,7 +972,7 @@ function LinksTab({ slug }) {
     );
 }
 
-export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, walkConfig, teamMembers, razas }) {
+export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, generalConfig, walkConfig, teamMembers, razas }) {
     const { auth, tenant } = usePage().props;
     const [tab, setTab] = useState('crm');
 
@@ -843,7 +980,9 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
         { id: 'crm', label: 'CRM' },
         { id: 'grooming', label: 'Grooming' },
         { id: 'payments', label: 'Métodos de pago' },
+        { id: 'general', label: 'General' },
         { id: 'ticket', label: 'Ticket' },
+        { id: 'recetas', label: 'Recetas' },
         { id: 'walks', label: 'Paseos' },
         { id: 'team', label: 'Equipo' },
         { id: 'links', label: 'Links' },
@@ -863,7 +1002,9 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
             {tab === 'crm' && <RazasSection razas={razas ?? []} />}
             {tab === 'grooming' && <GroomingTab stations={stations ?? []} checklistItems={checklistItems ?? []} />}
             {tab === 'payments' && <PaymentMethodsTab paymentMethods={paymentMethods} />}
-            {tab === 'ticket' && <TicketConfigTab ticketConfig={ticketConfig ?? { color_primario: '#18181b', color_texto: '#1f2937', color_fondo: '#ffffff', mensaje_pie: '', logo_url: null }} />}
+            {tab === 'general' && <GeneralConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', cedula_profesional: '', nombre_veterinario: '' }} />}
+            {tab === 'ticket' && <TicketConfigTab ticketConfig={ticketConfig ?? { color_primario: '#18181b', color_texto: '#1f2937', color_fondo: '#ffffff', mensaje_pie: '', logo_url: null }} onGoToGeneral={() => setTab('general')} />}
+            {tab === 'recetas' && <RecetaConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', cedula_profesional: '', nombre_veterinario: '' }} onGoToGeneral={() => setTab('general')} />}
             {tab === 'walks' && <WalksConfigTab walkConfig={walkConfig ?? { horas_anticipacion: 2, dias_adelante: 14 }} />}
             {tab === 'team' && <TeamTab teamMembers={teamMembers ?? []} currentUserId={auth.user?.id} />}
             {tab === 'links' && <LinksTab slug={tenant?.slug} />}
