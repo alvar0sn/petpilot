@@ -133,7 +133,7 @@ class FinancialReportController extends Controller
         return response()->streamDownload(function () use ($from, $to, $tickets, $movimientos, $reembolsos, $categorias) {
             $out = fopen('php://output', 'w');
             fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($out, array_merge(['Día'], $categorias, ['Ingresos', 'Egresos', 'Balance']), ',', '"', '');
+            fputcsv($out, array_merge(['Día'], $categorias, ['Ventas', 'Otros ingresos', 'Egresos', 'Balance']), ',', '"', '');
 
             foreach (CarbonPeriod::create($from->copy()->startOfDay(), $to->copy()->startOfDay()) as $day) {
                 $dayTickets = $tickets->filter(fn($t) => $t->cobrado_at->isSameDay($day));
@@ -152,15 +152,15 @@ class FinancialReportController extends Controller
                 $salidasDia = (float) $movimientos->where('tipo', 'salida')->filter(fn($m) => $m->created_at->isSameDay($day))->sum('monto');
                 $reembolsosDia = (float) $reembolsos->filter(fn($r) => $r->created_at->isSameDay($day))->sum('monto');
 
-                $ingresosDia = $ventasDia + $depositosDia;
                 $egresosDia = $salidasDia + $reembolsosDia;
-                $balanceDia = $ingresosDia - $egresosDia;
+                $balanceDia = $ventasDia + $depositosDia - $egresosDia;
 
                 $row = [$day->toDateString()];
                 foreach ($categorias as $c) {
                     $row[] = number_format($porCategoriaDia[$c], 2, '.', '');
                 }
-                $row[] = number_format($ingresosDia, 2, '.', '');
+                $row[] = number_format($ventasDia, 2, '.', '');
+                $row[] = number_format($depositosDia, 2, '.', '');
                 $row[] = number_format($egresosDia, 2, '.', '');
                 $row[] = number_format($balanceDia, 2, '.', '');
 
