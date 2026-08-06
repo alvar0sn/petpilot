@@ -197,12 +197,10 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                                 Ver ticket POS #{appt.ticket_folio}
                             </Link>
                         )}
-                        {(rec.peso || rec.vacuna_nombre || rec.despa_producto || rec.consulta_proxima || rec.notas) && (
-                            <a href={route('vet.receta', appt.id)} target="_blank" rel="noopener noreferrer"
-                                className="bg-white border border-zinc-200 text-zinc-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors">
-                                ↓ Descargar receta
-                            </a>
-                        )}
+                        <a href={route('vet.receta', appt.id)} target="_blank" rel="noopener noreferrer"
+                            className="bg-white border border-zinc-200 text-zinc-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors">
+                            ↓ Descargar receta
+                        </a>
                     </div>
                 </div>
 
