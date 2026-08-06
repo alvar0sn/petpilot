@@ -1,6 +1,7 @@
 import TenantLayout from '@/Layouts/TenantLayout';
-import { Link, router, useForm } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import axios from 'axios';
 import { formatDate, useTenantTimezone } from '@/lib/datetime';
 
 function fmt(n) {
@@ -79,14 +80,65 @@ function RefundModal({ ticket, paymentMethods, onClose }) {
     );
 }
 
-export default function PosHistory({ tickets, filters, paymentMethods }) {
+function OwnerFilter({ ownerId, selectedOwner, onSelect }) {
+    const { version } = usePage();
+    const [q, setQ] = useState('');
+    const [results, setResults] = useState([]);
+
+    async function search(val) {
+        setQ(val);
+        if (val.length < 2) { setResults([]); return; }
+        const r = await axios.get(route('owners.index'), { params: { search: val }, headers: { 'X-Inertia': true, 'X-Inertia-Version': version } });
+        setResults(r.data?.props?.owners?.data ?? []);
+    }
+
+    if (ownerId && selectedOwner) {
+        return (
+            <div className="flex items-center gap-1.5 border border-zinc-200 bg-white rounded-lg text-sm pl-3 pr-1.5 py-1.5">
+                <span className="text-zinc-700">{selectedOwner.nombre_completo}</span>
+                <button onClick={() => onSelect(null)} className="text-zinc-400 hover:text-red-500 text-xs px-1">✕</button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative">
+            <input className="border-gray-300 rounded-lg text-sm w-56" placeholder="Buscar cliente..."
+                value={q} onChange={e => search(e.target.value)} />
+            {results.length > 0 && (
+                <div className="absolute z-20 mt-1 w-64 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {results.map(o => (
+                        <button key={o.id} onClick={() => { onSelect(o); setQ(''); setResults([]); }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50">
+                            <span className="font-medium">{o.nombre_completo}</span>
+                            <span className="text-zinc-400 ml-2 font-mono">{o.telefono}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default function PosHistory({ tickets, filters, selectedOwner, paymentMethods }) {
     const tz = useTenantTimezone();
     const [estado, setEstado] = useState(filters.estado ?? '');
     const [fecha, setFecha] = useState(filters.fecha ?? '');
+    const [ownerId, setOwnerId] = useState(filters.owner_id ?? '');
     const [refundTicket, setRefundTicket] = useState(null);
 
-    function doFilter() {
-        router.get(route('pos.history'), { estado: estado || undefined, fecha: fecha || undefined }, { preserveState: true });
+    function doFilter(overrides = {}) {
+        const data = { estado, fecha, owner_id: ownerId, ...overrides };
+        router.get(route('pos.history'), {
+            estado: data.estado || undefined,
+            fecha: data.fecha || undefined,
+            owner_id: data.owner_id || undefined,
+        }, { preserveState: true });
+    }
+
+    function selectOwner(owner) {
+        setOwnerId(owner?.id ?? '');
+        doFilter({ owner_id: owner?.id ?? '' });
     }
 
     return (
@@ -103,7 +155,8 @@ export default function PosHistory({ tickets, filters, paymentMethods }) {
                     <option value="abierto">Abierto</option>
                 </select>
                 <input type="date" className="border-gray-300 rounded-lg text-sm" value={fecha} onChange={e => setFecha(e.target.value)} />
-                <button onClick={doFilter} className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors">Filtrar</button>
+                <OwnerFilter ownerId={ownerId} selectedOwner={selectedOwner} onSelect={selectOwner} />
+                <button onClick={() => doFilter()} className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors">Filtrar</button>
             </div>
 
             <div className="bg-white border border-zinc-100 shadow-sm rounded-xl overflow-hidden">

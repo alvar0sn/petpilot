@@ -352,6 +352,7 @@ class PosTicketController extends Controller
         $tickets = PosTicket::with(['owner:id,nombre,apellidos', 'payments.paymentMethod:id,nombre'])
             ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
             ->when($request->fecha, fn($q, $f) => $q->whereDate('created_at', $f))
+            ->when($request->owner_id, fn($q, $id) => $q->where('owner_id', $id))
             ->latest()
             ->paginate(30)
             ->withQueryString()
@@ -372,7 +373,10 @@ class PosTicketController extends Controller
 
         return Inertia::render('Pos/History', [
             'tickets' => $tickets,
-            'filters' => $request->only('estado', 'fecha'),
+            'filters' => $request->only('estado', 'fecha', 'owner_id'),
+            'selectedOwner' => $request->owner_id
+                ? Owner::select('id', 'nombre', 'apellidos')->find($request->owner_id)
+                : null,
             'paymentMethods' => PosPaymentMethod::where('activo', true)->orderBy('orden')->get(['id', 'nombre']),
         ]);
     }
