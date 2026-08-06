@@ -70,7 +70,11 @@ class DashboardController extends Controller
                 'owner_id' => $e->pet?->owner?->id,
                 'telefono' => $e->pet?->owner?->telefono,
                 'tipo'     => $e->eventType?->nombre,
-            ]);
+            ])
+            // ->map() sobre un Eloquent\Collection conserva esa clase aunque el
+            // contenido ya sean arrays — Eloquent\Collection::merge() espera
+            // modelos (llama getKey()), así que hay que bajarlo a Collection base.
+            ->toBase();
 
         $camposRecordatorio = [
             'recordatorio_vacuna'   => 'Vacuna',
