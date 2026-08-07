@@ -272,7 +272,7 @@ class PosTicketController extends Controller
 
         $ticketUrl = url("/t/{$ticket->token}");
 
-        $mensaje = "🧾 *Ticket #{$ticket->folio}*\n\n{$lineas}";
+        $mensaje = "🧾 *{$tenant->nombre}*\nTicket #{$ticket->folio}\n\n{$lineas}";
 
         if (($ticket->discount_amount ?? 0) > 0) {
             $mensaje .= "\n_Descuento: -$" . number_format($ticket->discount_amount, 2, '.', ',') . "_";
@@ -284,10 +284,11 @@ class PosTicketController extends Controller
 
         try {
             Http::timeout(8)->post($webhookUrl, [
-                'phone'      => $phone,
-                'message'    => $mensaje,
-                'ticket_id'  => $ticket->id,
-                'ticket_url' => $ticketUrl,
+                'phone'         => $phone,
+                'message'       => $mensaje,
+                'ticket_id'     => $ticket->id,
+                'ticket_url'    => $ticketUrl,
+                'business_name' => $tenant->nombre,
             ]);
             return true;
         } catch (\Exception) {
