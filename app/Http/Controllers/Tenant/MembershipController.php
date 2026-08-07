@@ -260,7 +260,7 @@ class MembershipController extends Controller
             'reinicio_creditos' => 'required|in:ninguno,semanal,mensual',
             'pos_item_id' => 'nullable|exists:pos_catalog_items,id',
             'credits' => 'required|array|min:1',
-            'credits.*.servicio_tipo' => 'required|in:guarderia,hotel,estetica,paseo',
+            'credits.*.servicio_tipo' => 'required|in:guarderia,hotel,estetica,paseo,entrenamiento',
             'credits.*.creditos' => 'required|integer|min:1',
         ]);
 

@@ -2,12 +2,13 @@ import PortalLayout from '@/Layouts/PortalLayout';
 import { useState } from 'react';
 import { formatDate, useTenantTimezone } from '@/lib/datetime';
 
-const SERVICIO_LABEL = { guarderia: 'Guardería', hotel: 'Hotel', estetica: 'Estética', paseo: 'Paseo' };
+const SERVICIO_LABEL = { guarderia: 'Guardería', hotel: 'Hotel', estetica: 'Estética', paseo: 'Paseo', entrenamiento: 'Entrenamiento' };
 const SERVICIO_COLOR = {
     guarderia: 'bg-blue-100 text-blue-700',
     hotel:     'bg-purple-100 text-purple-700',
     estetica:  'bg-pink-100 text-pink-700',
     paseo:     'bg-emerald-100 text-emerald-700',
+    entrenamiento: 'bg-amber-100 text-amber-700',
 };
 
 function daysFrom(dateStr) {

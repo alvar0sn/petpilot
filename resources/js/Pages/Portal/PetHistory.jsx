@@ -206,8 +206,9 @@ export default function PortalPetHistory({ tenant, owner, pet, hotelStays, walkB
         hotel:     'bg-sky-50 text-sky-700',
         estetica:  'bg-pink-50 text-pink-700',
         paseo:     'bg-emerald-50 text-emerald-700',
+        entrenamiento: 'bg-amber-50 text-amber-700',
     };
-    const servicioLabel = { guarderia: 'Guardería', hotel: 'Hotel', estetica: 'Estética', paseo: 'Paseo' };
+    const servicioLabel = { guarderia: 'Guardería', hotel: 'Hotel', estetica: 'Estética', paseo: 'Paseo', entrenamiento: 'Entrenamiento' };
 
     return (
         <PortalLayout tenant={tenant} owner={owner} current="home">

@@ -8,6 +8,7 @@ use App\Http\Controllers\Tenant\DashboardController;
 use App\Http\Controllers\Tenant\HotelController;
 use App\Http\Controllers\Tenant\MembershipController;
 use App\Http\Controllers\Tenant\AppointmentController;
+use App\Http\Controllers\Tenant\TrainingController;
 use App\Http\Controllers\Tenant\VetController;
 use App\Http\Controllers\Tenant\WalkSlotController;
 use App\Http\Controllers\Tenant\WalkBookingController;
@@ -185,6 +186,18 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::get('veterinaria/{appointment}/receta', [VetController::class, 'downloadReceta'])->name('vet.receta');
         Route::post('veterinaria/{appointment}/photos', [VetController::class, 'storePhoto'])->name('vet.photos.store');
         Route::delete('veterinaria/{appointment}/photos/{photo}', [VetController::class, 'destroyPhoto'])->name('vet.photos.destroy');
+    });
+
+    Route::middleware('module:entrenamiento')->group(function () {
+        Route::get('entrenamiento', [TrainingController::class, 'index'])->name('training.index');
+        Route::post('entrenamiento', [TrainingController::class, 'store'])->name('training.store');
+        Route::get('entrenamiento/{appointment}', [TrainingController::class, 'show'])->name('training.show');
+        Route::put('entrenamiento/{appointment}', [TrainingController::class, 'update'])->name('training.update');
+        Route::put('entrenamiento/{appointment}/items', [TrainingController::class, 'updateItems'])->name('training.items');
+        Route::post('entrenamiento/{appointment}/confirm', [TrainingController::class, 'confirm'])->name('training.confirm');
+        Route::post('entrenamiento/{appointment}/complete', [TrainingController::class, 'complete'])->name('training.complete');
+        Route::post('entrenamiento/{appointment}/cancel', [TrainingController::class, 'cancel'])->name('training.cancel');
+        Route::post('entrenamiento/{appointment}/no-show', [TrainingController::class, 'noShow'])->name('training.noShow');
     });
 
     // Settings — always accessible

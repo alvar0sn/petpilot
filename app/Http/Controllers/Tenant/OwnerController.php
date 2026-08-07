@@ -49,12 +49,15 @@ class OwnerController extends Controller
                 'pets' => $o->pets->take($request->search ? 20 : 3)->map(function ($p) {
                     $membership = $p->memberships->first();
                     $creditEst = $membership?->getCredit('estetica');
+                    $creditEntrenamiento = $membership?->getCredit('entrenamiento');
                     return [
-                        'id'                => $p->id,
-                        'nombre'            => $p->nombre,
-                        'tipo'              => $p->tipo,
-                        'membership_id'     => ($creditEst && $creditEst->saldo_actual > 0) ? $membership->id : null,
-                        'creditos_estetica' => $creditEst?->saldo_actual ?? 0,
+                        'id'                    => $p->id,
+                        'nombre'                => $p->nombre,
+                        'tipo'                  => $p->tipo,
+                        'membership_id'         => ($creditEst && $creditEst->saldo_actual > 0) ? $membership->id : null,
+                        'creditos_estetica'     => $creditEst?->saldo_actual ?? 0,
+                        'membership_id_entrenamiento' => ($creditEntrenamiento && $creditEntrenamiento->saldo_actual > 0) ? $membership->id : null,
+                        'creditos_entrenamiento'      => $creditEntrenamiento?->saldo_actual ?? 0,
                     ];
                 }),
                 'created_at' => $o->created_at,

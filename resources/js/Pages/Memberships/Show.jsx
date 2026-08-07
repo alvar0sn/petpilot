@@ -3,8 +3,8 @@ import { Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { formatDate, useTenantTimezone } from '@/lib/datetime';
 
-const servicioLabel = { guarderia: 'Guardería', hotel: 'Hotel', estetica: 'Estética', paseo: 'Paseo' };
-const servicioColor = { guarderia: 'bg-blue-100 text-blue-700', hotel: 'bg-purple-100 text-purple-700', estetica: 'bg-pink-100 text-pink-700', paseo: 'bg-green-100 text-green-700' };
+const servicioLabel = { guarderia: 'Guardería', hotel: 'Hotel', estetica: 'Estética', paseo: 'Paseo', entrenamiento: 'Entrenamiento' };
+const servicioColor = { guarderia: 'bg-blue-100 text-blue-700', hotel: 'bg-purple-100 text-purple-700', estetica: 'bg-pink-100 text-pink-700', paseo: 'bg-green-100 text-green-700', entrenamiento: 'bg-amber-100 text-amber-700' };
 const movTipoColor = { consumo: 'text-red-600', recarga: 'text-green-600', ajuste: 'text-zinc-600', vencimiento: 'text-zinc-400' };
 
 function CreditCard({ credit, membershipId }) {

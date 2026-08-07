@@ -7,6 +7,7 @@ const nav = [
     { label: 'Clientes',        href: 'owners.index',       icon: 'ti-users',            module: 'crm' },
     { label: 'Grooming',        href: 'grooming.index',     icon: 'ti-scissors',         module: 'grooming' },
     { label: 'Veterinaria',     href: 'vet.index',          icon: 'ti-stethoscope',      module: 'veterinaria' },
+    { label: 'Entrenamientos',  href: 'training.index',     icon: 'ti-whistle',          module: 'entrenamiento' },
     { label: 'Hotel',           href: 'hotel.index',        icon: 'ti-building',         module: 'hotel' },
     { label: 'Membresías',      href: 'memberships.index',  icon: 'ti-star',             module: 'memberships' },
     { label: 'Paseos',          href: 'walks.index',        icon: 'ti-dog',              module: 'paseos', badge: 'walks_pending_count' },
@@ -28,6 +29,7 @@ function QuickNav({ hasModule }) {
         { label: 'Grooming',     href: 'grooming.index', icon: 'ti-scissors',    module: 'grooming' },
         { label: 'Hotel',        href: 'hotel.index',    icon: 'ti-building',    module: 'hotel' },
         { label: 'Veterinaria',  href: 'vet.index',      icon: 'ti-stethoscope', module: 'veterinaria' },
+        { label: 'Entrenamiento', href: 'training.index', icon: 'ti-whistle',    module: 'entrenamiento' },
     ].filter(m => hasModule(m.module));
 
     return (

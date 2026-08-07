@@ -106,7 +106,7 @@ class SettingsController extends Controller
             'role'              => 'required|in:tenant_admin,colaborador',
             'password'          => ['required', Password::min(8)],
             'permisos_modulos'  => 'nullable|array',
-            'permisos_modulos.*'=> 'in:crm,pos,memberships,hotel,paseos,grooming,veterinaria',
+            'permisos_modulos.*'=> 'in:crm,pos,memberships,hotel,paseos,grooming,veterinaria,entrenamiento',
         ]);
 
         app('current_tenant')->users()->create([
@@ -133,7 +133,7 @@ class SettingsController extends Controller
             'role'              => 'required|in:tenant_admin,colaborador',
             'activo'            => 'boolean',
             'permisos_modulos'  => 'nullable|array',
-            'permisos_modulos.*'=> 'in:crm,pos,memberships,hotel,paseos,grooming,veterinaria',
+            'permisos_modulos.*'=> 'in:crm,pos,memberships,hotel,paseos,grooming,veterinaria,entrenamiento',
         ]);
 
         if (! ($data['activo'] ?? true) || $data['role'] !== 'tenant_admin') {

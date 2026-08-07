@@ -29,6 +29,7 @@ class TenantSeeder extends Seeder
             ['nombre' => 'Vacuna', 'intervalo_dias' => 365, 'es_configurable' => false, 'activo' => true],
             ['nombre' => 'Desparasitación', 'intervalo_dias' => 90, 'es_configurable' => false, 'activo' => true],
             ['nombre' => 'Consulta', 'intervalo_dias' => null, 'es_configurable' => false, 'activo' => true],
+            ['nombre' => 'Entrenamiento', 'intervalo_dias' => null, 'es_configurable' => false, 'activo' => true],
         ];
 
         foreach ($types as $type) {

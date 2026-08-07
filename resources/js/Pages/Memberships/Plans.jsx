@@ -6,9 +6,9 @@ function fmt(n) {
     return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 }
 
-const servicioLabel = { guarderia: 'Guardería', hotel: 'Hotel', estetica: 'Estética', paseo: 'Paseo' };
-const servicioColor = { guarderia: 'bg-blue-100 text-blue-700', hotel: 'bg-purple-100 text-purple-700', estetica: 'bg-pink-100 text-pink-700', paseo: 'bg-green-100 text-green-700' };
-const SERVICES = ['guarderia', 'hotel', 'estetica', 'paseo'];
+const servicioLabel = { guarderia: 'Guardería', hotel: 'Hotel', estetica: 'Estética', paseo: 'Paseo', entrenamiento: 'Entrenamiento' };
+const servicioColor = { guarderia: 'bg-blue-100 text-blue-700', hotel: 'bg-purple-100 text-purple-700', estetica: 'bg-pink-100 text-pink-700', paseo: 'bg-green-100 text-green-700', entrenamiento: 'bg-amber-100 text-amber-700' };
+const SERVICES = ['guarderia', 'hotel', 'estetica', 'paseo', 'entrenamiento'];
 
 function NewPlanForm() {
     const { data, setData, post, processing, errors, reset } = useForm({

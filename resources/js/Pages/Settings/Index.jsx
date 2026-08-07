@@ -691,6 +691,7 @@ const MODULES = [
     { key: 'paseos',       label: 'Paseos' },
     { key: 'grooming',     label: 'Grooming' },
     { key: 'veterinaria',  label: 'Veterinaria' },
+    { key: 'entrenamiento', label: 'Entrenamientos' },
 ];
 
 function ModuleCheckboxes({ permisos, onChange }) {
