@@ -35,7 +35,7 @@ class ProcessReviews implements ShouldQueue
                     continue;
                 }
 
-                $ghl->sendWebhook($tenant->id, 'review', [
+                $ghl->sendWebhook($tenant->id, 'reviews', [
                     'tipo' => 'review',
                     'ghl_contact_id' => $owner->ghl_contact_id,
                     'owner_nombre' => $owner->nombre,

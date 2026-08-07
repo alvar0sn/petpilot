@@ -33,7 +33,7 @@ class ProcessReminders implements ShouldQueue
                     continue;
                 }
 
-                $ghl->sendWebhook($tenant->id, 'recordatorio', [
+                $ghl->sendWebhook($tenant->id, 'recordatorios', [
                     'tipo' => 'recordatorio',
                     'tipo_servicio' => $event->eventType?->nombre,
                     'ghl_contact_id' => $owner->ghl_contact_id,
