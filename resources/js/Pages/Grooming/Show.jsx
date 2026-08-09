@@ -261,11 +261,17 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                                 Editar cita
                             </button>
                         )}
-                        {canEdit && !appt.responsiva_firmado_at && (
+                        {canEdit && !appt.responsiva_firmado_at && recepcionGuardada && (
                             <button onClick={sendResponsiva} disabled={sendingResponsiva}
                                 className="bg-white border border-zinc-200 text-zinc-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors disabled:opacity-50">
                                 {sendingResponsiva ? 'Enviando...' : appt.responsiva_enviado_at ? 'Reenviar responsiva' : 'Enviar responsiva'}
                             </button>
+                        )}
+                        {canEdit && !appt.responsiva_firmado_at && !recepcionGuardada && (
+                            <span title="Guarda la recepción para poder enviar la responsiva"
+                                className="bg-zinc-50 text-zinc-400 border border-zinc-200 px-3 py-1.5 rounded-lg text-sm font-medium cursor-not-allowed">
+                                Enviar responsiva
+                            </span>
                         )}
                         {appt.responsiva_firmado_at && recepcionGuardada && (
                             <a href={route('grooming.responsiva.download', appt.id)} target="_blank" rel="noopener noreferrer"

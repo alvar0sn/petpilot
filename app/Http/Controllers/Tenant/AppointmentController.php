@@ -550,6 +550,10 @@ class AppointmentController extends Controller
             return back()->with('error', 'Esta responsiva ya fue firmada.');
         }
 
+        if (! $appointment->recepcion) {
+            return back()->with('error', 'Completa el formulario de recepción antes de enviar la responsiva.');
+        }
+
         $tenant = app('current_tenant');
 
         if (! $appointment->responsiva_token) {
