@@ -182,7 +182,7 @@ function MobileCatalog({ catalog, onAdd }) {
         : activeCategory === 'todos' ? allItems : allItems.filter(i => i._catId === activeCategory);
 
     return (
-        <div className="flex flex-col h-full">
+        <>
             <input type="text" className="w-full border-gray-300 rounded-lg text-sm mb-3"
                 placeholder="Buscar producto..." value={search} onChange={e => setSearch(e.target.value)} />
             {!q && (
@@ -203,7 +203,7 @@ function MobileCatalog({ catalog, onAdd }) {
                     })}
                 </div>
             )}
-            <div className="flex-1 overflow-y-auto">
+            <div>
                 {visibleItems.map(item => {
                     const col = catCol(item._catNombre);
                     return (
@@ -223,7 +223,7 @@ function MobileCatalog({ catalog, onAdd }) {
                     </p>
                 )}
             </div>
-        </div>
+        </>
     );
 }
 
@@ -790,7 +790,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
             <div className="md:hidden flex flex-col h-[calc(100dvh-116px)]">
                 {mobileView === 'catalog' ? (
                     <>
-                        <div className="flex-1 overflow-hidden px-4 pt-4 flex flex-col">
+                        <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4">
                             {/* Open tickets chips */}
                             {openTickets.length > 0 && (
                                 <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-hide">
@@ -826,7 +826,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                         )}
                     </>
                 ) : (
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-hidden">
                         {currentTicket && (
                             <MobileCart
                                 key={currentTicket.id}
