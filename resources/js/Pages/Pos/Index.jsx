@@ -231,16 +231,22 @@ function MobileCatalog({ catalog, onAdd }) {
 
 function PaymentSheet({ ticket, paymentMethods, onClose, onPaid }) {
     const [processing, setProcessing] = useState(false);
+    const [splitMode, setSplitMode] = useState(false);
+    const [payments, setPayments] = useState([{ payment_method_id: paymentMethods[0]?.id ?? '', monto: String(ticket.total) }]);
 
-    async function payWith(methodId) {
+    async function submitPayments(pays) {
         setProcessing(true);
         try {
-            const r = await axios.post(route('pos.tickets.pay', ticket.id), {
-                payments: [{ payment_method_id: methodId, monto: String(ticket.total) }],
-            });
+            const r = await axios.post(route('pos.tickets.pay', ticket.id), { payments: pays });
             onPaid({ folio: r.data.folio, waSent: r.data.wa_sent });
         } finally { setProcessing(false); }
     }
+
+    function payWith(methodId) {
+        submitPayments([{ payment_method_id: methodId, monto: String(ticket.total) }]);
+    }
+
+    const remainingToPay = ticket.total - payments.reduce((s, p) => s + Number(p.monto || 0), 0);
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
@@ -250,14 +256,56 @@ function PaymentSheet({ ticket, paymentMethods, onClose, onPaid }) {
                     <p className="text-4xl font-bold text-gray-900">{fmt(ticket.total)}</p>
                     <p className="text-sm text-gray-400 mt-1">Importe total</p>
                 </div>
-                {paymentMethods.map((m, i) => (
-                    <button key={m.id} onClick={() => payWith(m.id)} disabled={processing}
-                        className={`w-full py-4 rounded-2xl text-base font-semibold flex items-center justify-center gap-3 transition-colors disabled:opacity-50
-                            ${i === 0 ? 'bg-blue-600 text-white hover:bg-blue-700' : 'border border-gray-200 text-gray-800 hover:bg-gray-50'}`}>
-                        {m.nombre}
-                    </button>
-                ))}
-                <button onClick={onClose} className="w-full py-3 text-sm text-gray-400">Cancelar</button>
+
+                {!splitMode ? (
+                    <>
+                        {paymentMethods.map((m, i) => (
+                            <button key={m.id} onClick={() => payWith(m.id)} disabled={processing}
+                                className={`w-full py-4 rounded-2xl text-base font-semibold flex items-center justify-center gap-3 transition-colors disabled:opacity-50
+                                    ${i === 0 ? 'bg-blue-600 text-white hover:bg-blue-700' : 'border border-gray-200 text-gray-800 hover:bg-gray-50'}`}>
+                                {m.nombre}
+                            </button>
+                        ))}
+                        {paymentMethods.length > 1 && (
+                            <button onClick={() => setSplitMode(true)} disabled={processing}
+                                className="w-full py-3 text-sm text-indigo-600 font-medium disabled:opacity-50">
+                                Dividir entre varios métodos
+                            </button>
+                        )}
+                        <button onClick={onClose} className="w-full py-3 text-sm text-gray-400">Cancelar</button>
+                    </>
+                ) : (
+                    <>
+                        <div className="space-y-2">
+                            {payments.map((p, i) => (
+                                <div key={i} className="grid grid-cols-2 gap-2">
+                                    <select className="border-gray-300 rounded-xl text-sm py-2.5" value={p.payment_method_id} onChange={e => {
+                                        const np = [...payments]; np[i].payment_method_id = e.target.value; setPayments(np);
+                                    }}>
+                                        {paymentMethods.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                                    </select>
+                                    <input type="number" step="0.01" className="border-gray-300 rounded-xl text-sm font-mono py-2.5" value={p.monto} onChange={e => {
+                                        const np = [...payments]; np[i].monto = e.target.value; setPayments(np);
+                                    }} />
+                                </div>
+                            ))}
+                        </div>
+                        {Math.abs(remainingToPay) > 0.01 && (
+                            <button onClick={() => setPayments([...payments, { payment_method_id: paymentMethods[0]?.id ?? '', monto: String(Math.max(0, remainingToPay).toFixed(2)) }])}
+                                className="text-xs text-indigo-600 underline">+ Agregar método de pago</button>
+                        )}
+                        {remainingToPay > 0.01 && <p className="text-xs text-orange-600">Falta: {fmt(remainingToPay)}</p>}
+                        {remainingToPay < -0.01 && <p className="text-xs text-red-600">Excede el total por {fmt(-remainingToPay)}</p>}
+                        <div className="flex gap-2 pt-1">
+                            <button onClick={() => setSplitMode(false)} disabled={processing}
+                                className="flex-1 border py-3 rounded-xl text-sm disabled:opacity-50">Atrás</button>
+                            <button onClick={() => submitPayments(payments)} disabled={Math.abs(remainingToPay) > 0.01 || processing}
+                                className="flex-1 bg-blue-600 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-40">
+                                {processing ? 'Procesando...' : 'Confirmar pago'}
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
