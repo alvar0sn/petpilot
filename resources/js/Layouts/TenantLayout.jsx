@@ -209,7 +209,7 @@ export default function TenantLayout({ children, title, noPadding = false }) {
                 </div>
             </div>
             <BacklogFab />
-            {auth.user?.role !== 'super_admin' && (
+            {(auth.user?.role !== 'super_admin' || impersonating) && (
                 <QuickNav hasModule={hasModule} />
             )}
         </>
