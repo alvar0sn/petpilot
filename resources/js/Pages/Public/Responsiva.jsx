@@ -16,7 +16,7 @@ function fmtDateTime(str) {
     });
 }
 
-export default function PublicResponsiva({ negocio, appointment, texto, token, firmado, firmado_at, firmante }) {
+export default function PublicResponsiva({ negocio, appointment, texto, recepcion, token, firmado, firmado_at, firmante }) {
     const primary = negocio.color_primario || '#4f46e5';
     const canvasRef = useRef(null);
     const padRef = useRef(null);
@@ -106,6 +106,38 @@ export default function PublicResponsiva({ negocio, appointment, texto, token, f
                     }}>
                         {texto}
                     </div>
+
+                    {/* Condiciones documentadas en la recepción */}
+                    {recepcion && (recepcion.hallazgos?.length > 0 || recepcion.estado_manto || recepcion.accesorios || recepcion.notas_sesion) && (
+                        <div style={{
+                            fontSize: '0.8rem', color: '#3f3f46', background: '#fafafa',
+                            border: '1px solid #e4e4e7', borderRadius: '0.5rem',
+                            padding: '0.85rem 1rem', marginBottom: '1.25rem',
+                        }}>
+                            <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.03em', color: '#71717a', fontWeight: 600, marginBottom: '0.4rem' }}>
+                                Condiciones al momento de la recepción
+                            </div>
+                            {recepcion.hallazgos?.length > 0 && (
+                                <div style={{ marginBottom: '0.3rem' }}>
+                                    <strong>Análisis visual:</strong>{' '}
+                                    {recepcion.hallazgos.map(h => (
+                                        <span key={h} style={{ display: 'inline-block', background: '#fee2e2', color: '#b91c1c', borderRadius: '3px', padding: '1px 6px', margin: '2px 3px 2px 0', fontSize: '0.75rem' }}>
+                                            {h}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            {recepcion.estado_manto && (
+                                <div style={{ padding: '1.5px 0' }}><strong>Estado del manto:</strong> {recepcion.estado_manto}</div>
+                            )}
+                            {recepcion.accesorios && (
+                                <div style={{ padding: '1.5px 0' }}><strong>Accesorios recibidos:</strong> {recepcion.accesorios}</div>
+                            )}
+                            {recepcion.notas_sesion && (
+                                <div style={{ padding: '1.5px 0' }}><strong>Notas:</strong> {recepcion.notas_sesion}</div>
+                            )}
+                        </div>
+                    )}
 
                     {showConfirmation ? (
                         <div style={{ textAlign: 'center', padding: '1rem 0' }}>

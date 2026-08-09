@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\PosTicketConfig;
 use App\Models\Tenant;
+use App\Services\ResponsivaPdfService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -38,6 +39,7 @@ class PublicResponsivaController extends Controller
                 'fecha' => $appointment->fecha->toDateString(),
             ],
             'texto'      => $appointment->responsiva_texto,
+            'recepcion'  => ResponsivaPdfService::recepcionResumen($appointment),
             'token'      => $token,
             'firmado'    => (bool) $appointment->responsiva_firmado_at,
             'firmado_at' => $appointment->responsiva_firmado_at?->toDateTimeString(),

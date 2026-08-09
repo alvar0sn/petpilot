@@ -28,6 +28,27 @@ class ResponsivaPdfService
     ];
 
     /**
+     * Resumen legible del formulario de recepción, usado tanto en el PDF
+     * (staff) como en la página pública de firma (dueño) — así el dueño ve
+     * exactamente las mismas condiciones documentadas que quedan en el
+     * comprobante.
+     */
+    public static function recepcionResumen(Appointment $appointment): array
+    {
+        $rec = $appointment->recepcion ?? [];
+
+        return [
+            'hallazgos'    => collect(self::ANALISIS_LABELS)
+                ->filter(fn($label, $key) => ! empty($rec[$key]))
+                ->values()
+                ->all(),
+            'estado_manto' => self::ESTADO_MANTO_LABELS[$rec['estado_manto'] ?? ''] ?? null,
+            'accesorios'   => $appointment->accesorios,
+            'notas_sesion' => $rec['notas_sesion'] ?? null,
+        ];
+    }
+
+    /**
      * Arma el PDF de la responsiva firmada (tamaño carta), con los mismos
      * datos generales del negocio que usa RecetaPdfService (logo, dirección,
      * teléfono — Configuración → General), el texto legal que se le mostró
@@ -62,12 +83,6 @@ class ResponsivaPdfService
             }
         }
 
-        $rec = $appointment->recepcion ?? [];
-        $hallazgos = collect(self::ANALISIS_LABELS)
-            ->filter(fn($label, $key) => ! empty($rec[$key]))
-            ->values()
-            ->all();
-
         return Pdf::loadView('pdf.responsiva', [
             'negocio' => [
                 'nombre'    => $tenant->nombre,
@@ -84,12 +99,7 @@ class ResponsivaPdfService
             'firma'    => $firma,
             'firmante' => $appointment->responsiva_firmante_nombre,
             'firmado_at' => $appointment->responsiva_firmado_at?->translatedFormat('d/m/Y H:i'),
-            'recepcion' => [
-                'hallazgos'     => $hallazgos,
-                'estado_manto'  => self::ESTADO_MANTO_LABELS[$rec['estado_manto'] ?? ''] ?? null,
-                'accesorios'    => $appointment->accesorios,
-                'notas_sesion'  => $rec['notas_sesion'] ?? null,
-            ],
+            'recepcion' => self::recepcionResumen($appointment),
         ])->setPaper('letter');
     }
 }
