@@ -491,7 +491,7 @@ function MobileCart({ ticket, paymentMethods, discounts, onRefresh, onClear, onB
                     ticket={ticket}
                     paymentMethods={paymentMethods}
                     onClose={() => setShowPayment(false)}
-                    onPaid={state => { setShowPayment(false); setPaidState(state); }}
+                    onPaid={state => { setShowPayment(false); setPaidState(state); router.reload({ only: ['openTickets'] }); }}
                 />
             )}
         </>
@@ -558,6 +558,7 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
         try {
             const r = await axios.post(route('pos.tickets.pay', ticket.id), { payments });
             setPaidState({ folio: r.data.folio, waSent: r.data.wa_sent });
+            router.reload({ only: ['openTickets'] });
         } catch (e) { console.error('pay:', e); }
         finally { setProcessing(false); }
     }
@@ -823,6 +824,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                     <div className="flex-1 overflow-hidden">
                         {currentTicket && (
                             <MobileCart
+                                key={currentTicket.id}
                                 ticket={currentTicket}
                                 paymentMethods={paymentMethods}
                                 discounts={discounts}
@@ -878,7 +880,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                 {/* Ticket */}
                 <div className="w-80 shrink-0 p-4 bg-gray-50 border-l overflow-hidden">
                     {currentTicket ? (
-                        <TicketPanel ticket={currentTicket} paymentMethods={paymentMethods} discounts={discounts}
+                        <TicketPanel key={currentTicket.id} ticket={currentTicket} paymentMethods={paymentMethods} discounts={discounts}
                             onRefresh={updateTicket} onClear={() => { updateTicket(null); router.reload({ only: ['openTickets'] }); }} />
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
