@@ -10,6 +10,7 @@ const nav = [
         { label: 'Turnos',      href: 'pos.shift.index' },
         { label: 'Catálogo',    href: 'pos.catalog' },
         { label: 'Descuentos',  href: 'pos.discounts.index' },
+        { label: 'Movimientos de caja', href: 'pos.index', query: { cash_movement: 1 } },
     ]},
     { label: 'Grooming',        href: 'grooming.index',     icon: 'ti-scissors',         module: 'grooming' },
     { label: 'Veterinaria',     href: 'vet.index',          icon: 'ti-stethoscope',      module: 'veterinaria' },
@@ -137,9 +138,9 @@ export default function TenantLayout({ children, title, noPadding = false }) {
                                     {isOpen && item.children && (
                                         <div className="mt-0.5 space-y-0.5">
                                             {item.children.map(child => {
-                                                const childActive = currentRoute?.startsWith(child.href.replace('.index', ''));
+                                                const childActive = !child.query && currentRoute?.startsWith(child.href.replace('.index', ''));
                                                 return (
-                                                    <Link key={child.href} href={route(child.href)}
+                                                    <Link key={child.label} href={route(child.href, child.query)}
                                                         className={`flex items-center gap-2 pl-9 pr-3 py-1.5 rounded-md transition-colors ${childActive ? 'text-white bg-zinc-700' : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900'}`}
                                                         style={{ fontSize: '12px' }}
                                                     >

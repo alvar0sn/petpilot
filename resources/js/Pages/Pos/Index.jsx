@@ -717,6 +717,17 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
         if (openTicketId) loadTicket(openTicketId);
     }, [openTicketId]);
 
+    // Entrada desde el submenú "Movimientos de caja" (POS > Movimientos de caja)
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('cash_movement') === '1') {
+            setShowCashMovement(true);
+            params.delete('cash_movement');
+            const query = params.toString();
+            window.history.replaceState({}, '', window.location.pathname + (query ? `?${query}` : ''));
+        }
+    }, []);
+
     async function newTicket() {
         setProcessing(true);
         try {
@@ -785,24 +796,18 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                                 <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-hide">
                                     {openTickets.map(t => (
                                         <button key={t.id} onClick={() => loadTicket(t.id)}
-                                            className={`shrink-0 border rounded-lg px-3 py-1.5 text-xs ${currentTicket?.id === t.id ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-gray-200 text-gray-600'}`}>
+                                            className={`shrink-0 border rounded-full px-4 py-2 text-sm font-medium transition-colors ${currentTicket?.id === t.id ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-gray-200 text-gray-700 bg-white'}`}>
                                             #{t.folio} {t.owner ?? ''}
                                         </button>
                                     ))}
                                 </div>
                             )}
 
-                            {/* Nueva venta — always visible above search */}
-                            <div className="flex gap-2 mb-3">
-                                <button onClick={newTicket} disabled={processing}
-                                    className="flex-1 bg-zinc-900 text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50">
-                                    + Nueva venta
-                                </button>
-                                <button onClick={() => setShowCashMovement(true)}
-                                    className="bg-white border border-gray-200 text-gray-600 px-4 py-3 rounded-xl text-sm font-semibold hover:bg-gray-50">
-                                    Caja
-                                </button>
-                            </div>
+                            {/* Nuevo ticket — always visible above search */}
+                            <button onClick={newTicket} disabled={processing}
+                                className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-600 py-3.5 rounded-xl text-base font-medium disabled:opacity-50 mb-3">
+                                <span className="text-lg leading-none">+</span> Nuevo ticket
+                            </button>
 
                             <ErrorBanner message={catalogError} onDismiss={() => setCatalogError(null)} />
 
@@ -847,10 +852,6 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                             <button onClick={newTicket} disabled={processing}
                                 className="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
                                 + Nueva venta
-                            </button>
-                            <button onClick={() => setShowCashMovement(true)}
-                                className="text-xs border px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-600">
-                                Movimiento de caja
                             </button>
                             <Link href={route('pos.history')} className="text-xs border px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-600">Historial</Link>
                             <Link href={route('pos.shift.index')} className="text-xs border px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-600">Turno</Link>
