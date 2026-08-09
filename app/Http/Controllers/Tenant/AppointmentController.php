@@ -585,6 +585,7 @@ class AppointmentController extends Controller
     public function downloadResponsiva(Appointment $appointment): \Symfony\Component\HttpFoundation\Response
     {
         abort_unless($appointment->responsiva_firmado_at, 404);
+        abort_unless($appointment->recepcion, 422, 'Completa el formulario de recepción antes de descargar la responsiva.');
 
         $pdf = ResponsivaPdfService::build($appointment);
         $filename = 'responsiva-' . Str::slug($appointment->pet?->nombre ?? 'mascota') . '-' . $appointment->fecha->toDateString() . '.pdf';

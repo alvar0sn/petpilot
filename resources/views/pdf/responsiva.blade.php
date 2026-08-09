@@ -21,7 +21,13 @@
     .paciente-bar .lbl { color: #71717a; font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.3px; }
     .paciente-bar .val { font-weight: bold; }
 
-    .texto-legal { font-size: 10.5px; line-height: 1.55; white-space: pre-line; text-align: justify; margin-bottom: 30px; }
+    .texto-legal { font-size: 10.5px; line-height: 1.55; white-space: pre-line; text-align: justify; margin-bottom: 20px; }
+
+    .recepcion-box { background: #fafafa; border: 1px solid #e4e4e7; border-radius: 4px; padding: 9px 11px; margin-bottom: 24px; font-size: 10px; color: #3f3f46; }
+    .recepcion-box .recepcion-titulo { font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px; color: #71717a; margin-bottom: 5px; font-weight: bold; }
+    .recepcion-box .recepcion-linea { padding: 1.5px 0; }
+    .recepcion-box .recepcion-linea b { color: #18181b; }
+    .hallazgo-tag { display: inline-block; background: #fee2e2; color: #b91c1c; border-radius: 3px; padding: 1px 6px; margin: 1px 3px 1px 0; font-size: 9px; }
 
     .firma { margin-top: 20px; text-align: center; }
     .firma img { max-height: 70px; max-width: 260px; }
@@ -54,6 +60,29 @@
     </div>
 
     <div class="texto-legal">{{ $texto }}</div>
+
+    @if(!empty($recepcion['hallazgos']) || $recepcion['estado_manto'] || $recepcion['accesorios'] || $recepcion['notas_sesion'])
+    <div class="recepcion-box">
+        <div class="recepcion-titulo">Condiciones al momento de la recepción</div>
+        @if(!empty($recepcion['hallazgos']))
+        <div class="recepcion-linea">
+            <b>Análisis visual:</b>
+            @foreach($recepcion['hallazgos'] as $h)
+                <span class="hallazgo-tag">{{ $h }}</span>
+            @endforeach
+        </div>
+        @endif
+        @if($recepcion['estado_manto'])
+        <div class="recepcion-linea"><b>Estado del manto:</b> {{ $recepcion['estado_manto'] }}</div>
+        @endif
+        @if($recepcion['accesorios'])
+        <div class="recepcion-linea"><b>Accesorios recibidos:</b> {{ $recepcion['accesorios'] }}</div>
+        @endif
+        @if($recepcion['notas_sesion'])
+        <div class="recepcion-linea"><b>Notas:</b> {{ $recepcion['notas_sesion'] }}</div>
+        @endif
+    </div>
+    @endif
 
     <div class="firma">
         @if($firma)

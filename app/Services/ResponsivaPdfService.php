@@ -10,11 +10,31 @@ use Illuminate\Support\Facades\Storage;
 
 class ResponsivaPdfService
 {
+    private const ANALISIS_LABELS = [
+        'verrugas'          => 'Verrugas',
+        'pulgas_garrapatas' => 'Pulgas / garrapatas',
+        'secreciones'       => 'Secreciones',
+        'lesiones'          => 'Lesiones',
+        'alergias_visibles' => 'Alergias visibles',
+        'nudos_severos'     => 'Nudos severos',
+    ];
+
+    private const ESTADO_MANTO_LABELS = [
+        'bueno'        => 'Bueno',
+        'regular'      => 'Regular',
+        'enredado'     => 'Enredado',
+        'muy_enredado' => 'Muy enredado',
+        'opaco'        => 'Opaco / seco',
+    ];
+
     /**
      * Arma el PDF de la responsiva firmada (tamaño carta), con los mismos
      * datos generales del negocio que usa RecetaPdfService (logo, dirección,
-     * teléfono — Configuración → General) más el texto legal que se le
-     * mostró al dueño y la imagen de su firma.
+     * teléfono — Configuración → General), el texto legal que se le mostró
+     * al dueño, la imagen de su firma, y los hallazgos del formulario de
+     * recepción (análisis visual, estado del manto, notas) — quedan como
+     * evidencia documentada de las condiciones de la mascota al momento de
+     * recibirla, junto con la firma de exención de responsabilidad.
      */
     public static function build(Appointment $appointment): DomPdf
     {
@@ -42,6 +62,12 @@ class ResponsivaPdfService
             }
         }
 
+        $rec = $appointment->recepcion ?? [];
+        $hallazgos = collect(self::ANALISIS_LABELS)
+            ->filter(fn($label, $key) => ! empty($rec[$key]))
+            ->values()
+            ->all();
+
         return Pdf::loadView('pdf.responsiva', [
             'negocio' => [
                 'nombre'    => $tenant->nombre,
@@ -58,6 +84,12 @@ class ResponsivaPdfService
             'firma'    => $firma,
             'firmante' => $appointment->responsiva_firmante_nombre,
             'firmado_at' => $appointment->responsiva_firmado_at?->translatedFormat('d/m/Y H:i'),
+            'recepcion' => [
+                'hallazgos'     => $hallazgos,
+                'estado_manto'  => self::ESTADO_MANTO_LABELS[$rec['estado_manto'] ?? ''] ?? null,
+                'accesorios'    => $appointment->accesorios,
+                'notas_sesion'  => $rec['notas_sesion'] ?? null,
+            ],
         ])->setPaper('letter');
     }
 }
