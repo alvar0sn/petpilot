@@ -428,6 +428,7 @@ function GhlTab({ tenant, ghlContactLogs, ghlWebhookLogs, errors }) {
         webhook_checkin_hotel: tenant.ghl_config?.webhook_checkin_hotel ?? '',
         webhook_checkout_hotel: tenant.ghl_config?.webhook_checkout_hotel ?? '',
         webhook_whatsapp_pos: tenant.ghl_config?.webhook_whatsapp_pos ?? '',
+        webhook_responsiva: tenant.ghl_config?.webhook_responsiva ?? '',
         activo: tenant.ghl_config?.activo ?? false,
     });
 
@@ -501,6 +502,21 @@ function GhlTab({ tenant, ghlContactLogs, ghlWebhookLogs, errors }) {
                     />
                     <p className="text-xs text-gray-400 mt-1">
                         Payload: <span className="font-mono text-[10px]">phone, message, ticket_id</span>
+                    </p>
+                </div>
+
+                <div className="border-t pt-4 mt-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Grooming</p>
+                    <WebhookField
+                        fieldKey="webhook_responsiva"
+                        label="Webhook Responsiva"
+                        value={ghlForm.data.webhook_responsiva}
+                        onChange={e => ghlForm.setData('webhook_responsiva', e.target.value)}
+                        error={errors?.webhook_responsiva}
+                        tenantId={tenant.id}
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                        Payload: <span className="font-mono text-[10px]">ghl_contact_id, owner_nombre, owner_telefono, owner_email, negocio, pet_nombre, responsiva_url</span>
                     </p>
                 </div>
 

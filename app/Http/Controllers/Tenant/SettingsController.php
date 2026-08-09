@@ -58,6 +58,10 @@ class SettingsController extends Controller
                 'horas_anticipacion' => (int) (app('current_tenant')->getSetting('paseos.horas_anticipacion') ?? 2),
                 'dias_adelante'      => (int) (app('current_tenant')->getSetting('paseos.dias_adelante') ?? 14),
             ],
+            'responsivaConfig' => [
+                'texto'         => $tenant->getSetting('grooming.responsiva_texto') ?? '',
+                'texto_default' => \App\Models\Appointment::RESPONSIVA_TEXTO_DEFAULT,
+            ],
             'teamMembers' => User::where('tenant_id', app('current_tenant')->id)
                 ->whereIn('role', ['tenant_admin', 'colaborador'])
                 ->orderBy('nombre')
@@ -528,5 +532,16 @@ class SettingsController extends Controller
         $tenant->setSetting('paseos.dias_adelante',      $data['dias_adelante']);
 
         return back()->with('success', 'Configuración de paseos guardada.');
+    }
+
+    public function updateResponsivaConfig(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'texto' => 'nullable|string|max:5000',
+        ]);
+
+        app('current_tenant')->setSetting('grooming.responsiva_texto', $data['texto'] ?? '');
+
+        return back()->with('success', 'Texto de responsiva guardado.');
     }
 }

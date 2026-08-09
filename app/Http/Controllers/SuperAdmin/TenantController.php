@@ -161,6 +161,7 @@ class TenantController extends Controller
             'webhook_checkin_hotel' => 'nullable|url|max:500',
             'webhook_checkout_hotel' => 'nullable|url|max:500',
             'webhook_whatsapp_pos' => 'nullable|url|max:500',
+            'webhook_responsiva' => 'nullable|url|max:500',
             'activo' => 'boolean',
         ]);
 
@@ -179,6 +180,7 @@ class TenantController extends Controller
             'webhook_checkin_hotel',
             'webhook_checkout_hotel',
             'webhook_whatsapp_pos',
+            'webhook_responsiva',
         ];
 
         $data = $request->validate([
@@ -269,6 +271,16 @@ class TenantController extends Controller
                 'ticket_id'      => 0,
                 'ticket_url'     => url('/t/test'),
                 'business_name'  => $tenant->nombre,
+            ],
+            'webhook_responsiva' => [
+                'tipo'           => 'responsiva',
+                'ghl_contact_id' => 'TEST123',
+                'owner_nombre'   => 'Juan Pérez',
+                'owner_telefono' => '+525512345678',
+                'owner_email'    => 'test@ejemplo.com',
+                'negocio'        => $tenant->nombre,
+                'pet_nombre'     => 'Firulais',
+                'responsiva_url' => url('/r/test'),
             ],
         ];
 

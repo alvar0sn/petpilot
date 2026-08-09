@@ -18,11 +18,14 @@ use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
 use App\Models\User;
+use App\Services\GhlService;
+use App\Services\ResponsivaPdfService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -212,6 +215,9 @@ class AppointmentController extends Controller
                 'accesorios' => $appointment->accesorios,
                 'recepcion' => $appointment->recepcion,
                 'created_via' => $appointment->created_via,
+                'responsiva_token' => $appointment->responsiva_token,
+                'responsiva_enviado_at' => $appointment->responsiva_enviado_at?->toDateTimeString(),
+                'responsiva_firmado_at' => $appointment->responsiva_firmado_at?->toDateTimeString(),
                 'pet' => $appointment->pet ? [
                     'id'                => $appointment->pet->id,
                     'nombre'            => $appointment->pet->nombre,
@@ -536,6 +542,54 @@ class AppointmentController extends Controller
         $photo->delete();
 
         return back()->with('success', 'Foto eliminada.');
+    }
+
+    public function sendResponsiva(Appointment $appointment): RedirectResponse
+    {
+        if ($appointment->responsiva_firmado_at) {
+            return back()->with('error', 'Esta responsiva ya fue firmada.');
+        }
+
+        $tenant = app('current_tenant');
+
+        if (! $appointment->responsiva_token) {
+            do {
+                $token = Str::random(10);
+            } while (Appointment::withoutTenantScope()->where('responsiva_token', $token)->exists());
+
+            $appointment->responsiva_token = $token;
+        }
+
+        $appointment->responsiva_texto = $tenant->getSetting('grooming.responsiva_texto') ?: Appointment::RESPONSIVA_TEXTO_DEFAULT;
+        $appointment->responsiva_enviado_at = now();
+        $appointment->save();
+
+        $url = url("/r/{$appointment->responsiva_token}");
+
+        $appointment->loadMissing('pet:id,nombre', 'owner:id,nombre,apellidos,telefono,email,ghl_contact_id');
+
+        app(GhlService::class)->sendWebhook($tenant->id, 'responsiva', [
+            'tipo'           => 'responsiva',
+            'ghl_contact_id' => $appointment->owner?->ghl_contact_id,
+            'owner_nombre'   => $appointment->owner?->nombre_completo,
+            'owner_telefono' => $appointment->owner?->telefono,
+            'owner_email'    => $appointment->owner?->email,
+            'negocio'        => $tenant->nombre,
+            'pet_nombre'     => $appointment->pet?->nombre,
+            'responsiva_url' => $url,
+        ]);
+
+        return back()->with(['success' => "Responsiva enviada. Link: {$url}", 'responsiva_url' => $url]);
+    }
+
+    public function downloadResponsiva(Appointment $appointment): \Symfony\Component\HttpFoundation\Response
+    {
+        abort_unless($appointment->responsiva_firmado_at, 404);
+
+        $pdf = ResponsivaPdfService::build($appointment);
+        $filename = 'responsiva-' . Str::slug($appointment->pet?->nombre ?? 'mascota') . '-' . $appointment->fecha->toDateString() . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     private function nextFolio(): int

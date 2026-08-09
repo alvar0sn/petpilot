@@ -11,6 +11,14 @@ class Appointment extends Model
 {
     use HasTenant;
 
+    public const RESPONSIVA_TEXTO_DEFAULT = <<<'TEXTO'
+Autorizo al personal del negocio a realizar el servicio de estética/grooming a mi mascota. Declaro que la información proporcionada sobre su salud y comportamiento es verídica.
+
+Entiendo que, aunque el personal toma todas las precauciones necesarias, existen riesgos inherentes al proceso de baño y corte (estrés, cortes accidentales menores, reacciones alérgicas a productos, entre otros), especialmente en mascotas de edad avanzada, con condiciones médicas preexistentes o con comportamiento agresivo/ansioso.
+
+Por lo anterior, eximo de responsabilidad al negocio y a su personal por cualquier incidente menor derivado del servicio, siempre que se haya actuado con el debido cuidado profesional. En caso de emergencia médica durante el servicio, autorizo al personal a trasladar a mi mascota a atención veterinaria, corriendo los gastos por mi cuenta.
+TEXTO;
+
     protected $fillable = [
         'tenant_id',
         'pet_id',
@@ -29,6 +37,12 @@ class Appointment extends Model
         'created_via',
         'solicitud_owner',
         'franja',
+        'responsiva_token',
+        'responsiva_texto',
+        'responsiva_enviado_at',
+        'responsiva_firma_path',
+        'responsiva_firmante_nombre',
+        'responsiva_firmado_at',
         'event_id',
         'stay_id',
         'pos_ticket_id',
@@ -42,6 +56,8 @@ class Appointment extends Model
         'cobro_membresia' => 'boolean',
         'solicitud_owner' => 'boolean',
         'recepcion' => 'array',
+        'responsiva_enviado_at' => 'datetime',
+        'responsiva_firmado_at' => 'datetime',
     ];
 
     public function pet(): BelongsTo

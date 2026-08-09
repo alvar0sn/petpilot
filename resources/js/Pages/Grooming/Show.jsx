@@ -77,6 +77,21 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
     function saveEdit(e) { e.preventDefault(); form.put(route('grooming.update', appt.id), { onSuccess: () => setEditing(false) }); }
     function doAction(routeName) { router.post(route(routeName, appt.id)); }
 
+    const [sendingResponsiva, setSendingResponsiva] = useState(false);
+    function sendResponsiva() {
+        setSendingResponsiva(true);
+        router.post(route('grooming.responsiva.send', appt.id), {}, {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                const url = page.props.flash?.responsiva_url;
+                if (url) {
+                    navigator.clipboard?.writeText(url).catch(() => {});
+                }
+            },
+            onFinish: () => setSendingResponsiva(false),
+        });
+    }
+
     // Cargos (sección independiente)
     const chargesForm = useForm({
         items: (appt.items ?? []).map(i => ({
@@ -223,6 +238,15 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                                     </span>
                                 ) : null;
                             })()}
+                            {appt.responsiva_firmado_at ? (
+                                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
+                                    Responsiva firmada
+                                </span>
+                            ) : appt.responsiva_enviado_at ? (
+                                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700 ring-1 ring-amber-200">
+                                    Responsiva sin firmar
+                                </span>
+                            ) : null}
                         </div>
                         {appt.owner && (
                             <p className="text-sm text-zinc-500 mt-0.5">
@@ -236,6 +260,18 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                             <button onClick={() => setEditing(true)} className="bg-white border border-zinc-200 text-zinc-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors">
                                 Editar cita
                             </button>
+                        )}
+                        {canEdit && !appt.responsiva_firmado_at && (
+                            <button onClick={sendResponsiva} disabled={sendingResponsiva}
+                                className="bg-white border border-zinc-200 text-zinc-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors disabled:opacity-50">
+                                {sendingResponsiva ? 'Enviando...' : appt.responsiva_enviado_at ? 'Reenviar responsiva' : 'Enviar responsiva'}
+                            </button>
+                        )}
+                        {appt.responsiva_firmado_at && (
+                            <a href={route('grooming.responsiva.download', appt.id)} target="_blank" rel="noopener noreferrer"
+                                className="bg-white border border-zinc-200 text-zinc-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors">
+                                Descargar responsiva
+                            </a>
                         )}
                         {canEdit && (
                             <button onClick={() => doAction('grooming.cancel')} className="bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-rose-100 transition-colors">Cancelar</button>

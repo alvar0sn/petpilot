@@ -23,6 +23,7 @@
         "vite": "^8.0.0"
     },
     "dependencies": {
-        "browser-image-compression": "^2.0.2"
+        "browser-image-compression": "^2.0.2",
+        "signature_pad": "^5.1.4"
     }
 }

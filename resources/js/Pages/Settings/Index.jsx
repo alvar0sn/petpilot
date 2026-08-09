@@ -208,11 +208,44 @@ function CatalogTab({ categories, items }) {
     );
 }
 
-function GroomingTab({ stations, checklistItems }) {
+function GroomingTab({ stations, checklistItems, responsivaConfig }) {
     return (
         <div className="space-y-6">
             <StationsSection stations={stations} />
             <ChecklistSection checklistItems={checklistItems} />
+            <ResponsivaSection responsivaConfig={responsivaConfig} />
+        </div>
+    );
+}
+
+function ResponsivaSection({ responsivaConfig }) {
+    const form = useForm({ texto: responsivaConfig?.texto ?? '' });
+
+    function handleSubmit(e) {
+        e.preventDefault();
+        form.post(route('settings.responsiva.update'));
+    }
+
+    return (
+        <div className="max-w-2xl bg-white border border-zinc-100 shadow-sm rounded-xl p-5 space-y-4">
+            <div>
+                <h3 className="font-semibold text-zinc-700">Responsiva digital</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                    Texto legal que el dueño ve y firma cuando le mandas la responsiva desde una cita de grooming. Si lo dejas vacío, se usa un texto genérico.
+                </p>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-3">
+                <textarea rows={10}
+                    className="w-full border-gray-300 rounded-lg text-sm"
+                    placeholder={responsivaConfig?.texto_default}
+                    value={form.data.texto}
+                    onChange={e => form.setData('texto', e.target.value)} />
+                {form.errors.texto && <p className="text-rose-500 text-xs mt-0.5">{form.errors.texto}</p>}
+                <button type="submit" disabled={form.processing}
+                    className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
+                    {form.processing ? 'Guardando…' : 'Guardar responsiva'}
+                </button>
+            </form>
         </div>
     );
 }
@@ -1009,7 +1042,7 @@ function LinksTab({ slug }) {
     );
 }
 
-export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, generalConfig, walkConfig, teamMembers, razas }) {
+export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, generalConfig, walkConfig, responsivaConfig, teamMembers, razas }) {
     const { auth, tenant } = usePage().props;
     const [tab, setTab] = useState('general');
 
@@ -1037,7 +1070,7 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
             </div>
 
             {tab === 'crm' && <RazasSection razas={razas ?? []} />}
-            {tab === 'grooming' && <GroomingTab stations={stations ?? []} checklistItems={checklistItems ?? []} />}
+            {tab === 'grooming' && <GroomingTab stations={stations ?? []} checklistItems={checklistItems ?? []} responsivaConfig={responsivaConfig ?? { texto: '', texto_default: '' }} />}
             {tab === 'payments' && <PaymentMethodsTab paymentMethods={paymentMethods} />}
             {tab === 'general' && <GeneralConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', telefono: '', cedula_profesional: '', nombre_veterinario: '' }} />}
             {tab === 'ticket' && <TicketConfigTab ticketConfig={ticketConfig ?? { color_primario: '#18181b', color_texto: '#1f2937', color_fondo: '#ffffff', mensaje_pie: '', logo_url: null }} onGoToGeneral={() => setTab('general')} />}

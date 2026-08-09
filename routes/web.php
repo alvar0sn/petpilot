@@ -25,6 +25,7 @@ use App\Http\Controllers\SuperAdmin\CsvImportController;
 use App\Http\Controllers\SuperAdmin\ImpersonationController;
 use App\Http\Controllers\SuperAdmin\LogController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\PublicResponsivaController;
 use App\Http\Controllers\PublicTicketController;
 use App\Http\Controllers\SuperAdmin\TenantController;
 use App\Http\Controllers\SuperAdmin\AgencyUserController;
@@ -170,6 +171,8 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('grooming/{appointment}/recepcion', [AppointmentController::class, 'storeRecepcion'])->name('grooming.recepcion');
         Route::post('grooming/{appointment}/photos', [AppointmentController::class, 'storePhoto'])->name('grooming.photos.store');
         Route::delete('grooming/{appointment}/photos/{photo}', [AppointmentController::class, 'destroyPhoto'])->name('grooming.photos.destroy');
+        Route::post('grooming/{appointment}/responsiva/enviar', [AppointmentController::class, 'sendResponsiva'])->name('grooming.responsiva.send');
+        Route::get('grooming/{appointment}/responsiva/descargar', [AppointmentController::class, 'downloadResponsiva'])->name('grooming.responsiva.download');
     });
 
     // Veterinaria
@@ -223,6 +226,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
     Route::post('settings/general', [SettingsController::class, 'updateGeneral'])->name('settings.general.update');
     Route::get('settings/receta/muestra', [SettingsController::class, 'recetaSample'])->name('settings.receta.sample');
     Route::post('settings/walk-config', [SettingsController::class, 'updateWalkConfig'])->name('settings.walk.update');
+    Route::post('settings/responsiva', [SettingsController::class, 'updateResponsivaConfig'])->name('settings.responsiva.update');
 
     // Team management & razas — tenant_admin only
     Route::middleware('role:tenant_admin')->group(function () {
@@ -319,6 +323,10 @@ Route::prefix('{tenant:slug}')->name('portal.')->group(function () {
 
 // Public ticket view (no auth)
 Route::get('/t/{token}', [PublicTicketController::class, 'show'])->name('ticket.public');
+
+// Public responsiva view + signing (no auth)
+Route::get('/r/{token}', [PublicResponsivaController::class, 'show'])->name('responsiva.public');
+Route::post('/r/{token}/firmar', [PublicResponsivaController::class, 'sign'])->name('responsiva.sign');
 
 // Public studio landing — must be last to avoid catching other routes
 Route::get('/{slug}', [LandingController::class, 'show'])
