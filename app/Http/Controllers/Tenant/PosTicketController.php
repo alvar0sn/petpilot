@@ -245,7 +245,7 @@ class PosTicketController extends Controller
             ]);
         });
 
-        $ticket->load(['owner:id,nombre,apellidos,telefono', 'lines', 'discount']);
+        $ticket->load(['owner:id,nombre,apellidos,telefono,email,ghl_contact_id', 'lines', 'discount']);
 
         $waSent = $this->trySendWhatsapp($ticket);
 
@@ -284,11 +284,13 @@ class PosTicketController extends Controller
 
         try {
             Http::timeout(8)->post($webhookUrl, [
-                'phone'         => $phone,
-                'message'       => $mensaje,
-                'ticket_id'     => $ticket->id,
-                'ticket_url'    => $ticketUrl,
-                'business_name' => $tenant->nombre,
+                'phone'          => $phone,
+                'email'          => $ticket->owner?->email,
+                'ghl_contact_id' => $ticket->owner?->ghl_contact_id,
+                'message'        => $mensaje,
+                'ticket_id'      => $ticket->id,
+                'ticket_url'     => $ticketUrl,
+                'business_name'  => $tenant->nombre,
             ]);
             return true;
         } catch (\Exception) {

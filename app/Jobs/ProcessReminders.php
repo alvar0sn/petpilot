@@ -24,7 +24,7 @@ class ProcessReminders implements ShouldQueue
                 ->where('tenant_id', $tenant->id)
                 ->whereDate('proximo_recordatorio', today())
                 ->where('recordatorio_enviado', false)
-                ->with(['pet.owner:id,nombre,telefono,ghl_contact_id', 'eventType:id,nombre'])
+                ->with(['pet.owner:id,nombre,telefono,email,ghl_contact_id', 'eventType:id,nombre'])
                 ->get();
 
             foreach ($events as $event) {
@@ -39,6 +39,8 @@ class ProcessReminders implements ShouldQueue
                     'ghl_contact_id' => $owner->ghl_contact_id,
                     'owner_nombre' => $owner->nombre,
                     'owner_telefono' => $owner->telefono,
+                    'owner_email' => $owner->email,
+                    'negocio' => $tenant->nombre,
                     'pet_nombre' => $event->pet->nombre,
                     'pet_raza' => $event->pet->raza,
                     'fecha_servicio' => $event->proximo_recordatorio,

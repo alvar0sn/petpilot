@@ -24,7 +24,7 @@ class ProcessReviews implements ShouldQueue
             $events = Event::withoutGlobalScopes()
                 ->where('tenant_id', $tenant->id)
                 ->whereDate('fecha', $yesterday)
-                ->with(['pet.owner:id,nombre,telefono,ghl_contact_id', 'eventType:id,nombre'])
+                ->with(['pet.owner:id,nombre,telefono,email,ghl_contact_id', 'eventType:id,nombre'])
                 ->get();
 
             $alreadySentOwners = collect();
@@ -40,6 +40,8 @@ class ProcessReviews implements ShouldQueue
                     'ghl_contact_id' => $owner->ghl_contact_id,
                     'owner_nombre' => $owner->nombre,
                     'owner_telefono' => $owner->telefono,
+                    'owner_email' => $owner->email,
+                    'negocio' => $tenant->nombre,
                     'pet_nombre' => $event->pet->nombre,
                     'tipo_servicio' => $event->eventType?->nombre,
                 ]);

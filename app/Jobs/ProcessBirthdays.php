@@ -28,7 +28,7 @@ class ProcessBirthdays implements ShouldQueue
                 ->whereNotNull('fecha_nacimiento')
                 ->whereRaw('MONTH(fecha_nacimiento) = ?', [$today->month])
                 ->whereRaw('DAY(fecha_nacimiento) = ?', [$today->day])
-                ->with(['owner:id,nombre,telefono,ghl_contact_id'])
+                ->with(['owner:id,nombre,telefono,email,ghl_contact_id'])
                 ->get();
 
             foreach ($pets as $pet) {
@@ -44,6 +44,8 @@ class ProcessBirthdays implements ShouldQueue
                     'ghl_contact_id' => $owner->ghl_contact_id,
                     'owner_nombre' => $owner->nombre,
                     'owner_telefono' => $owner->telefono,
+                    'owner_email' => $owner->email,
+                    'negocio' => $tenant->nombre,
                     'pet_nombre' => $pet->nombre,
                     'edad_anos' => $edad,
                 ]);

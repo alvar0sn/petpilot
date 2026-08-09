@@ -15,6 +15,7 @@ use App\Models\PosCategory;
 use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
+use App\Services\GhlService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -395,7 +396,7 @@ class HotelController extends Controller
         return back()->with('success', 'Estancia actualizada.');
     }
 
-    public function checkin(Request $request, HotelStay $stay): RedirectResponse
+    public function checkin(Request $request, HotelStay $stay, GhlService $ghl): RedirectResponse
     {
         if ($stay->estado !== 'reservado') {
             return back()->with('error', 'Solo se puede hacer check-in a una reserva en estado "reservado".');
@@ -436,6 +437,8 @@ class HotelController extends Controller
                 ]);
             }
         });
+
+        $this->sendHotelWebhook($stay, $ghl, 'checkin_hotel', "Check-in de {$stay->pet?->nombre} en el hotel.");
 
         return $ticket
             ? redirect()->route('pos.index', ['ticket' => $ticket->id])->with('success', 'Check-in realizado. Completa el adelanto en POS.')
@@ -515,7 +518,7 @@ class HotelController extends Controller
         return $ticket;
     }
 
-    public function checkout(Request $request, HotelStay $stay): RedirectResponse
+    public function checkout(Request $request, HotelStay $stay, GhlService $ghl): RedirectResponse
     {
         if ($stay->estado !== 'activo') {
             return back()->with('error', 'Solo se puede hacer check-out a una estancia en estado "activo".');
@@ -604,6 +607,8 @@ class HotelController extends Controller
 
             return [$ticket, $mensaje];
         });
+
+        $this->sendHotelWebhook($stay, $ghl, 'checkout_hotel', "{$stay->pet?->nombre} ya puede ser recogido.");
 
         return $ticket
             ? redirect()->route('pos.index', ['ticket' => $ticket->id])->with('success', $mensaje)
@@ -761,6 +766,31 @@ class HotelController extends Controller
             'tipo' => 'servicio',
             'precio' => $precio,
             'activo' => true,
+        ]);
+    }
+
+    private function sendHotelWebhook(HotelStay $stay, GhlService $ghl, string $type, string $mensaje): void
+    {
+        $stay->loadMissing('pet.owner:id,nombre,apellidos,telefono,email,ghl_contact_id');
+        $owner = $stay->pet?->owner;
+
+        if (!$owner) {
+            return;
+        }
+
+        $tenant = currentTenant();
+
+        $ghl->sendWebhook($tenant->id, $type, [
+            'tipo'           => $type,
+            'ghl_contact_id' => $owner->ghl_contact_id,
+            'mascota'        => $stay->pet?->nombre,
+            'dueno'          => $owner->nombre_completo,
+            'phone'          => $owner->telefono,
+            'email'          => $owner->email,
+            'negocio'        => $tenant->nombre,
+            'fecha_entrada'  => $stay->fecha_entrada,
+            'fecha_salida'   => $stay->fecha_salida,
+            'mensaje'        => $mensaje,
         ]);
     }
 
