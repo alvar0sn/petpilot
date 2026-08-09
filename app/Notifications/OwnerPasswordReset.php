@@ -38,13 +38,13 @@ class OwnerPasswordReset extends Notification
                 ->line("El equipo de **{$this->tenantNombre}** te ha habilitado el acceso al portal de clientes.")
                 ->line("Haz clic en el botón para crear tu contraseña y acceder a tu historial de mascotas.")
                 ->action('Activar mi cuenta', $url)
-                ->line('Este enlace expirará en **60 minutos**.')
+                ->line('Este enlace expirará en **24 horas**.')
                 ->line('Si no esperabas este correo, puedes ignorarlo sin problema.');
         } else {
             $message
                 ->line("Recibiste este correo porque se solicitó restablecer la contraseña de tu cuenta en **{$this->tenantNombre}**.")
                 ->action('Restablecer contraseña', $url)
-                ->line('Este enlace expirará en **60 minutos**.')
+                ->line('Este enlace expirará en **24 horas**.')
                 ->line('Si no solicitaste esto, puedes ignorar este correo.');
         }
 
