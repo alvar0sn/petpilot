@@ -1,3 +1,4 @@
+import PasswordInput from '@/Components/PasswordInput';
 import { useForm, Link } from '@inertiajs/react';
 
 export default function PortalRegister({ tenant }) {
@@ -52,7 +53,7 @@ export default function PortalRegister({ tenant }) {
 
                         <div>
                             <label className="block text-xs font-medium text-zinc-600 mb-1">Contraseña</label>
-                            <input type="password" autoComplete="new-password"
+                            <PasswordInput baseClassName="" autoComplete="new-password"
                                 className="w-full border-zinc-300 rounded-lg text-sm py-2"
                                 value={form.data.password} onChange={e => form.setData('password', e.target.value)} />
                             {form.errors.password && <p className="text-red-500 text-xs mt-0.5">{form.errors.password}</p>}
@@ -60,7 +61,7 @@ export default function PortalRegister({ tenant }) {
 
                         <div>
                             <label className="block text-xs font-medium text-zinc-600 mb-1">Confirmar contraseña</label>
-                            <input type="password" autoComplete="new-password"
+                            <PasswordInput baseClassName="" autoComplete="new-password"
                                 className="w-full border-zinc-300 rounded-lg text-sm py-2"
                                 value={form.data.password_confirmation} onChange={e => form.setData('password_confirmation', e.target.value)} />
                         </div>

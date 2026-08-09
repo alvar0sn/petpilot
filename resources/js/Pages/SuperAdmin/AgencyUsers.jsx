@@ -1,4 +1,5 @@
 import SuperAdminLayout from '@/Layouts/SuperAdminLayout';
+import PasswordInput from '@/Components/PasswordInput';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -94,7 +95,7 @@ export default function AgencyUsers({ users }) {
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Contraseña *</label>
-                            <input type="password" className="w-full border-gray-300 rounded-lg text-sm"
+                            <PasswordInput baseClassName="" className="w-full border-gray-300 rounded-lg text-sm"
                                 value={newForm.data.password} onChange={e => newForm.setData('password', e.target.value)} />
                             {newForm.errors.password && <p className="text-red-500 text-xs mt-0.5">{newForm.errors.password}</p>}
                         </div>
@@ -161,7 +162,7 @@ export default function AgencyUsers({ users }) {
                             className="space-y-3">
                             <div>
                                 <label className="block text-xs font-medium text-gray-600 mb-1">Nueva contraseña *</label>
-                                <input type="password" className="w-full border-gray-300 rounded-lg text-sm"
+                                <PasswordInput baseClassName="" className="w-full border-gray-300 rounded-lg text-sm"
                                     value={pwdForm.data.password} onChange={e => pwdForm.setData('password', e.target.value)} />
                                 {pwdForm.errors.password && <p className="text-red-500 text-xs mt-0.5">{pwdForm.errors.password}</p>}
                             </div>

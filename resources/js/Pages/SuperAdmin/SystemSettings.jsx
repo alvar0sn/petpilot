@@ -1,4 +1,5 @@
 import SuperAdminLayout from '@/Layouts/SuperAdminLayout';
+import PasswordInput from '@/Components/PasswordInput';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -79,7 +80,7 @@ export default function SystemSettings({ r2, resend }) {
                                     onChange={e => r2Form.setData('r2_key', e.target.value)} />
                             </Field>
                             <Field label="Secret Access Key" error={r2Form.errors.r2_secret}>
-                                <input type="password" className="w-full border-gray-300 rounded-lg text-sm font-mono"
+                                <PasswordInput baseClassName="" className="w-full border-gray-300 rounded-lg text-sm font-mono"
                                     placeholder="••••••••••••••••"
                                     value={r2Form.data.r2_secret}
                                     onChange={e => r2Form.setData('r2_secret', e.target.value)} />
@@ -121,7 +122,7 @@ export default function SystemSettings({ r2, resend }) {
                     <form onSubmit={e => { e.preventDefault(); resendForm.post(route('super-admin.system-settings.resend')); }} className="p-6 space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Field label="API Key" hint="resend.com → API Keys" error={resendForm.errors.resend_api_key}>
-                                <input type="password" className="w-full border-gray-300 rounded-lg text-sm font-mono"
+                                <PasswordInput baseClassName="" className="w-full border-gray-300 rounded-lg text-sm font-mono"
                                     placeholder="re_••••••••••••••••"
                                     value={resendForm.data.resend_api_key}
                                     onChange={e => resendForm.setData('resend_api_key', e.target.value)} />

@@ -3,6 +3,7 @@ import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
+import PasswordInput from '@/Components/PasswordInput';
 import InputError from '@/Components/InputError';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -162,7 +163,7 @@ function PasswordModal({ tenant, user, onClose }) {
                 <p className="text-sm text-gray-500">Para {user.nombre} {user.apellido} ({user.email})</p>
                 <div>
                     <InputLabel value="Nueva contraseña" />
-                    <TextInput type="password" className="mt-1 w-full" value={data.password} onChange={e => setData('password', e.target.value)} />
+                    <PasswordInput className="mt-1 w-full" value={data.password} onChange={e => setData('password', e.target.value)} />
                     <InputError message={errors.password} className="mt-1" />
                 </div>
                 <div className="flex justify-end gap-2">
@@ -246,9 +247,9 @@ function UserRow({ tenant, user }) {
     }
 
     return (
-        <div className="bg-white rounded-xl shadow p-4 flex items-center justify-between gap-4">
-            <div>
-                <div className="flex items-center gap-2">
+        <div className="bg-white rounded-xl shadow p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-gray-900">{user.nombre} {user.apellido}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColor[user.role] ?? 'bg-gray-100 text-gray-600'}`}>
                         {roleLabel[user.role] ?? user.role}
@@ -257,9 +258,9 @@ function UserRow({ tenant, user }) {
                         {user.activo ? 'Activo' : 'Inactivo'}
                     </span>
                 </div>
-                <p className="text-sm text-gray-500 mt-0.5">{user.email}</p>
+                <p className="text-sm text-gray-500 mt-0.5 truncate">{user.email}</p>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
                 <button onClick={() => setEditing(true)} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
                     Editar
                 </button>
@@ -324,7 +325,7 @@ function NewUserForm({ tenant, onCancel }) {
                 </div>
                 <div className="col-span-2">
                     <InputLabel value="Contraseña" />
-                    <TextInput type="password" className="mt-1 w-full text-sm" value={data.password} onChange={e => setData('password', e.target.value)} />
+                    <PasswordInput className="mt-1 w-full text-sm" value={data.password} onChange={e => setData('password', e.target.value)} />
                     <InputError message={errors.password} className="mt-1" />
                 </div>
             </div>
@@ -579,7 +580,7 @@ export default function TenantShow({ tenant, stats, ghlContactLogs, ghlWebhookLo
                 </Link>
             </div>
 
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                 <StatCard label="Owners" value={stats.owners} />
                 <StatCard label="Mascotas" value={stats.pets} />
                 <StatCard label="Tickets este mes" value={stats.tickets_mes} />

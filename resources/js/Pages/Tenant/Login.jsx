@@ -1,3 +1,4 @@
+import PasswordInput from '@/Components/PasswordInput';
 import { useForm, Link } from '@inertiajs/react';
 
 export default function TenantLogin({ tenant, status }) {
@@ -52,7 +53,7 @@ export default function TenantLogin({ tenant, status }) {
                                     ¿Olvidaste tu contraseña?
                                 </Link>
                             </div>
-                            <input type="password" autoComplete="current-password"
+                            <PasswordInput baseClassName="" autoComplete="current-password"
                                 className="w-full border-zinc-300 rounded-lg text-sm py-2"
                                 value={form.data.password}
                                 onChange={e => form.setData('password', e.target.value)} />

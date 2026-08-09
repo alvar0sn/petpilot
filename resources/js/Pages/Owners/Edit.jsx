@@ -1,4 +1,5 @@
 import TenantLayout from '@/Layouts/TenantLayout';
+import PasswordInput from '@/Components/PasswordInput';
 import { Link, useForm } from '@inertiajs/react';
 
 export default function OwnerEdit({ owner, tenant }) {
@@ -71,8 +72,8 @@ export default function OwnerEdit({ owner, tenant }) {
 
                     <div>
                         <label className="block text-sm font-medium text-zinc-700 mb-1">Contraseña portal del cliente</label>
-                        <input
-                            type="password"
+                        <PasswordInput
+                            baseClassName=""
                             autoComplete="new-password"
                             className="w-full border-gray-300 rounded-lg text-sm"
                             placeholder="Dejar vacío para no cambiar"

@@ -2,6 +2,7 @@ import SuperAdminLayout from '@/Layouts/SuperAdminLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
+import PasswordInput from '@/Components/PasswordInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import { useForm } from '@inertiajs/react';
 
@@ -115,7 +116,7 @@ export default function TenantCreate() {
 
                     <div>
                         <InputLabel value="Contraseña temporal" />
-                        <TextInput type="password" className="mt-1 w-full" value={data.admin_password}
+                        <PasswordInput className="mt-1 w-full" value={data.admin_password}
                             onChange={e => setData('admin_password', e.target.value)} required />
                         <InputError message={errors.admin_password} className="mt-1" />
                     </div>

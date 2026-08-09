@@ -1,10 +1,12 @@
 <?php
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -41,4 +43,21 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Cuando la sesión expira durante una petición Inertia (PUT/PATCH/DELETE
+        // incluidos), evitamos el 302 estándar: los navegadores conservan el
+        // método original al seguir esa redirección (solo lo cambian a GET para
+        // POST), así que un PUT reintentado contra /login truena con "Method Not
+        // Allowed". Inertia::location() responde 409 + X-Inertia-Location, que el
+        // cliente interpreta como una visita completa (GET) al login.
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if ($request->header('X-Inertia')) {
+                $slug = session('tenant_slug');
+                $url = ($slug && Route::has('tenant.login'))
+                    ? route('tenant.login', ['tenant' => $slug])
+                    : route('login');
+
+                return Inertia::location($url);
+            }
+        });
     })->create();
