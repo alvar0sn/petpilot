@@ -7,6 +7,18 @@ const tipoLabel = { grupal: 'Paseo grupal', privado: 'Paseo privado' };
 const tipoBadge = { grupal: 'bg-blue-100 text-blue-700', privado: 'bg-violet-100 text-violet-700' };
 const tipoBar   = { grupal: 'bg-blue-500',              privado: 'bg-violet-500' };
 
+const moduloLabel = { grooming: 'Estética', veterinaria: 'Veterinaria' };
+const moduloBadge = { grooming: 'bg-fuchsia-100 text-fuchsia-700', veterinaria: 'bg-teal-100 text-teal-700' };
+const moduloBar   = { grooming: 'bg-fuchsia-500',                  veterinaria: 'bg-teal-500' };
+const franjaLabel = { manana: 'Mañana', tarde: 'Tarde' };
+
+const FILTERS = [
+    { key: 'todos',       label: 'Todos' },
+    { key: 'paseo',       label: 'Paseos' },
+    { key: 'grooming',    label: 'Estética' },
+    { key: 'veterinaria', label: 'Veterinaria' },
+];
+
 // --- Date helpers ---
 function addDays(dateStr, n) {
     const d = new Date(dateStr + 'T12:00:00');
@@ -37,8 +49,8 @@ function formatDayHeader(dateStr) {
     });
 }
 
-// --- Request modal ---
-function RequestModal({ slot, pets, memberships, tenant, onClose }) {
+// --- Walk request modal ---
+function WalkRequestModal({ slot, pets, memberships, tenant, onClose }) {
     const form = useForm({ pet_id: '', cobro_membresia: false, membership_id: '', notas: '' });
 
     const selectedPetId = form.data.pet_id ? parseInt(form.data.pet_id) : null;
@@ -120,8 +132,107 @@ function RequestModal({ slot, pets, memberships, tenant, onClose }) {
     );
 }
 
+// --- Appointment (grooming/vet) request modal ---
+function AppointmentRequestModal({ modulo, date, pets, tenant, onClose }) {
+    const form = useForm({ pet_id: '', franja: 'manana', notas: '' });
+
+    function submit() {
+        form.post(route('portal.appointments.request', { tenant: tenant.slug, modulo }), {
+            onSuccess: onClose,
+        });
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-sm space-y-4">
+                <div>
+                    <h3 className="font-semibold text-zinc-800">Solicitar {moduloLabel[modulo]?.toLowerCase()}</h3>
+                    <p className="text-sm text-zinc-500 mt-0.5 capitalize">{formatDayHeader(date)}</p>
+                </div>
+
+                <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">¿Para qué mascota?</label>
+                    <select className="w-full border-zinc-300 rounded-lg text-sm py-2"
+                        value={form.data.pet_id} onChange={e => form.setData('pet_id', e.target.value)}>
+                        <option value="">Seleccionar...</option>
+                        {pets.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                    </select>
+                    {form.errors.pet_id && <p className="text-rose-500 text-xs mt-0.5">{form.errors.pet_id}</p>}
+                </div>
+
+                <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Horario preferido</label>
+                    <div className="grid grid-cols-2 gap-2">
+                        {['manana', 'tarde'].map(f => (
+                            <button key={f} type="button" onClick={() => form.setData('franja', f)}
+                                className={`py-2 rounded-lg text-sm font-medium border transition-colors ${
+                                    form.data.franja === f
+                                        ? 'bg-zinc-900 text-white border-zinc-900'
+                                        : 'border-zinc-200 text-zinc-600 hover:border-zinc-400'
+                                }`}>
+                                {franjaLabel[f]}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Notas (opcional)</label>
+                    <input type="text" className="w-full border-zinc-300 rounded-lg text-sm py-2"
+                        placeholder="Alguna indicación especial..."
+                        value={form.data.notas} onChange={e => form.setData('notas', e.target.value)} />
+                </div>
+                {form.errors.fecha && <p className="text-rose-500 text-xs">{form.errors.fecha}</p>}
+
+                <div className="flex gap-2">
+                    <button onClick={onClose}
+                        className="flex-1 border border-zinc-200 py-2 rounded-lg text-sm text-zinc-600 hover:bg-zinc-50 transition-colors">
+                        Cancelar
+                    </button>
+                    <button onClick={submit}
+                        disabled={!form.data.pet_id || form.processing}
+                        className="flex-1 bg-zinc-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-40 transition-colors">
+                        {form.processing ? 'Enviando...' : 'Solicitar'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function AppointmentItem({ appt }) {
+    const isPending = appt.solicitud_owner && appt.estado === 'pendiente';
+    const bar = moduloBar[appt.modulo] ?? 'bg-zinc-400';
+    return (
+        <div className="bg-white border border-zinc-100 shadow-sm rounded-xl flex overflow-hidden">
+            <div className={`w-1.5 shrink-0 ${bar}`} />
+            <div className="flex-1 px-4 py-4 flex items-start justify-between gap-3">
+                <div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${moduloBadge[appt.modulo] ?? 'bg-zinc-100 text-zinc-600'}`}>
+                        {moduloLabel[appt.modulo] ?? appt.modulo}
+                    </span>
+                    <div className="text-base font-semibold text-zinc-800 mt-1.5">{appt.pet}</div>
+                </div>
+                <div className="text-right shrink-0">
+                    {isPending ? (
+                        <>
+                            <div className="text-sm font-medium text-amber-600">Pendiente</div>
+                            {appt.franja && <div className="text-xs text-zinc-400">{franjaLabel[appt.franja]}</div>}
+                        </>
+                    ) : (
+                        <>
+                            {appt.hora_inicio && <div className="text-sm font-medium text-zinc-800">{appt.hora_inicio.slice(0, 5)}</div>}
+                            <div className="text-xs text-emerald-600">Confirmada</div>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // --- Main ---
-export default function PortalWalks({ tenant, owner, slots, pets, memberships, week_start, today, current_monday, max_date }) {
+export default function PortalCalendar({ tenant, owner, slots, appointments, pets, memberships, week_start, today, current_monday, max_date }) {
     const weekDays = buildWeekDays(week_start);
     const isCurrentWeek = week_start === current_monday;
     const canGoPrev = week_start > current_monday;
@@ -129,30 +240,47 @@ export default function PortalWalks({ tenant, owner, slots, pets, memberships, w
     const defaultDay = isCurrentWeek ? today : weekDays[0];
 
     const [selectedDay, setSelectedDay] = useState(defaultDay);
-    const [requesting, setRequesting] = useState(null);
+    const [tipoFilter, setTipoFilter] = useState('todos');
+    const [petFilter, setPetFilter] = useState('');
+    const [requestingSlot, setRequestingSlot] = useState(null);
+    const [requestingModulo, setRequestingModulo] = useState(null);
 
-    // Index slots by date
+    // Index by date
     const slotsByDay = Object.fromEntries(weekDays.map(d => [d, []]));
     slots.forEach(s => { if (s.fecha in slotsByDay) slotsByDay[s.fecha].push(s); });
 
-    const daySlots = slotsByDay[selectedDay] ?? [];
+    const apptsByDay = Object.fromEntries(weekDays.map(d => [d, []]));
+    appointments.forEach(a => { if (a.fecha in apptsByDay) apptsByDay[a.fecha].push(a); });
+
+    const daySlots = (slotsByDay[selectedDay] ?? [])
+        .filter(() => tipoFilter === 'todos' || tipoFilter === 'paseo');
+
+    const dayAppts = (apptsByDay[selectedDay] ?? [])
+        .filter(a => tipoFilter === 'todos' || tipoFilter === a.modulo)
+        .filter(a => !petFilter || String(a.pet_id) === petFilter);
+
+    const hasItemsInDay = d =>
+        (slotsByDay[d]?.length ?? 0) > 0 || (apptsByDay[d]?.length ?? 0) > 0;
+
+    const showGroomingCta = tipoFilter === 'todos' || tipoFilter === 'grooming';
+    const showVetCta = tipoFilter === 'todos' || tipoFilter === 'veterinaria';
 
     function goWeek(delta) {
         router.get(
-            route('portal.walks', tenant.slug),
+            route('portal.calendar', tenant.slug),
             { week_start: addDays(week_start, delta * 7) },
             { preserveState: false, replace: true },
         );
     }
 
     function goThisWeek() {
-        router.get(route('portal.walks', tenant.slug), {}, { preserveState: false, replace: true });
+        router.get(route('portal.calendar', tenant.slug), {}, { preserveState: false, replace: true });
     }
 
     return (
-        <PortalLayout tenant={tenant} owner={owner} current="walks">
+        <PortalLayout tenant={tenant} owner={owner} current="calendar">
             {/* Week navigator */}
-            <div className="flex items-center justify-center gap-3 mb-5">
+            <div className="flex items-center justify-center gap-3 mb-4">
                 <button onClick={() => goWeek(-1)} disabled={!canGoPrev}
                     className="w-9 h-9 flex items-center justify-center rounded-xl text-2xl font-light transition-colors disabled:opacity-20 disabled:cursor-not-allowed hover:enabled:bg-zinc-100 text-zinc-500">
                     ‹
@@ -172,13 +300,33 @@ export default function PortalWalks({ tenant, owner, slots, pets, memberships, w
                 </button>
             </div>
 
+            {/* Type + pet filters */}
+            <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                {FILTERS.map(f => (
+                    <button key={f.key} onClick={() => setTipoFilter(f.key)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                            tipoFilter === f.key
+                                ? 'bg-zinc-900 text-white border-zinc-900'
+                                : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'
+                        }`}>
+                        {f.label}
+                    </button>
+                ))}
+                {pets.length > 1 && (
+                    <select value={petFilter} onChange={e => setPetFilter(e.target.value)}
+                        className="ml-auto border-zinc-200 rounded-full text-xs py-1.5">
+                        <option value="">Todas mis mascotas</option>
+                        {pets.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                    </select>
+                )}
+            </div>
+
             {/* Day pills */}
             <div className="flex gap-1.5 overflow-x-auto pb-1 mb-4 -mx-1 px-1">
                 {weekDays.map(day => {
                     const dow      = dayOfWeek(day);
                     const isActive = day === selectedDay;
                     const isToday  = day === today;
-                    const hasSlots = slotsByDay[day].length > 0;
                     return (
                         <button key={day} onClick={() => setSelectedDay(day)}
                             className={`flex-shrink-0 flex flex-col items-center w-12 py-2.5 rounded-xl border transition-colors ${
@@ -195,7 +343,7 @@ export default function PortalWalks({ tenant, owner, slots, pets, memberships, w
                                 {dayNum(day)}
                             </span>
                             <span className={`w-1.5 h-1.5 rounded-full mt-1 ${
-                                hasSlots
+                                hasItemsInDay(day)
                                     ? isActive ? 'bg-white/70' : 'bg-zinc-400'
                                     : 'bg-transparent'
                             }`} />
@@ -209,13 +357,15 @@ export default function PortalWalks({ tenant, owner, slots, pets, memberships, w
                 {formatDayHeader(selectedDay)}
             </h2>
 
-            {/* Slots for selected day */}
-            {daySlots.length === 0 ? (
+            {/* Items for selected day */}
+            {daySlots.length === 0 && dayAppts.length === 0 ? (
                 <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-10 text-center text-zinc-400 text-sm">
-                    Sin paseos disponibles este día.
+                    Nada programado este día.
                 </div>
             ) : (
                 <div className="space-y-3">
+                    {dayAppts.map(a => <AppointmentItem key={`a-${a.id}`} appt={a} />)}
+
                     {daySlots.map(slot => {
                         const isFull      = slot.cupo_maximo !== null && slot.cupos_disponibles !== null && slot.cupos_disponibles <= 0;
                         const myPets      = (slot.mis_mascotas ?? []).length;
@@ -254,7 +404,7 @@ export default function PortalWalks({ tenant, owner, slots, pets, memberships, w
                                                 </div>
                                             )}
                                             {!isFull && (
-                                                <button onClick={() => setRequesting(slot)}
+                                                <button onClick={() => setRequestingSlot(slot)}
                                                     className="bg-zinc-900 text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-zinc-700 transition-colors">
                                                     Solicitar
                                                 </button>
@@ -280,13 +430,41 @@ export default function PortalWalks({ tenant, owner, slots, pets, memberships, w
                 </div>
             )}
 
-            {requesting && (
-                <RequestModal
-                    slot={requesting}
+            {/* Request CTAs */}
+            {(showGroomingCta || showVetCta) && (
+                <div className="flex gap-2 mt-4">
+                    {showGroomingCta && (
+                        <button onClick={() => setRequestingModulo('grooming')}
+                            className="flex-1 border border-dashed border-zinc-300 text-zinc-500 py-2.5 rounded-xl text-xs font-medium hover:bg-zinc-50 hover:border-zinc-400 transition-colors">
+                            + Solicitar estética
+                        </button>
+                    )}
+                    {showVetCta && (
+                        <button onClick={() => setRequestingModulo('veterinaria')}
+                            className="flex-1 border border-dashed border-zinc-300 text-zinc-500 py-2.5 rounded-xl text-xs font-medium hover:bg-zinc-50 hover:border-zinc-400 transition-colors">
+                            + Solicitar veterinaria
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {requestingSlot && (
+                <WalkRequestModal
+                    slot={requestingSlot}
                     pets={pets}
                     memberships={memberships}
                     tenant={tenant}
-                    onClose={() => setRequesting(null)}
+                    onClose={() => setRequestingSlot(null)}
+                />
+            )}
+
+            {requestingModulo && (
+                <AppointmentRequestModal
+                    modulo={requestingModulo}
+                    date={selectedDay}
+                    pets={pets}
+                    tenant={tenant}
+                    onClose={() => setRequestingModulo(null)}
                 />
             )}
         </PortalLayout>

@@ -306,10 +306,14 @@ Route::prefix('{tenant:slug}')->name('portal.')->group(function () {
 
     Route::middleware('auth.owner')->group(function () {
         Route::get('inicio', [OwnerPortalController::class, 'home'])->name('dashboard');
+        Route::post('mascotas', [OwnerPortalController::class, 'storePet'])->name('pets.store');
         Route::get('mascotas/{pet}', [OwnerPortalController::class, 'petHistory'])->name('pet.history');
         Route::get('membresias', [OwnerPortalController::class, 'memberships'])->name('memberships');
-        Route::get('paseos', [OwnerPortalController::class, 'walks'])->name('walks');
+        Route::get('calendario', [OwnerPortalController::class, 'calendar'])->name('calendar');
         Route::post('paseos/{walkSlot}/solicitar', [OwnerPortalController::class, 'requestBooking'])->name('walks.request');
+        Route::post('citas/{modulo}/solicitar', [OwnerPortalController::class, 'requestAppointment'])
+            ->whereIn('modulo', ['grooming', 'veterinaria'])
+            ->name('appointments.request');
     });
 });
 

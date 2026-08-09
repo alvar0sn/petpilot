@@ -14,9 +14,20 @@ export function useTenantTimezone() {
     return props?.tenant?.timezone || DEFAULT_TIMEZONE;
 }
 
+/**
+ * Un valor "fecha sola" (YYYY-MM-DD, sin hora) no representa un instante —
+ * es un día de calendario. `new Date("2026-08-10")` lo ancla a medianoche
+ * UTC, que en husos horarios negativos (ej. America/Mexico_City, UTC-6) cae
+ * en el día anterior al convertir. Anclamos a mediodía local para que la
+ * conversión de zona horaria nunca cruce el límite de día.
+ */
+function toDate(value) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(value + 'T12:00:00') : new Date(value);
+}
+
 export function formatDate(value, timeZone = DEFAULT_TIMEZONE, options = {}) {
     if (!value) return '—';
-    return new Date(value).toLocaleDateString('es-MX', {
+    return toDate(value).toLocaleDateString('es-MX', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
@@ -27,12 +38,12 @@ export function formatDate(value, timeZone = DEFAULT_TIMEZONE, options = {}) {
 
 export function formatDateTime(value, timeZone = DEFAULT_TIMEZONE, options = {}) {
     if (!value) return '—';
-    return new Date(value).toLocaleString('es-MX', { ...options, timeZone });
+    return toDate(value).toLocaleString('es-MX', { ...options, timeZone });
 }
 
 export function formatTime(value, timeZone = DEFAULT_TIMEZONE, options = {}) {
     if (!value) return '—';
-    return new Date(value).toLocaleTimeString('es-MX', { ...options, timeZone });
+    return toDate(value).toLocaleTimeString('es-MX', { ...options, timeZone });
 }
 
 /**
@@ -47,7 +58,7 @@ export function dateKeyInTimezone(value, timeZone = DEFAULT_TIMEZONE) {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
-    }).format(new Date(value));
+    }).format(toDate(value));
 }
 
 export function isSameDayInTimezone(a, b, timeZone = DEFAULT_TIMEZONE) {

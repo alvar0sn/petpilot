@@ -11,30 +11,16 @@ export default function PortalLayout({ tenant, owner, current, children }) {
     }
 
     const nav = [
-        { key: 'home',         href: route('portal.dashboard', tenant.slug),    label: 'Inicio' },
-        { key: 'memberships',  href: route('portal.memberships', tenant.slug),  label: 'Membresías' },
-        { key: 'walks',        href: route('portal.walks', tenant.slug),         label: 'Paseos' },
+        { key: 'home',         href: route('portal.dashboard', tenant.slug),    label: 'Inicio',      icon: 'ti-home-2' },
+        { key: 'memberships',  href: route('portal.memberships', tenant.slug),  label: 'Membresías',  icon: 'ti-star' },
+        { key: 'calendar',     href: route('portal.calendar', tenant.slug),     label: 'Calendario',  icon: 'ti-calendar' },
     ];
 
     return (
         <div className="min-h-screen bg-zinc-50">
             <header className="bg-white border-b border-zinc-100 sticky top-0 z-10">
                 <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 min-w-0">
-                        <span className="text-xs text-zinc-400 hidden sm:block shrink-0">{tenant.nombre}</span>
-                        <nav className="flex gap-0.5">
-                            {nav.map(l => (
-                                <Link key={l.key} href={l.href}
-                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                                        current === l.key
-                                            ? 'bg-zinc-900 text-white'
-                                            : 'text-zinc-600 hover:bg-zinc-100'
-                                    }`}>
-                                    {l.label}
-                                </Link>
-                            ))}
-                        </nav>
-                    </div>
+                    <span className="text-sm font-medium text-zinc-700 truncate">{tenant.nombre}</span>
                     <div className="flex items-center gap-2 shrink-0">
                         <span className="text-xs text-zinc-500 hidden md:block">{owner.nombre}</span>
                         <button onClick={logout} disabled={processing}
@@ -45,7 +31,7 @@ export default function PortalLayout({ tenant, owner, current, children }) {
                 </div>
             </header>
 
-            <main className="max-w-3xl mx-auto px-4 py-6 space-y-1">
+            <main className="max-w-3xl mx-auto px-4 py-6 pb-24 space-y-1">
                 {flash.success && (
                     <div className="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl px-4 py-3">
                         {flash.success}
@@ -58,6 +44,18 @@ export default function PortalLayout({ tenant, owner, current, children }) {
                 )}
                 {children}
             </main>
+
+            <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-zinc-200 grid grid-cols-3">
+                {nav.map(l => (
+                    <Link key={l.key} href={l.href}
+                        className={`flex flex-col items-center gap-1 py-3 transition-colors ${
+                            current === l.key ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
+                        }`}>
+                        <i className={`ti ${l.icon}`} style={{ fontSize: '20px' }} />
+                        <span className="text-[10px] font-medium">{l.label}</span>
+                    </Link>
+                ))}
+            </nav>
         </div>
     );
 }

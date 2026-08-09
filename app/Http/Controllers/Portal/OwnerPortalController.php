@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Models\EventType;
 use App\Models\HotelStay;
 use App\Models\Membership;
 use App\Models\Pet;
@@ -67,6 +68,7 @@ class OwnerPortalController extends Controller
                 'fecha' => $a->fecha?->toDateString(),
                 'hora_inicio' => $a->hora_inicio,
                 'estado' => $a->estado,
+                'solicitud_owner' => $a->solicitud_owner,
                 'pet' => $a->pet?->nombre,
                 'tipo_servicio' => $a->tipoServicio?->nombre,
             ]);
@@ -246,9 +248,10 @@ class OwnerPortalController extends Controller
         ]);
     }
 
-    public function walks(Request $request, Tenant $tenant): Response
+    public function calendar(Request $request, Tenant $tenant): Response
     {
         $owner = auth('owner')->user();
+        $owner->load('pets:id,owner_id,nombre');
 
         // Walk config
         $horasAnticipacion = (int) ($tenant->getSetting('paseos.horas_anticipacion') ?? 2);
@@ -334,15 +337,36 @@ class OwnerPortalController extends Controller
             ->filter(fn($m) => $m['credito_paseo'] > 0)
             ->values();
 
+        $appointments = Appointment::with(['pet:id,nombre', 'tipoServicio:id,nombre'])
+            ->whereIn('pet_id', $ownerPetIds)
+            ->whereIn('estado', ['pendiente', 'confirmada'])
+            ->whereBetween('fecha', [$weekStart, $weekEnd])
+            ->orderBy('fecha')
+            ->orderBy('hora_inicio')
+            ->get()
+            ->map(fn(Appointment $a) => [
+                'id' => $a->id,
+                'modulo' => $a->modulo,
+                'fecha' => $a->fecha->toDateString(),
+                'hora_inicio' => $a->hora_inicio,
+                'estado' => $a->estado,
+                'solicitud_owner' => $a->solicitud_owner,
+                'franja' => $a->franja,
+                'pet_id' => $a->pet_id,
+                'pet' => $a->pet?->nombre,
+                'tipo_servicio' => $a->tipoServicio?->nombre,
+            ]);
+
         $pets = $owner->pets->map(fn($p) => [
             'id' => $p->id,
             'nombre' => $p->nombre,
         ]);
 
-        return Inertia::render('Portal/Walks', [
+        return Inertia::render('Portal/Calendar', [
             'tenant'          => $this->tenantArr($tenant),
             'owner'           => $this->ownerArr($owner),
             'slots'           => $slots,
+            'appointments'    => $appointments,
             'pets'            => $pets,
             'memberships'     => $memberships,
             'week_start'      => $weekStart,
@@ -385,5 +409,70 @@ class OwnerPortalController extends Controller
         ]);
 
         return back()->with('success', 'Solicitud enviada. La clínica la revisará y te confirmará.');
+    }
+
+    public function requestAppointment(Request $request, Tenant $tenant, string $modulo): RedirectResponse
+    {
+        $owner = auth('owner')->user();
+
+        $data = $request->validate([
+            'pet_id' => 'required|exists:pets,id',
+            'fecha'  => 'required|date|after_or_equal:today',
+            'franja' => 'required|in:manana,tarde',
+            'notas'  => 'nullable|string|max:500',
+        ]);
+
+        abort_unless($owner->pets->pluck('id')->contains($data['pet_id']), 403, 'Esta mascota no te pertenece.');
+
+        $yaExiste = Appointment::where('pet_id', $data['pet_id'])
+            ->where('modulo', $modulo)
+            ->where('fecha', $data['fecha'])
+            ->whereIn('estado', ['pendiente', 'confirmada'])
+            ->exists();
+
+        if ($yaExiste) {
+            return back()->withErrors(['fecha' => 'Ya tienes una cita solicitada o confirmada para esta mascota en esa fecha.']);
+        }
+
+        $pet = Pet::findOrFail($data['pet_id']);
+        $tipoServicio = EventType::where('nombre', $modulo === 'grooming' ? 'Estética' : 'Consulta')->first();
+
+        Appointment::create([
+            'pet_id'           => $pet->id,
+            'owner_id'         => $pet->owner_id,
+            'tipo_servicio_id' => $tipoServicio?->id,
+            'fecha'            => $data['fecha'],
+            'hora_inicio'      => $data['franja'] === 'manana' ? '09:00:00' : '14:00:00',
+            'estado'           => 'pendiente',
+            'modulo'           => $modulo,
+            'notas_internas'   => $data['notas'] ?? null,
+            'created_via'      => 'formulario_web',
+            'solicitud_owner'  => true,
+            'franja'           => $data['franja'],
+        ]);
+
+        return back()->with('success', 'Solicitud enviada. La clínica la revisará y te confirmará.');
+    }
+
+    public function storePet(Request $request, Tenant $tenant): RedirectResponse
+    {
+        $owner = auth('owner')->user();
+
+        $data = $request->validate([
+            'nombre'           => 'required|string|max:255',
+            'tipo'             => 'required|in:perro,gato,roedor,reptil,otro',
+            'raza'             => 'nullable|string|max:100',
+            'tamanio'          => 'nullable|in:pequeño,mediano,grande',
+            'sexo'             => 'nullable|in:macho,hembra',
+            'fecha_nacimiento' => 'nullable|date|before:today',
+        ]);
+
+        Pet::create([
+            ...$data,
+            'owner_id' => $owner->id,
+            'estado' => 'activo',
+        ]);
+
+        return back()->with('success', "{$data['nombre']} fue agregado a tus mascotas.");
     }
 }

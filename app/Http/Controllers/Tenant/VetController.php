@@ -57,6 +57,23 @@ class VetController extends Controller
                 'owner'        => $a->pet?->owner?->nombre_completo,
                 'veterinario'  => $a->groomer ? trim($a->groomer->nombre . ' ' . $a->groomer->apellido) : null,
                 'notas_internas' => $a->notas_internas,
+                'solicitud_owner' => $a->solicitud_owner,
+                'franja'       => $a->franja,
+            ]);
+
+        $pendingRequests = Appointment::with(['pet:id,nombre', 'pet.owner:id,nombre,apellidos'])
+            ->where('modulo', 'veterinaria')
+            ->where('solicitud_owner', true)
+            ->where('estado', 'pendiente')
+            ->orderBy('fecha')
+            ->get()
+            ->map(fn(Appointment $a) => [
+                'id' => $a->id,
+                'pet' => $a->pet?->nombre,
+                'owner' => $a->pet?->owner?->nombre_completo,
+                'fecha' => $a->fecha->toDateString(),
+                'franja' => $a->franja,
+                'notas_internas' => $a->notas_internas,
             ]);
 
         return Inertia::render('Vet/Index', [
@@ -67,6 +84,7 @@ class VetController extends Controller
                 ->where('activo', true)
                 ->orderBy('nombre')
                 ->get(['id', 'nombre', 'precio']),
+            'pendingRequests' => $pendingRequests,
         ]);
     }
 

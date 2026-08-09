@@ -64,6 +64,24 @@ class AppointmentController extends Controller
                 'groomer' => $a->groomer ? trim($a->groomer->nombre . ' ' . $a->groomer->apellido) : null,
                 'station' => $a->station?->nombre,
                 'notas_internas' => $a->notas_internas,
+                'solicitud_owner' => $a->solicitud_owner,
+                'franja' => $a->franja,
+            ]);
+
+        $pendingRequests = Appointment::with(['pet:id,nombre', 'pet.owner:id,nombre,apellidos'])
+            ->where('modulo', 'grooming')
+            ->where('solicitud_owner', true)
+            ->where('estado', 'pendiente')
+            ->orderBy('fecha')
+            ->get()
+            ->map(fn(Appointment $a) => [
+                'id' => $a->id,
+                'pet' => $a->pet?->nombre,
+                'owner' => $a->pet?->owner?->nombre_completo,
+                'fecha' => $a->fecha->toDateString(),
+                'franja' => $a->franja,
+                'notas_internas' => $a->notas_internas,
+                'tipo_servicio_id' => $a->tipo_servicio_id,
             ]);
 
         return Inertia::render('Grooming/Index', [
@@ -76,6 +94,7 @@ class AppointmentController extends Controller
                 ->where('activo', true)
                 ->orderBy('nombre')
                 ->get(['id', 'nombre', 'precio']),
+            'pendingRequests' => $pendingRequests,
         ]);
     }
 

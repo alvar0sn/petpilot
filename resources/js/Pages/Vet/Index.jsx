@@ -21,6 +21,7 @@ const estadoLabel = {
     cancelada:  'Cancelada',
     no_show:    'No presentó',
 };
+const franjaLabel = { manana: 'Mañana', tarde: 'Tarde' };
 
 function addDays(dateStr, n) {
     const d = new Date(dateStr + 'T12:00:00');
@@ -164,11 +165,106 @@ function NewConsultaModal({ veterinarios, catalogItems, defaultDate, onClose }) 
     );
 }
 
+function ApproveRequestModal({ request, veterinarios, onClose }) {
+    const form = useForm({
+        fecha: request.fecha,
+        hora_inicio: request.franja === 'manana' ? '09:00' : '14:00',
+        hora_fin: '',
+        veterinario_id: '',
+        notas_internas: request.notas_internas ?? '',
+        items: [],
+    });
+
+    function submit(e) {
+        e.preventDefault();
+        form.put(route('vet.update', request.id), {
+            onSuccess: () => router.post(route('vet.confirm', request.id), {}, { onSuccess: onClose }),
+        });
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <form onSubmit={submit} className="bg-white border border-zinc-200 rounded-xl shadow-lg p-5 w-full max-w-sm space-y-3">
+                <div>
+                    <h3 className="font-semibold text-zinc-800 text-sm">Aprobar solicitud</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">{request.pet} · {request.owner}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Fecha</label>
+                        <input type="date" className="w-full border-gray-300 rounded-lg text-sm py-1.5"
+                            value={form.data.fecha} onChange={e => form.setData('fecha', e.target.value)} required />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Hora *</label>
+                        <input type="time" className="w-full border-gray-300 rounded-lg text-sm py-1.5"
+                            value={form.data.hora_inicio} onChange={e => form.setData('hora_inicio', e.target.value)} required />
+                    </div>
+                    <div className="col-span-2">
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Veterinario</label>
+                        <select className="w-full border-gray-300 rounded-lg text-sm" value={form.data.veterinario_id} onChange={e => form.setData('veterinario_id', e.target.value)}>
+                            <option value="">Sin asignar</option>
+                            {veterinarios.map(v => <option key={v.id} value={v.id}>{v.nombre} {v.apellido}</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                {request.notas_internas && <p className="text-xs text-zinc-500 italic">"{request.notas_internas}"</p>}
+
+                <div className="flex gap-2 pt-1">
+                    <button type="button" onClick={onClose} className="flex-1 bg-white border border-zinc-200 text-zinc-600 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors">Cancelar</button>
+                    <button type="submit" disabled={form.processing} className="flex-1 bg-emerald-600 text-white py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                        {form.processing ? 'Aprobando...' : 'Aprobar consulta'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+}
+
+function PendingRequestsPanel({ requests, onApprove }) {
+    if (requests.length === 0) return null;
+
+    function reject(req) {
+        if (!confirm(`¿Rechazar la solicitud de ${req.pet}? Deberás llamar a ${req.owner ?? 'el dueño'} para confirmar otro horario.`)) return;
+        router.post(route('vet.cancel', req.id));
+    }
+
+    return (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+            <h3 className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-2">
+                Solicitudes pendientes ({requests.length})
+            </h3>
+            <div className="space-y-2">
+                {requests.map(req => (
+                    <div key={req.id} className="bg-white border border-amber-100 rounded-lg px-3 py-2 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="text-sm font-medium text-zinc-800 truncate">{req.pet} <span className="text-zinc-400 font-normal">· {req.owner}</span></p>
+                            <p className="text-xs text-zinc-500">
+                                {new Date(req.fecha + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                                {req.franja && ` · ${franjaLabel[req.franja] ?? req.franja}`}
+                                {req.notas_internas && ` · "${req.notas_internas}"`}
+                            </p>
+                        </div>
+                        <div className="flex gap-1.5 shrink-0">
+                            <button onClick={() => reject(req)} className="text-xs text-rose-600 border border-rose-200 rounded-lg px-2.5 py-1.5 hover:bg-rose-50 transition-colors">Rechazar</button>
+                            <button onClick={() => onApprove(req)} className="text-xs text-white bg-emerald-600 rounded-lg px-2.5 py-1.5 hover:bg-emerald-700 transition-colors">Aprobar</button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function ConsultaCard({ appt }) {
     const bg = estadoBg[appt.estado] ?? 'bg-zinc-400';
+    const isRequest = appt.solicitud_owner && appt.estado === 'pendiente';
     return (
         <Link href={route('vet.show', appt.id)}>
             <div className={`rounded-lg p-2.5 text-white text-xs cursor-pointer hover:opacity-90 transition-opacity ${bg}`}>
+                {isRequest && <div className="font-semibold text-[10px] uppercase tracking-wide mb-0.5">🔔 Solicitud</div>}
                 <div className="font-semibold leading-tight truncate">{appt.pet}</div>
                 {appt.hora_inicio && <div className="opacity-90 mt-0.5">{appt.hora_inicio.slice(0, 5)}</div>}
                 <div className="opacity-80 truncate">Consulta</div>
@@ -180,6 +276,7 @@ function ConsultaCard({ appt }) {
 
 function MobileConsultaItem({ appt }) {
     const borderBg = estadoBg[appt.estado] ?? 'bg-zinc-400';
+    const isRequest = appt.solicitud_owner && appt.estado === 'pendiente';
     return (
         <Link href={route('vet.show', appt.id)}>
             <div className="bg-white border border-zinc-100 shadow-sm rounded-xl flex items-stretch overflow-hidden">
@@ -189,6 +286,7 @@ function MobileConsultaItem({ appt }) {
                         <div className="flex items-baseline gap-2">
                             <span className="font-mono text-sm font-semibold text-zinc-800">{appt.hora_inicio?.slice(0, 5) ?? '--:--'}</span>
                             <span className="font-medium text-zinc-800 text-sm truncate">{appt.pet}</span>
+                            {isRequest && <span className="text-[10px] text-amber-600 font-semibold">🔔 Solicitud</span>}
                         </div>
                         <div className="text-xs text-zinc-400 mt-0.5 truncate">
                             {[appt.veterinario].filter(Boolean).join(' · ') || 'Consulta'}
@@ -203,9 +301,10 @@ function MobileConsultaItem({ appt }) {
     );
 }
 
-export default function VetIndex({ appointments, weekStart, veterinarios, catalogItems }) {
+export default function VetIndex({ appointments, weekStart, veterinarios, catalogItems, pendingRequests = [] }) {
     const [showCreate, setShowCreate] = useState(false);
     const [createDate, setCreateDate] = useState(today());
+    const [approving, setApproving] = useState(null);
     const todayStr = today();
     const weekDays = buildWeekDays(weekStart);
     const isCurrentWeek = weekDays.includes(todayStr);
@@ -228,6 +327,10 @@ export default function VetIndex({ appointments, weekStart, veterinarios, catalo
                     defaultDate={createDate} onClose={() => setShowCreate(false)} />
             )}
 
+            {approving && (
+                <ApproveRequestModal request={approving} veterinarios={veterinarios} onClose={() => setApproving(null)} />
+            )}
+
             <div className="flex justify-between items-center mb-5">
                 <h2 className="text-xl font-semibold text-zinc-900 tracking-tight">Veterinaria</h2>
                 <button onClick={() => openCreate(todayStr)}
@@ -235,6 +338,8 @@ export default function VetIndex({ appointments, weekStart, veterinarios, catalo
                     + Nueva consulta
                 </button>
             </div>
+
+            <PendingRequestsPanel requests={pendingRequests} onApprove={setApproving} />
 
             <div className="flex items-center justify-center gap-4 mb-6">
                 <button onClick={() => goWeek(-1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 text-zinc-500 text-xl font-light transition-colors">‹</button>

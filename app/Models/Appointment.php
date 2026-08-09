@@ -27,6 +27,8 @@ class Appointment extends Model
         'accesorios',
         'recepcion',
         'created_via',
+        'solicitud_owner',
+        'franja',
         'event_id',
         'stay_id',
         'pos_ticket_id',
@@ -38,6 +40,7 @@ class Appointment extends Model
     protected $casts = [
         'fecha' => 'date',
         'cobro_membresia' => 'boolean',
+        'solicitud_owner' => 'boolean',
         'recepcion' => 'array',
     ];
 

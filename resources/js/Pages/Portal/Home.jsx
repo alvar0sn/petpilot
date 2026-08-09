@@ -1,5 +1,6 @@
 import PortalLayout from '@/Layouts/PortalLayout';
-import { Link } from '@inertiajs/react';
+import { Link, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import { formatDate, useTenantTimezone } from '@/lib/datetime';
 
 const PET_ICONS = { perro: '🐕', gato: '🐈', roedor: '🐹', reptil: '🦎', otro: '🐾' };
@@ -40,8 +41,89 @@ function RecordatorioBadge({ days, dateStr, tz }) {
     );
 }
 
+function AddPetModal({ tenant, onClose }) {
+    const form = useForm({
+        nombre: '', tipo: 'perro', raza: '', tamanio: '', sexo: '', fecha_nacimiento: '',
+    });
+
+    function submit(e) {
+        e.preventDefault();
+        form.post(route('portal.pets.store', tenant.slug), { onSuccess: onClose });
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <form onSubmit={submit} className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-sm space-y-3">
+                <h3 className="font-semibold text-zinc-800">Agregar mascota</h3>
+
+                <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Nombre *</label>
+                    <input className="w-full border-zinc-300 rounded-lg text-sm py-2"
+                        value={form.data.nombre} onChange={e => form.setData('nombre', e.target.value)} required />
+                    {form.errors.nombre && <p className="text-rose-500 text-xs mt-0.5">{form.errors.nombre}</p>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Tipo *</label>
+                        <select className="w-full border-zinc-300 rounded-lg text-sm py-2"
+                            value={form.data.tipo} onChange={e => form.setData('tipo', e.target.value)}>
+                            <option value="perro">Perro</option>
+                            <option value="gato">Gato</option>
+                            <option value="roedor">Roedor</option>
+                            <option value="reptil">Reptil</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Raza</label>
+                        <input className="w-full border-zinc-300 rounded-lg text-sm py-2"
+                            value={form.data.raza} onChange={e => form.setData('raza', e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Tamaño</label>
+                        <select className="w-full border-zinc-300 rounded-lg text-sm py-2"
+                            value={form.data.tamanio} onChange={e => form.setData('tamanio', e.target.value)}>
+                            <option value="">Sin especificar</option>
+                            <option value="pequeño">Pequeño</option>
+                            <option value="mediano">Mediano</option>
+                            <option value="grande">Grande</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Sexo</label>
+                        <select className="w-full border-zinc-300 rounded-lg text-sm py-2"
+                            value={form.data.sexo} onChange={e => form.setData('sexo', e.target.value)}>
+                            <option value="">Sin especificar</option>
+                            <option value="macho">Macho</option>
+                            <option value="hembra">Hembra</option>
+                        </select>
+                    </div>
+                    <div className="col-span-2">
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Fecha de nacimiento</label>
+                        <input type="date" className="w-full border-zinc-300 rounded-lg text-sm py-2"
+                            value={form.data.fecha_nacimiento} onChange={e => form.setData('fecha_nacimiento', e.target.value)} />
+                    </div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                    <button type="button" onClick={onClose}
+                        className="flex-1 border border-zinc-200 py-2 rounded-lg text-sm text-zinc-600 hover:bg-zinc-50 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" disabled={form.processing}
+                        className="flex-1 bg-zinc-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-40 transition-colors">
+                        {form.processing ? 'Guardando...' : 'Agregar'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+}
+
 export default function PortalHome({ tenant, owner, pets, appointments, walkBookings }) {
     const tz = useTenantTimezone();
+    const [addingPet, setAddingPet] = useState(false);
 
     // Aggregate recordatorios across all pets, filter non-null, sort by urgency
     const recordatorios = pets.flatMap(pet =>
@@ -72,12 +154,23 @@ export default function PortalHome({ tenant, owner, pets, appointments, walkBook
 
     return (
         <PortalLayout tenant={tenant} owner={owner} current="home">
+            {addingPet && <AddPetModal tenant={tenant} onClose={() => setAddingPet(false)} />}
+
             {/* Mascotas */}
             <section>
-                <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-3">Mis mascotas</h2>
+                <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Mis mascotas</h2>
+                    <button onClick={() => setAddingPet(true)}
+                        className="text-xs font-medium text-zinc-600 hover:text-zinc-900 transition-colors">
+                        + Agregar
+                    </button>
+                </div>
                 {pets.length === 0 ? (
                     <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-6 text-center text-sm text-zinc-400">
                         Aún no tienes mascotas registradas.
+                        <button onClick={() => setAddingPet(true)} className="block mx-auto mt-2 text-zinc-700 font-medium hover:underline">
+                            Agregar mi primera mascota
+                        </button>
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -142,7 +235,7 @@ export default function PortalHome({ tenant, owner, pets, appointments, walkBook
                                         </span>
                                         <span className="text-sm text-zinc-700">{v.pet}</span>
                                     </div>
-                                    {v.estado === 'solicitado' && (
+                                    {(v.estado === 'solicitado' || (v._kind === 'appointment' && v.solicitud_owner && v.estado === 'pendiente')) && (
                                         <p className="text-xs text-amber-600 mt-0.5">Pendiente de confirmar</p>
                                     )}
                                 </div>
