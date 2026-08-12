@@ -286,6 +286,8 @@ class PosTicketController extends Controller
             Http::timeout(8)->post($webhookUrl, [
                 'phone'          => $phone,
                 'email'          => $ticket->owner?->email,
+                'owner_nombre'   => $ticket->owner?->nombre,
+                'owner_apellidos' => $ticket->owner?->apellidos,
                 'ghl_contact_id' => $ticket->owner?->ghl_contact_id,
                 'message'        => $mensaje,
                 'ticket_id'      => $ticket->id,

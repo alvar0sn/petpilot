@@ -589,7 +589,8 @@ class AppointmentController extends Controller
         app(GhlService::class)->sendWebhook($tenant->id, 'responsiva', [
             'tipo'           => 'responsiva',
             'ghl_contact_id' => $appointment->owner?->ghl_contact_id,
-            'owner_nombre'   => $appointment->owner?->nombre_completo,
+            'owner_nombre'   => $appointment->owner?->nombre,
+            'owner_apellidos' => $appointment->owner?->apellidos,
             'owner_telefono' => $appointment->owner?->telefono,
             'owner_email'    => $appointment->owner?->email,
             'negocio'        => $tenant->nombre,

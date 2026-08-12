@@ -785,6 +785,8 @@ class HotelController extends Controller
             'ghl_contact_id' => $owner->ghl_contact_id,
             'mascota'        => $stay->pet?->nombre,
             'dueno'          => $owner->nombre_completo,
+            'owner_nombre'   => $owner->nombre,
+            'owner_apellidos' => $owner->apellidos,
             'phone'          => $owner->telefono,
             'email'          => $owner->email,
             'negocio'        => $tenant->nombre,

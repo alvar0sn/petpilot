@@ -36,7 +36,7 @@ class ProcessMembershipExpiry implements ShouldQueue
                 ->where('activa', true)
                 ->where('aviso_enviado', false)
                 ->where('fecha_vencimiento', '<=', $today->clone()->addDays($diasAviso))
-                ->with(['pet.owner:id,nombre,telefono,email,ghl_contact_id', 'plan:id,nombre', 'credits'])
+                ->with(['pet.owner:id,nombre,apellidos,telefono,email,ghl_contact_id', 'plan:id,nombre', 'credits'])
                 ->get();
 
             foreach ($memberships as $membership) {
@@ -54,6 +54,7 @@ class ProcessMembershipExpiry implements ShouldQueue
                     'tipo' => 'membresia_vencimiento',
                     'ghl_contact_id' => $owner->ghl_contact_id,
                     'owner_nombre' => $owner->nombre,
+                    'owner_apellidos' => $owner->apellidos,
                     'owner_telefono' => $owner->telefono,
                     'owner_email' => $owner->email,
                     'negocio' => $tenant->nombre,

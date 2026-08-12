@@ -387,12 +387,12 @@ activo, created_at, updated_at
 
 | Evento | Payload |
 |--------|---------|
-| Recordatorio de servicio | tipo, tipo_servicio, ghl_contact_id, owner_nombre, owner_telefono, pet_nombre, pet_raza, fecha_servicio |
-| Cumpleaños | tipo, ghl_contact_id, owner_nombre, owner_telefono, pet_nombre, edad_anos |
-| Review post-servicio | tipo, ghl_contact_id, owner_nombre, owner_telefono, pet_nombre, tipo_servicio |
-| Membresía por vencer | tipo, ghl_contact_id, owner_nombre, owner_telefono, pet_nombre, plan_nombre, saldo_por_servicio, fecha_vencimiento, dias_para_vencer |
-| Check-in hotel/guardería | tipo, ghl_contact_id, owner_nombre, owner_telefono, pet_nombre, tipo_estancia, fecha_entrada, fecha_salida |
-| Check-out hotel/guardería | tipo, ghl_contact_id, owner_nombre, owner_telefono, pet_nombre, tipo_estancia |
+| Recordatorio de servicio | tipo, tipo_servicio, ghl_contact_id, owner_nombre, owner_apellidos, owner_telefono, pet_nombre, pet_raza, fecha_servicio |
+| Cumpleaños | tipo, ghl_contact_id, owner_nombre, owner_apellidos, owner_telefono, pet_nombre, edad_anos |
+| Review post-servicio | tipo, ghl_contact_id, owner_nombre, owner_apellidos, owner_telefono, pet_nombre, tipo_servicio |
+| Membresía por vencer | tipo, ghl_contact_id, owner_nombre, owner_apellidos, owner_telefono, pet_nombre, plan_nombre, saldo_por_servicio, fecha_vencimiento, dias_para_vencer |
+| Check-in hotel/guardería | tipo, ghl_contact_id, owner_nombre, owner_apellidos, owner_telefono, pet_nombre, tipo_estancia, fecha_entrada, fecha_salida |
+| Check-out hotel/guardería | tipo, ghl_contact_id, owner_nombre, owner_apellidos, owner_telefono, pet_nombre, tipo_estancia |
 
 ### 5.3 Logs de GHL
 
