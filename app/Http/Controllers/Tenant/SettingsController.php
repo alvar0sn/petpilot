@@ -369,6 +369,7 @@ class SettingsController extends Controller
             'nombre' => 'required|string|max:100',
             'orden' => 'nullable|integer',
             'es_grooming' => 'boolean',
+            'es_extra' => 'boolean',
         ]);
 
         $data['orden'] ??= (int) PosCategory::max('orden') + 1;
@@ -384,6 +385,7 @@ class SettingsController extends Controller
             'orden' => 'nullable|integer',
             'activo' => 'boolean',
             'es_grooming' => 'boolean',
+            'es_extra' => 'boolean',
         ]);
 
         $category->update($data);

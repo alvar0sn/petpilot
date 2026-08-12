@@ -117,7 +117,7 @@ function CatalogImport() {
 }
 
 export default function PosCatalog({ categories, items }) {
-    const catForm = useForm({ nombre: '', orden: '', es_grooming: false });
+    const catForm = useForm({ nombre: '', orden: '', es_grooming: false, es_extra: false });
     const itemForm = useForm({ categoria_id: categories[0]?.id ?? '', sku: '', nombre: '', tipo: 'servicio', precio: '', costo: '', stock: '' });
     const [editCat, setEditCat] = useState(null);
     const [editItem, setEditItem] = useState(null);
@@ -126,7 +126,7 @@ export default function PosCatalog({ categories, items }) {
 
     function openEditCat(c) {
         setEditCat(c);
-        editCatForm.setData({ nombre: c.nombre, orden: c.orden ?? '', activo: c.activo, es_grooming: c.es_grooming });
+        editCatForm.setData({ nombre: c.nombre, orden: c.orden ?? '', activo: c.activo, es_grooming: c.es_grooming, es_extra: c.es_extra });
     }
     function openEditItem(i) {
         setEditItem(i);
@@ -149,6 +149,7 @@ export default function PosCatalog({ categories, items }) {
                                     <div className="flex-1 text-sm">
                                         <span className="font-medium text-zinc-800">{c.nombre}</span>
                                         {c.es_grooming && <span className="ml-2 text-xs bg-violet-50 text-violet-700 ring-1 ring-violet-200 px-1.5 py-0.5 rounded-full">grooming</span>}
+                                        {c.es_extra && <span className="ml-2 text-xs bg-pink-50 text-pink-700 ring-1 ring-pink-200 px-1.5 py-0.5 rounded-full">extra</span>}
                                         {!c.activo && <span className="ml-2 text-xs bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded-full">inactivo</span>}
                                     </div>
                                     <button onClick={() => openEditCat(c)} className="text-xs text-zinc-500 hover:text-zinc-700 transition-colors">editar</button>
@@ -157,9 +158,21 @@ export default function PosCatalog({ categories, items }) {
                             ))}
                         </div>
                         <div className="px-4 py-3 border-t border-zinc-100 bg-zinc-50">
-                            <form onSubmit={e => { e.preventDefault(); catForm.post(route('settings.catalog.categories.store'), { onSuccess: () => catForm.reset() }); }} className="flex gap-2">
-                                <input className="flex-1 border-gray-300 rounded-lg text-sm" placeholder="Nueva categoría" value={catForm.data.nombre} onChange={e => catForm.setData('nombre', e.target.value)} />
-                                <button type="submit" disabled={catForm.processing} className="bg-zinc-900 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-zinc-700 disabled:opacity-50 transition-colors">+ Agregar</button>
+                            <form onSubmit={e => { e.preventDefault(); catForm.post(route('settings.catalog.categories.store'), { onSuccess: () => catForm.reset() }); }} className="space-y-2">
+                                <div className="flex gap-2">
+                                    <input className="flex-1 border-gray-300 rounded-lg text-sm" placeholder="Nueva categoría" value={catForm.data.nombre} onChange={e => catForm.setData('nombre', e.target.value)} />
+                                    <button type="submit" disabled={catForm.processing} className="bg-zinc-900 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-zinc-700 disabled:opacity-50 transition-colors">+ Agregar</button>
+                                </div>
+                                <div className="flex gap-4">
+                                    <label className="flex gap-1.5 text-xs items-center text-zinc-600">
+                                        <input type="checkbox" checked={catForm.data.es_grooming} onChange={e => catForm.setData('es_grooming', e.target.checked)} /> Es de estética
+                                    </label>
+                                    {catForm.data.es_grooming && (
+                                        <label className="flex gap-1.5 text-xs items-center text-zinc-600">
+                                            <input type="checkbox" checked={catForm.data.es_extra} onChange={e => catForm.setData('es_extra', e.target.checked)} /> Solo extras (no servicio base)
+                                        </label>
+                                    )}
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -215,6 +228,10 @@ export default function PosCatalog({ categories, items }) {
                             <h3 className="font-semibold text-zinc-800">Editar categoría</h3>
                             <input className="w-full border-gray-300 rounded-lg text-sm" placeholder="Nombre" value={editCatForm.data.nombre ?? ''} onChange={e => editCatForm.setData('nombre', e.target.value)} />
                             <label className="flex gap-2 text-sm items-center"><input type="checkbox" checked={!!editCatForm.data.activo} onChange={e => editCatForm.setData('activo', e.target.checked)} /> Activo</label>
+                            <label className="flex gap-2 text-sm items-center"><input type="checkbox" checked={!!editCatForm.data.es_grooming} onChange={e => editCatForm.setData('es_grooming', e.target.checked)} /> Es de estética</label>
+                            {editCatForm.data.es_grooming && (
+                                <label className="flex gap-2 text-sm items-center"><input type="checkbox" checked={!!editCatForm.data.es_extra} onChange={e => editCatForm.setData('es_extra', e.target.checked)} /> Solo extras (no servicio base)</label>
+                            )}
                             <div className="flex gap-2">
                                 <button type="button" onClick={() => setEditCat(null)} className="flex-1 bg-white border border-zinc-200 text-zinc-600 py-2 rounded-lg text-sm hover:bg-zinc-50 transition-colors">Cancelar</button>
                                 <button type="submit" disabled={editCatForm.processing} className="flex-1 bg-zinc-900 text-white py-2 rounded-lg text-sm hover:bg-zinc-700 disabled:opacity-50 transition-colors">Guardar</button>

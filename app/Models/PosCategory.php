@@ -20,11 +20,13 @@ class PosCategory extends Model
         'orden',
         'activo',
         'es_grooming',
+        'es_extra',
     ];
 
     protected $casts = [
         'activo' => 'boolean',
         'es_grooming' => 'boolean',
+        'es_extra' => 'boolean',
     ];
 
     public function items(): HasMany

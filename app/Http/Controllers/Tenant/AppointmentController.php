@@ -95,8 +95,15 @@ class AppointmentController extends Controller
             'groomers' => User::where('tenant_id', $tenant->id)->where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'apellido']),
             'catalogItems' => PosCatalogItem::whereHas('categoria', fn($q) => $q->where('es_grooming', true))
                 ->where('activo', true)
+                ->with('categoria:id,es_extra')
                 ->orderBy('nombre')
-                ->get(['id', 'nombre', 'precio']),
+                ->get(['id', 'nombre', 'precio', 'categoria_id'])
+                ->map(fn($item) => [
+                    'id' => $item->id,
+                    'nombre' => $item->nombre,
+                    'precio' => $item->precio,
+                    'es_extra' => (bool) $item->categoria?->es_extra,
+                ]),
             'pendingRequests' => $pendingRequests,
         ]);
     }
@@ -269,8 +276,15 @@ class AppointmentController extends Controller
             'groomers' => User::where('tenant_id', $tenant->id)->where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'apellido']),
             'catalogItems' => PosCatalogItem::whereHas('categoria', fn($q) => $q->where('es_grooming', true))
                 ->where('activo', true)
+                ->with('categoria:id,es_extra')
                 ->orderBy('nombre')
-                ->get(['id', 'nombre', 'precio']),
+                ->get(['id', 'nombre', 'precio', 'categoria_id'])
+                ->map(fn($item) => [
+                    'id' => $item->id,
+                    'nombre' => $item->nombre,
+                    'precio' => $item->precio,
+                    'es_extra' => (bool) $item->categoria?->es_extra,
+                ]),
             'checklistItems' => \App\Models\ChecklistItem::where('activo', true)->orderBy('orden')->get(['id', 'nombre']),
         ]);
     }

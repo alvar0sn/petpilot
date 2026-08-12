@@ -43,8 +43,9 @@ class TenantSeeder extends Seeder
     private static function seedPosCategories(int $tenantId): void
     {
         $categories = [
-            ['nombre' => 'General', 'orden' => 1, 'es_grooming' => false],
-            ['nombre' => 'Grooming', 'orden' => 2, 'es_grooming' => true],
+            ['nombre' => 'General', 'orden' => 1, 'es_grooming' => false, 'es_extra' => false],
+            ['nombre' => 'Grooming', 'orden' => 2, 'es_grooming' => true, 'es_extra' => false],
+            ['nombre' => 'Extras Estética', 'orden' => 3, 'es_grooming' => true, 'es_extra' => true],
         ];
 
         foreach ($categories as $i => $cat) {

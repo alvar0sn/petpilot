@@ -219,7 +219,7 @@ function GroomingTab({ stations, checklistItems, responsivaConfig }) {
 }
 
 function ResponsivaSection({ responsivaConfig }) {
-    const form = useForm({ texto: responsivaConfig?.texto ?? '' });
+    const form = useForm({ texto: responsivaConfig?.texto || responsivaConfig?.texto_default || '' });
 
     function handleSubmit(e) {
         e.preventDefault();
@@ -231,13 +231,12 @@ function ResponsivaSection({ responsivaConfig }) {
             <div>
                 <h3 className="font-semibold text-zinc-700">Responsiva digital</h3>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                    Texto legal que el dueño ve y firma cuando le mandas la responsiva desde una cita de grooming. Si lo dejas vacío, se usa un texto genérico.
+                    Texto legal que el dueño ve y firma cuando le mandas la responsiva desde una cita de grooming. Ya viene precargado con un texto genérico que puedes editar libremente.
                 </p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-3">
                 <textarea rows={10}
                     className="w-full border-gray-300 rounded-lg text-sm"
-                    placeholder={responsivaConfig?.texto_default}
                     value={form.data.texto}
                     onChange={e => form.setData('texto', e.target.value)} />
                 {form.errors.texto && <p className="text-rose-500 text-xs mt-0.5">{form.errors.texto}</p>}

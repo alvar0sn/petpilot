@@ -102,9 +102,10 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
         })),
     });
     const [itemDraft, setItemDraft] = useState({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1' });
+    const availableCatalogItems = appt.cobro_membresia ? catalogItems.filter(c => c.es_extra) : catalogItems;
     function pickCatalogItem(e) {
         const id = e.target.value;
-        const found = catalogItems.find(c => String(c.id) === id);
+        const found = availableCatalogItems.find(c => String(c.id) === id);
         setItemDraft(d => ({
             ...d,
             catalog_item_id: id,
@@ -469,11 +470,14 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
 
                     {canEdit && (
                         <form onSubmit={saveCharges} className="space-y-2 border border-indigo-100 rounded-xl p-3 bg-indigo-50/40">
+                            {appt.cobro_membresia && (
+                                <p className="text-xs text-zinc-500">El servicio de estética ya está cubierto por la membresía — aquí solo puedes agregar extras (shampoo especial, corte especial, etc).</p>
+                            )}
                             {/* Selector de catálogo */}
                             <select className="w-full border-gray-300 rounded-lg text-sm py-2"
                                 value={itemDraft.catalog_item_id} onChange={pickCatalogItem}>
                                 <option value="">— Seleccionar del catálogo —</option>
-                                {catalogItems.map(c => <option key={c.id} value={c.id}>{c.nombre} · {fmt(c.precio)}</option>)}
+                                {availableCatalogItems.map(c => <option key={c.id} value={c.id}>{c.nombre} · {fmt(c.precio)}</option>)}
                             </select>
 
                             {/* Nombre (solo si no viene del catálogo) */}

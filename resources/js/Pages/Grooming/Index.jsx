@@ -76,6 +76,7 @@ function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, def
     }
 
     const [itemDraft, setItemDraft] = useState({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1' });
+    const availableCatalogItems = form.data.cobro_membresia ? catalogItems.filter(c => c.es_extra) : catalogItems;
 
     function addItem() {
         if (!itemDraft.nombre || itemDraft.precio === '') return;
@@ -85,7 +86,7 @@ function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, def
     function removeItem(idx) { form.setData('items', form.data.items.filter((_, i) => i !== idx)); }
     function pickCatalogItem(e) {
         const id = e.target.value;
-        const found = catalogItems.find(c => String(c.id) === id);
+        const found = availableCatalogItems.find(c => String(c.id) === id);
         setItemDraft(d => ({ ...d, catalog_item_id: id, nombre: found?.nombre ?? d.nombre, precio: found ? String(found.precio) : d.precio }));
     }
     function submit(e) { e.preventDefault(); form.post(route('grooming.store'), { onSuccess: onClose }); }
@@ -184,6 +185,9 @@ function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, def
 
                 <div>
                     <label className="block text-xs font-medium text-zinc-600 mb-1">Servicios / productos</label>
+                    {form.data.cobro_membresia && (
+                        <p className="text-xs text-zinc-500 mb-1.5">El servicio de estética ya está cubierto por la membresía — aquí solo puedes agregar extras (shampoo especial, corte especial, etc).</p>
+                    )}
                     {form.data.items.length > 0 && (
                         <div className="mb-2 divide-y border border-zinc-100 rounded-lg text-xs">
                             {form.data.items.map((item, idx) => (
@@ -198,7 +202,7 @@ function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, def
                     <div className="grid grid-cols-12 gap-1">
                         <select className="col-span-4 border-gray-300 rounded-lg text-xs" value={itemDraft.catalog_item_id} onChange={pickCatalogItem}>
                             <option value="">Del catálogo...</option>
-                            {catalogItems.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                            {availableCatalogItems.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                         </select>
                         <input className="col-span-3 border-gray-300 rounded-lg text-xs" placeholder="Nombre *" value={itemDraft.nombre} onChange={e => setItemDraft(d => ({ ...d, nombre: e.target.value }))} />
                         <input type="number" step="0.01" className="col-span-2 border-gray-300 rounded-lg text-xs" placeholder="Precio" value={itemDraft.precio} onChange={e => setItemDraft(d => ({ ...d, precio: e.target.value }))} />
