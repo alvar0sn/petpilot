@@ -110,6 +110,16 @@ class DashboardController extends Controller
                 return $items;
             });
 
+        // Un evento completado (p. ej. cita de estética) escribe la misma fecha en
+        // events.proximo_recordatorio y en pets.recordatorio_*. Si ya hay un evento
+        // para ese pet/tipo/fecha, se descarta la entrada equivalente de $recPets
+        // para no mostrar el mismo recordatorio dos veces.
+        $recPets = $recPets->reject(fn($item) => $recEventos->contains(fn($e) =>
+            $e['pet_id'] === $item['pet_id']
+            && $e['tipo'] === $item['tipo']
+            && $e['fecha'] === $item['fecha']
+        ));
+
         $recordatorios = $recEventos->merge($recPets)
             ->sortBy('fecha')
             ->values()
