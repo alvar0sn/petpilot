@@ -2,7 +2,6 @@ import SuperAdminLayout from '@/Layouts/SuperAdminLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
-import PasswordInput from '@/Components/PasswordInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import { useForm } from '@inertiajs/react';
 
@@ -15,7 +14,6 @@ export default function TenantCreate() {
         admin_nombre: '',
         admin_apellido: '',
         admin_email: '',
-        admin_password: '',
         ghl_api_key: '',
         ghl_location_id: '',
         notas_internas: '',
@@ -112,13 +110,9 @@ export default function TenantCreate() {
                         <TextInput type="email" className="mt-1 w-full" value={data.admin_email}
                             onChange={e => setData('admin_email', e.target.value)} required />
                         <InputError message={errors.admin_email} className="mt-1" />
-                    </div>
-
-                    <div>
-                        <InputLabel value="Contraseña temporal" />
-                        <PasswordInput className="mt-1 w-full" value={data.admin_password}
-                            onChange={e => setData('admin_password', e.target.value)} required />
-                        <InputError message={errors.admin_password} className="mt-1" />
+                        <p className="mt-1 text-xs text-gray-500">
+                            Le enviaremos un correo a esta dirección para que active su cuenta y elija su propia contraseña.
+                        </p>
                     </div>
                 </section>
 

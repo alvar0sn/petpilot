@@ -7,7 +7,7 @@ use App\Models\TenantGhlConfig;
 use App\Models\User;
 use Database\Seeders\TenantSeeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 
 class TenantService
 {
@@ -28,7 +28,7 @@ class TenantService
                 'nombre' => $data['admin_nombre'],
                 'apellido' => $data['admin_apellido'] ?? null,
                 'email' => $data['admin_email'],
-                'password' => Hash::make($data['admin_password']),
+                'password' => null,
                 'role' => 'tenant_admin',
                 'activo' => true,
             ]);
@@ -45,6 +45,8 @@ class TenantService
 
         // Seed default data outside transaction (avoids SQLite lock contention)
         TenantSeeder::run($tenant->id);
+
+        Password::broker('users')->sendResetLink(['email' => $data['admin_email']]);
 
         return $tenant;
     }

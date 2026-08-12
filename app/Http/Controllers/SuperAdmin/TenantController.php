@@ -15,7 +15,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -81,7 +80,6 @@ class TenantController extends Controller
             'admin_nombre' => 'required|string|max:255',
             'admin_apellido' => 'nullable|string|max:255',
             'admin_email' => 'required|email|unique:users,email',
-            'admin_password' => ['required', Password::min(8)],
             'ghl_api_key' => 'nullable|string',
             'ghl_location_id' => 'nullable|string|max:255',
             'notas_internas' => 'nullable|string',
@@ -90,7 +88,7 @@ class TenantController extends Controller
         $tenant = $this->tenantService->create($request->all());
 
         return redirect()->route('super-admin.tenants.show', $tenant)
-            ->with('success', "Tenant {$tenant->nombre} creado exitosamente.");
+            ->with('success', "Tenant {$tenant->nombre} creado exitosamente. Se envió un correo de activación al admin.");
     }
 
     public function show(Tenant $tenant): Response
