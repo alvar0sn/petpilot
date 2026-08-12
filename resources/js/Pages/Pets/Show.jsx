@@ -25,6 +25,19 @@ function calcEdad(fechaNac) {
 
 const tipoBadge = { perro: '🐶', gato: '🐱', roedor: '🐭', reptil: '🦎', otro: '🐾' };
 
+const servicioLabel = { guarderia: 'Guardería', hotel: 'Hotel', estetica: 'Estética', paseo: 'Paseo', entrenamiento: 'Entrenamiento' };
+const servicioColor = { guarderia: 'bg-blue-100 text-blue-700', hotel: 'bg-purple-100 text-purple-700', estetica: 'bg-pink-100 text-pink-700', paseo: 'bg-green-100 text-green-700', entrenamiento: 'bg-amber-100 text-amber-700' };
+
+function CreditChip({ credit }) {
+    const low = credit.saldo_actual <= 2;
+
+    return (
+        <span className={`inline-block whitespace-nowrap text-xs px-1.5 py-0.5 rounded-full font-medium ${low ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-200' : servicioColor[credit.servicio_tipo]}`}>
+            {servicioLabel[credit.servicio_tipo]} {credit.saldo_actual}/{credit.saldo_inicial}
+        </span>
+    );
+}
+
 const eventColors = {
     Estética: 'bg-purple-100 border-purple-300 text-purple-800',
     Vacuna: 'bg-blue-100 border-blue-300 text-blue-800',
@@ -612,6 +625,9 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
     const [filtro, setFiltro] = useState('todos');
     const [historialOpen, setHistorialOpen] = useState(false);
     const [fotosOpen, setFotosOpen] = useState(false);
+    const [page, setPage] = useState(1);
+    const PAGE_SIZE = 10;
+    const [membershipOpen, setMembershipOpen] = useState(false);
 
     const allEvents  = (pet.events ?? []).map(e => ({ _kind: 'event',  _fecha: e.fecha,        ...e }));
     const allHotel   = (hotelStays ?? []).map(s => ({ _kind: 'hotel',  _fecha: s.fecha_entrada, ...s }));
@@ -630,6 +646,9 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
     });
 
     const totalCount = timeline.length;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const currentPage = Math.min(page, totalPages);
+    const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
     const sexSymbol = pet.sexo === 'macho' ? { sym: '♂', cls: 'text-blue-500' }
                     : pet.sexo === 'hembra' ? { sym: '♀', cls: 'text-rose-500' }
@@ -670,11 +689,18 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                                     )}
                                 </div>
                                 {activeMembership && (
-                                    <div className="mt-1.5 flex flex-wrap gap-1">
-                                        <span className="inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full bg-green-50 text-green-700 ring-1 ring-green-200 font-medium">
+                                    <div className="mt-1.5">
+                                        <button type="button" onClick={() => setMembershipOpen(o => !o)}
+                                            className="inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full bg-green-50 text-green-700 ring-1 ring-green-200 font-medium hover:bg-green-100 transition-colors">
                                             <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
                                             {activeMembership.plan?.nombre} · {formatDate(activeMembership.fecha_vencimiento, tz)}
-                                        </span>
+                                            <i className={`ti ti-chevron-down transition-transform duration-200 ${membershipOpen ? 'rotate-180' : ''}`} style={{ fontSize: 13 }} />
+                                        </button>
+                                        {membershipOpen && (
+                                            <div className="mt-1.5 flex flex-wrap gap-1">
+                                                {activeMembership.credits?.map(c => <CreditChip key={c.servicio_tipo} credit={c} />)}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -790,7 +816,7 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
 
                             <div className="flex flex-wrap gap-1.5">
                                 {FILTROS.map(f => (
-                                    <button key={f.key} onClick={() => setFiltro(f.key)}
+                                    <button key={f.key} onClick={() => { setFiltro(f.key); setPage(1); }}
                                         className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                                             filtro === f.key
                                                 ? 'bg-zinc-900 text-white border-zinc-900'
@@ -808,13 +834,29 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                             )}
 
                             <div className="space-y-2">
-                                {filtered.map(item => {
+                                {paginated.map(item => {
                                     if (item._kind === 'event') return <EventCard key={`e-${item.id}`} event={item} />;
                                     if (item._kind === 'hotel') return <HotelCard key={`h-${item.id}`} stay={item} />;
                                     if (item._kind === 'paseo') return <PaseoCard key={`p-${item.id}`} booking={item} />;
                                     return null;
                                 })}
                             </div>
+
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between pt-1">
+                                    <button type="button" disabled={currentPage === 1}
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        className="text-xs font-medium px-2.5 py-1 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors">
+                                        ← Anterior
+                                    </button>
+                                    <span className="text-xs text-zinc-400">Página {currentPage} de {totalPages}</span>
+                                    <button type="button" disabled={currentPage === totalPages}
+                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                        className="text-xs font-medium px-2.5 py-1 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors">
+                                        Siguiente →
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
 
