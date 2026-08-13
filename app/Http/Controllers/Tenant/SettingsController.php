@@ -58,6 +58,10 @@ class SettingsController extends Controller
                 'horas_anticipacion' => (int) (app('current_tenant')->getSetting('paseos.horas_anticipacion') ?? 2),
                 'dias_adelante'      => (int) (app('current_tenant')->getSetting('paseos.dias_adelante') ?? 14),
             ],
+            'recordatoriosConfig' => [
+                'activo'     => (bool) ($tenant->getSetting('recordatorios.activo') ?? true),
+                'dias_antes' => (int) ($tenant->getSetting('recordatorios.dias_antes') ?? 0),
+            ],
             'responsivaConfig' => [
                 'texto'         => $tenant->getSetting('grooming.responsiva_texto') ?? '',
                 'texto_default' => \App\Models\Appointment::RESPONSIVA_TEXTO_DEFAULT,
@@ -534,6 +538,20 @@ class SettingsController extends Controller
         $tenant->setSetting('paseos.dias_adelante',      $data['dias_adelante']);
 
         return back()->with('success', 'Configuración de paseos guardada.');
+    }
+
+    public function updateRecordatoriosConfig(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'activo'     => 'boolean',
+            'dias_antes' => 'required|integer|min:0|max:30',
+        ]);
+
+        $tenant = app('current_tenant');
+        $tenant->setSetting('recordatorios.activo', (bool) ($data['activo'] ?? false));
+        $tenant->setSetting('recordatorios.dias_antes', $data['dias_antes']);
+
+        return back()->with('success', 'Configuración de recordatorios guardada.');
     }
 
     public function updateResponsivaConfig(Request $request): RedirectResponse

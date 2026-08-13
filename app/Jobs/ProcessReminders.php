@@ -20,9 +20,15 @@ class ProcessReminders implements ShouldQueue
         $tenants = Tenant::where('estado', 'activo')->get();
 
         foreach ($tenants as $tenant) {
+            if (! ($tenant->getSetting('recordatorios.activo') ?? true)) {
+                continue;
+            }
+
+            $diasAntes = (int) ($tenant->getSetting('recordatorios.dias_antes') ?? 0);
+
             $events = Event::withoutGlobalScopes()
                 ->where('tenant_id', $tenant->id)
-                ->whereDate('proximo_recordatorio', today())
+                ->whereDate('proximo_recordatorio', today()->addDays($diasAntes))
                 ->where('recordatorio_enviado', false)
                 ->with(['pet.owner:id,nombre,apellidos,telefono,email,ghl_contact_id', 'eventType:id,nombre'])
                 ->get();

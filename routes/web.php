@@ -226,6 +226,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
     Route::post('settings/general', [SettingsController::class, 'updateGeneral'])->name('settings.general.update');
     Route::get('settings/receta/muestra', [SettingsController::class, 'recetaSample'])->name('settings.receta.sample');
     Route::post('settings/walk-config', [SettingsController::class, 'updateWalkConfig'])->name('settings.walk.update');
+    Route::post('settings/recordatorios', [SettingsController::class, 'updateRecordatoriosConfig'])->name('settings.recordatorios.update');
     Route::post('settings/responsiva', [SettingsController::class, 'updateResponsivaConfig'])->name('settings.responsiva.update');
 
     // Team management & razas — tenant_admin only

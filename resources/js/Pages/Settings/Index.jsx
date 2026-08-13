@@ -348,6 +348,57 @@ function StationsSection({ stations }) {
     );
 }
 
+function RecordatoriosConfigTab({ recordatoriosConfig }) {
+    const form = useForm({
+        activo: recordatoriosConfig?.activo ?? true,
+        dias_antes: recordatoriosConfig?.dias_antes ?? 0,
+    });
+
+    function handleSubmit(e) {
+        e.preventDefault();
+        form.post(route('settings.recordatorios.update'));
+    }
+
+    return (
+        <div className="max-w-md bg-white border border-zinc-100 shadow-sm rounded-xl p-5 space-y-5">
+            <div>
+                <h3 className="font-semibold text-zinc-700">Recordatorios</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">Controla si se envían los recordatorios de vacuna, desparasitación, consulta y estética, y con cuánta anticipación.</p>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <label className="flex items-center justify-between cursor-pointer">
+                    <span className="text-sm font-medium text-zinc-700">Enviar recordatorios</span>
+                    <button type="button" role="switch" aria-checked={form.data.activo}
+                        onClick={() => form.setData('activo', !form.data.activo)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.data.activo ? 'bg-zinc-900' : 'bg-zinc-200'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.data.activo ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                </label>
+
+                <div>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">
+                        Días de anticipación
+                    </label>
+                    <p className="text-xs text-zinc-400 mb-2">0 = se envían el mismo día del recordatorio. Con un número mayor, se envían esa cantidad de días antes.</p>
+                    <div className="flex items-center gap-2">
+                        <input type="number" min="0" max="30" disabled={!form.data.activo}
+                            className="w-24 border-gray-300 rounded-lg text-sm disabled:bg-zinc-50 disabled:text-zinc-400"
+                            value={form.data.dias_antes}
+                            onChange={e => form.setData('dias_antes', parseInt(e.target.value) || 0)} />
+                        <span className="text-sm text-zinc-500">días antes</span>
+                    </div>
+                    {form.errors.dias_antes && <p className="text-rose-500 text-xs mt-1">{form.errors.dias_antes}</p>}
+                </div>
+
+                <button type="submit" disabled={form.processing}
+                    className="w-full bg-zinc-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
+                    {form.processing ? 'Guardando…' : 'Guardar configuración'}
+                </button>
+            </form>
+        </div>
+    );
+}
+
 function WalksConfigTab({ walkConfig }) {
     const form = useForm({
         horas_anticipacion: walkConfig?.horas_anticipacion ?? 2,
@@ -1041,7 +1092,7 @@ function LinksTab({ slug }) {
     );
 }
 
-export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, generalConfig, walkConfig, responsivaConfig, teamMembers, razas }) {
+export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, generalConfig, walkConfig, recordatoriosConfig, responsivaConfig, teamMembers, razas }) {
     const { auth, tenant } = usePage().props;
     const [tab, setTab] = useState('general');
 
@@ -1053,6 +1104,7 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
         { id: 'recetas', label: 'Recetas' },
         { id: 'grooming', label: 'Grooming' },
         { id: 'walks', label: 'Paseos' },
+        { id: 'recordatorios', label: 'Recordatorios' },
         { id: 'team', label: 'Equipo' },
         { id: 'links', label: 'Links' },
     ];
@@ -1075,6 +1127,7 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
             {tab === 'ticket' && <TicketConfigTab ticketConfig={ticketConfig ?? { color_primario: '#18181b', color_texto: '#1f2937', color_fondo: '#ffffff', mensaje_pie: '', logo_url: null }} onGoToGeneral={() => setTab('general')} />}
             {tab === 'recetas' && <RecetaConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', telefono: '', cedula_profesional: '', nombre_veterinario: '' }} onGoToGeneral={() => setTab('general')} />}
             {tab === 'walks' && <WalksConfigTab walkConfig={walkConfig ?? { horas_anticipacion: 2, dias_adelante: 14 }} />}
+            {tab === 'recordatorios' && <RecordatoriosConfigTab recordatoriosConfig={recordatoriosConfig ?? { activo: true, dias_antes: 0 }} />}
             {tab === 'team' && <TeamTab teamMembers={teamMembers ?? []} currentUserId={auth.user?.id} />}
             {tab === 'links' && <LinksTab slug={tenant?.slug} />}
         </TenantLayout>
