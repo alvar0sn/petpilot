@@ -9,7 +9,10 @@ use App\Models\MembershipCreditMovement;
 use App\Models\Owner;
 use App\Models\Pet;
 use App\Models\PosTicket;
+use App\Models\ReminderSend;
+use App\Services\GhlService;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -60,9 +63,10 @@ class DashboardController extends Controller
         $recEventos = Event::with(['pet:id,nombre', 'pet.owner:id,nombre,apellidos,telefono', 'eventType:id,nombre'])
             ->whereNotNull('proximo_recordatorio')
             ->whereBetween('proximo_recordatorio', [$rangeStart, $rangeEnd])
-            ->where('recordatorio_enviado', false)
             ->get()
             ->map(fn($e) => [
+                'source'   => 'event',
+                'event_id' => $e->id,
                 'fecha'    => is_string($e->proximo_recordatorio) ? $e->proximo_recordatorio : $e->proximo_recordatorio?->toDateString(),
                 'pet'      => $e->pet?->nombre,
                 'pet_id'   => $e->pet?->id,
@@ -70,6 +74,7 @@ class DashboardController extends Controller
                 'owner_id' => $e->pet?->owner?->id,
                 'telefono' => $e->pet?->owner?->telefono,
                 'tipo'     => $e->eventType?->nombre,
+                'enviado'  => (bool) $e->recordatorio_enviado,
             ])
             // ->map() sobre un Eloquent\Collection conserva esa clase aunque el
             // contenido ya sean arrays — Eloquent\Collection::merge() espera
@@ -83,6 +88,15 @@ class DashboardController extends Controller
             'recordatorio_estetica' => 'Estética',
         ];
 
+        // Los recordatorios que sólo viven en pets.recordatorio_* (sin evento
+        // asociado) no tienen su propia bandera de "enviado" — se registra en
+        // reminder_sends cuando se envían (automático o manual).
+        $sentPetReminders = ReminderSend::where('tenant_id', currentTenantId())
+            ->whereBetween('fecha', [$rangeStart, $rangeEnd])
+            ->get()
+            ->map(fn($r) => $r->pet_id . '|' . $r->tipo . '|' . $r->fecha->toDateString())
+            ->flip();
+
         $recPets = Pet::with('owner:id,nombre,apellidos,telefono')
             ->where(fn($q) => $q
                 ->whereBetween('recordatorio_vacuna',   [$rangeStart, $rangeEnd])
@@ -91,19 +105,23 @@ class DashboardController extends Controller
                 ->orWhereBetween('recordatorio_estetica', [$rangeStart, $rangeEnd])
             )
             ->get()
-            ->flatMap(function ($pet) use ($camposRecordatorio, $rangeStart, $rangeEnd) {
+            ->flatMap(function ($pet) use ($camposRecordatorio, $rangeStart, $rangeEnd, $sentPetReminders) {
                 $items = [];
                 foreach ($camposRecordatorio as $campo => $tipo) {
                     $fecha = $pet->$campo;
                     if ($fecha && $fecha->between($rangeStart, $rangeEnd)) {
+                        $fechaStr = $fecha->toDateString();
                         $items[] = [
-                            'fecha'    => $fecha->toDateString(),
+                            'source'   => 'pet',
+                            'event_id' => null,
+                            'fecha'    => $fechaStr,
                             'pet'      => $pet->nombre,
                             'pet_id'   => $pet->id,
                             'owner'    => $pet->owner?->nombre_completo,
                             'owner_id' => $pet->owner?->id,
                             'telefono' => $pet->owner?->telefono,
                             'tipo'     => $tipo,
+                            'enviado'  => isset($sentPetReminders[$pet->id . '|' . $tipo . '|' . $fechaStr]),
                         ];
                     }
                 }
@@ -146,5 +164,61 @@ class DashboardController extends Controller
             ],
             'recordatorios' => $recordatorios,
         ]);
+    }
+
+    public function sendRecordatorio(Request $request, GhlService $ghl): RedirectResponse
+    {
+        $data = $request->validate([
+            'source'   => 'required|in:event,pet',
+            'event_id' => 'nullable|integer',
+            'pet_id'   => 'required|integer',
+            'tipo'     => 'required|string',
+            'fecha'    => 'required|date',
+        ]);
+
+        $tenant = currentTenant();
+        $pet = Pet::with('owner')->findOrFail($data['pet_id']);
+        $owner = $pet->owner;
+
+        if (! $owner?->ghl_contact_id) {
+            return back()->with('error', 'El dueño de esta mascota no tiene un contacto de GHL vinculado.');
+        }
+
+        $sent = $ghl->sendWebhook($tenant->id, 'recordatorios', [
+            'tipo'            => 'recordatorio',
+            'tipo_servicio'   => $data['tipo'],
+            'ghl_contact_id'  => $owner->ghl_contact_id,
+            'owner_nombre'    => $owner->nombre,
+            'owner_apellidos' => $owner->apellidos,
+            'owner_telefono'  => $owner->telefono,
+            'owner_email'     => $owner->email,
+            'negocio'         => $tenant->nombre,
+            'pet_nombre'      => $pet->nombre,
+            'pet_raza'        => $pet->raza,
+            'fecha_servicio'  => $data['fecha'],
+        ]);
+
+        if (! $sent) {
+            return back()->with('error', 'No se pudo enviar el recordatorio. Revisa la configuración de GHL del negocio.');
+        }
+
+        if ($data['source'] === 'event' && ! empty($data['event_id'])) {
+            Event::withoutGlobalScopes()
+                ->where('id', $data['event_id'])
+                ->where('tenant_id', $tenant->id)
+                ->update(['recordatorio_enviado' => true]);
+        } else {
+            ReminderSend::firstOrCreate([
+                'tenant_id' => $tenant->id,
+                'pet_id'    => $data['pet_id'],
+                'tipo'      => $data['tipo'],
+                'fecha'     => $data['fecha'],
+            ], [
+                'origen'  => 'manual',
+                'user_id' => auth()->id(),
+            ]);
+        }
+
+        return back()->with('success', 'Recordatorio enviado.');
     }
 }

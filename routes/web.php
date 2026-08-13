@@ -41,6 +41,7 @@ Route::get('/', function () {
 
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+Route::post('/dashboard/recordatorios/enviar', [DashboardController::class, 'sendRecordatorio'])->middleware(['auth', 'verified', 'tenant'])->name('dashboard.recordatorios.send');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

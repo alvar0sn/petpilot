@@ -75,6 +75,21 @@ const FILTROS = [
 
 export default function Dashboard({ period, from, to, metricas, alertas, recordatorios }) {
     const [filtro, setFiltro] = useState('hoy');
+    const [sendingKey, setSendingKey] = useState(null);
+
+    function sendRecordatorio(r, key) {
+        setSendingKey(key);
+        router.post(route('dashboard.recordatorios.send'), {
+            source: r.source,
+            event_id: r.event_id,
+            pet_id: r.pet_id,
+            tipo: r.tipo,
+            fecha: r.fecha,
+        }, {
+            preserveScroll: true,
+            onFinish: () => setSendingKey(null),
+        });
+    }
 
     function changePeriod(p) {
         router.get(route('dashboard'), { period: p }, { preserveState: false });
@@ -171,11 +186,14 @@ export default function Dashboard({ period, from, to, metricas, alertas, recorda
                                         <th className="px-4 py-3 text-left">Tipo</th>
                                         <th className="px-4 py-3 text-left">Fecha</th>
                                         <th className="px-4 py-3 text-left">Teléfono</th>
+                                        <th className="px-4 py-3 text-left">Recordatorio</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-50">
-                                    {filteredFinal.map((r, i) => (
-                                        <tr key={i} className="hover:bg-zinc-50">
+                                    {filteredFinal.map((r, i) => {
+                                        const key = `${r.source}-${r.event_id ?? r.pet_id}-${r.tipo}-${r.fecha}`;
+                                        return (
+                                        <tr key={key} className="hover:bg-zinc-50">
                                             <td className="px-4 py-3">
                                                 {r.pet_id ? (
                                                     <Link href={route('pets.show', r.pet_id)}
@@ -205,8 +223,20 @@ export default function Dashboard({ period, from, to, metricas, alertas, recorda
                                                 <DaysLabel dateStr={r.fecha} />
                                             </td>
                                             <td className="px-4 py-3 font-mono text-zinc-600 text-xs">{r.telefono}</td>
+                                            <td className="px-4 py-3">
+                                                {r.enviado ? (
+                                                    <span className="text-xs font-medium text-emerald-600">✓ Enviado</span>
+                                                ) : (
+                                                    <button type="button" onClick={() => sendRecordatorio(r, key)}
+                                                        disabled={sendingKey === key}
+                                                        className="text-xs px-3 py-1.5 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 transition-colors">
+                                                        {sendingKey === key ? 'Enviando…' : 'Enviar'}
+                                                    </button>
+                                                )}
+                                            </td>
                                         </tr>
-                                    ))}
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
