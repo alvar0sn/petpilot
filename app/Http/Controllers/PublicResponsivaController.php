@@ -30,7 +30,7 @@ class PublicResponsivaController extends Controller
         return Inertia::render('Public/Responsiva', [
             'negocio' => [
                 'nombre'  => $tenant?->nombre,
-                'logo_url' => $config?->logo_path ? Storage::disk(media_disk())->url($config->logo_path) : null,
+                'logo_url' => media_url($config?->logo_path),
                 'color_primario' => $config?->color_primario ?? '#4f46e5',
             ],
             'appointment' => [

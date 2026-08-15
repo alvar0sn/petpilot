@@ -99,7 +99,7 @@ class PetController extends Controller
         if ($pet->foto_url) {
             $media[] = [
                 'id'          => 'perfil',
-                'url'         => Storage::disk(media_disk())->url($pet->foto_url),
+                'url'         => media_url($pet->foto_url),
                 'tipo'        => 'perfil',
                 'fecha'       => null,
                 'descripcion' => 'Foto de perfil',
@@ -113,7 +113,7 @@ class PetController extends Controller
         foreach ($apptPhotos as $p) {
             $media[] = [
                 'id'          => 'appt-' . $p->id,
-                'url'         => Storage::disk(media_disk())->url($p->ruta),
+                'url'         => media_url($p->ruta),
                 'tipo'        => 'grooming',
                 'fecha'       => $p->appointment?->fecha?->toDateString(),
                 'descripcion' => $p->descripcion,
@@ -127,7 +127,7 @@ class PetController extends Controller
         foreach ($hotelPhotos as $p) {
             $media[] = [
                 'id'          => 'hotel-' . $p->id,
-                'url'         => Storage::disk(media_disk())->url($p->url),
+                'url'         => media_url($p->url),
                 'tipo'        => 'hotel',
                 'fecha'       => $p->stay?->fecha_entrada?->toDateString(),
                 'descripcion' => $p->etiqueta,
@@ -142,7 +142,7 @@ class PetController extends Controller
         foreach ($petFiles as $f) {
             $media[] = [
                 'id'          => 'file-' . $f->id,
-                'url'         => Storage::disk(media_disk())->url($f->archivo_url),
+                'url'         => media_url($f->archivo_url),
                 'tipo'        => 'consulta',
                 'fecha'       => $f->event?->fecha?->toDateString(),
                 'descripcion' => $f->nombre,
@@ -167,7 +167,7 @@ class PetController extends Controller
 
         return Inertia::render('Pets/Show', [
             'pet' => array_merge($pet->toArray(), [
-                'foto_url'              => $pet->foto_url ? Storage::disk(media_disk())->url($pet->foto_url) : null,
+                'foto_url'              => media_url($pet->foto_url),
                 'recordatorio_vacuna'   => $pet->recordatorio_vacuna?->toDateString(),
                 'recordatorio_despa'    => $pet->recordatorio_despa?->toDateString(),
                 'recordatorio_consulta' => $pet->recordatorio_consulta?->toDateString(),

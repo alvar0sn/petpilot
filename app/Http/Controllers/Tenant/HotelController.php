@@ -355,7 +355,7 @@ class HotelController extends Controller
         $stay->setRelation('photos', $stay->photos->map(fn(HotelStayPhoto $p) => [
             'id' => $p->id,
             'etiqueta' => $p->etiqueta,
-            'url' => Storage::disk(media_disk())->url($p->url),
+            'url' => media_url($p->url),
         ]));
 
         return Inertia::render('Hotel/Show', [

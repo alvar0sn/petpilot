@@ -9,7 +9,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -102,9 +101,7 @@ class OwnerController extends Controller
         ]);
 
         $owner->pets->transform(function ($pet) {
-            $pet->foto_url = $pet->foto_url
-                ? Storage::disk(media_disk())->url($pet->foto_url)
-                : null;
+            $pet->foto_url = media_url($pet->foto_url);
             return $pet;
         });
 

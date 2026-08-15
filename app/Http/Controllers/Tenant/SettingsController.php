@@ -32,7 +32,7 @@ class SettingsController extends Controller
 
         $ticketConfig = PosTicketConfig::first();
         $tenant = app('current_tenant');
-        $logoUrl = $ticketConfig?->logo_path ? Storage::disk(media_disk())->url($ticketConfig->logo_path) : null;
+        $logoUrl = media_url($ticketConfig?->logo_path);
 
         return Inertia::render('Settings/Index', [
             'categories'    => $categories,

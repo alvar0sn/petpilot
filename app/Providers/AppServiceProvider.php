@@ -37,7 +37,7 @@ class AppServiceProvider extends ServiceProvider
                     'url'                     => $s['r2_public_url'],
                     'endpoint'                => 'https://' . $s['r2_account_id'] . '.r2.cloudflarestorage.com',
                     'use_path_style_endpoint' => false,
-                    'visibility'              => 'public',
+                    'visibility'              => 'private',
                     'throw'                   => false,
                 ]]);
                 app()->instance('media_disk', 'r2');

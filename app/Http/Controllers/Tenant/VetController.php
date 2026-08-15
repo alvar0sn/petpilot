@@ -206,7 +206,7 @@ class VetController extends Controller
                 ]),
                 'photos' => $appointment->photos->map(fn($p) => [
                     'id'          => $p->id,
-                    'url'         => Storage::disk(media_disk())->url($p->ruta),
+                    'url'         => media_url($p->ruta),
                     'tipo'        => $p->tipo,
                     'descripcion' => $p->descripcion,
                 ]),
