@@ -299,7 +299,7 @@ class OwnerController extends Controller
     {
         $owner->update(['ghl_sync_status' => 'pending']);
         SyncOwnerToGhl::dispatch(currentTenantId(), $owner->id);
-        return back()->with('success', 'Sync GHL iniciado.');
+        return back()->with('success', 'Sincronización iniciada.');
     }
 
     public function sendPortalAccess(Owner $owner): RedirectResponse

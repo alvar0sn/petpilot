@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\GhlContactLog;
 use App\Models\GhlWebhookLog;
 use App\Models\Owner;
+use App\Models\Tenant;
 use App\Models\TenantGhlConfig;
 use Illuminate\Support\Facades\Http;
 
@@ -49,6 +50,8 @@ class GhlService
             'locationId' => $config->location_id,
         ], fn($v) => $v !== null && $v !== '');
 
+        $tenant = Tenant::find($tenantId);
+
         try {
             $http = Http::withToken($config->api_key)
                 ->withHeaders(['Version' => '2021-07-28']);
@@ -85,6 +88,11 @@ class GhlService
                         'ghl_contact_id'  => $existingId,
                         'ghl_sync_status' => 'synced',
                     ]);
+
+                    if ($tenant) {
+                        $this->tagContact($http, $existingId, $tenant->nombre);
+                    }
+
                     GhlContactLog::withoutGlobalScopes()->create([
                         'tenant_id'      => $tenantId,
                         'owner_id'       => $owner->id,
@@ -100,12 +108,19 @@ class GhlService
             }
 
             if ($success && $action === 'create') {
+                $newContactId = $response->json('contact.id');
                 $owner->withoutGlobalScopes()->where('id', $owner->id)->update([
-                    'ghl_contact_id' => $response->json('contact.id'),
+                    'ghl_contact_id' => $newContactId,
                     'ghl_sync_status' => 'synced',
                 ]);
+                if ($tenant) {
+                    $this->tagContact($http, $newContactId, $tenant->nombre);
+                }
             } elseif ($success) {
                 $owner->withoutGlobalScopes()->where('id', $owner->id)->update(['ghl_sync_status' => 'synced']);
+                if ($tenant) {
+                    $this->tagContact($http, $ghlContactId, $tenant->nombre);
+                }
             } else {
                 $owner->withoutGlobalScopes()->where('id', $owner->id)->update(['ghl_sync_status' => 'failed']);
             }
@@ -135,6 +150,21 @@ class GhlService
             ]);
 
             return false;
+        }
+    }
+
+    private function tagContact(\Illuminate\Http\Client\PendingRequest $http, ?string $contactId, string $tag): void
+    {
+        if (! $contactId || $tag === '') {
+            return;
+        }
+
+        try {
+            $http->post("https://services.leadconnectorhq.com/contacts/{$contactId}/tags", [
+                'tags' => [$tag],
+            ]);
+        } catch (\Throwable) {
+            // Best-effort — no interrumpe el sync si falla el etiquetado.
         }
     }
 

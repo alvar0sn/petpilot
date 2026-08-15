@@ -181,7 +181,7 @@ class DashboardController extends Controller
         $owner = $pet->owner;
 
         if (! $owner?->ghl_contact_id) {
-            return back()->with('error', 'El dueño de esta mascota no tiene un contacto de GHL vinculado.');
+            return back()->with('error', 'Contacto no sincronizado.');
         }
 
         $sent = $ghl->sendWebhook($tenant->id, 'recordatorios', [
@@ -199,7 +199,7 @@ class DashboardController extends Controller
         ]);
 
         if (! $sent) {
-            return back()->with('error', 'No se pudo enviar el recordatorio. Revisa la configuración de GHL del negocio.');
+            return back()->with('error', 'No se pudo enviar el recordatorio. Intenta de nuevo más tarde.');
         }
 
         if ($data['source'] === 'event' && ! empty($data['event_id'])) {
