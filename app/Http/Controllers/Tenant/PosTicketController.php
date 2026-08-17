@@ -293,6 +293,7 @@ class PosTicketController extends Controller
                 'ticket_id'      => $ticket->id,
                 'ticket_url'     => $ticketUrl,
                 'business_name'  => $tenant->nombre,
+                'business_phone' => $tenant->getSetting('receta.telefono'),
             ]);
             return true;
         } catch (\Exception) {

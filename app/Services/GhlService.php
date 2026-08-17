@@ -217,6 +217,9 @@ class GhlService
 
         if (! $url) return false;
 
+        $tenant = Tenant::find($tenantId);
+        $payload['negocio_telefono'] = $tenant?->getSetting('receta.telefono');
+
         try {
             $response = Http::post($url, array_merge(['tipo' => $type], $payload));
             $success = $response->successful();

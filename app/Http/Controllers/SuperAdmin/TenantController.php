@@ -192,6 +192,8 @@ class TenantController extends Controller
             return response()->json(['ok' => false, 'error' => 'URL no configurada.'], 422);
         }
 
+        $negocioTelefono = $tenant->getSetting('receta.telefono');
+
         $testPayloads = [
             'webhook_recordatorios' => [
                 'tipo'           => 'recordatorios',
@@ -202,6 +204,7 @@ class TenantController extends Controller
                 'owner_telefono' => '+525512345678',
                 'owner_email'    => 'test@ejemplo.com',
                 'negocio'        => $tenant->nombre,
+                'negocio_telefono' => $negocioTelefono,
                 'pet_nombre'     => 'Firulais',
                 'pet_raza'       => 'Labrador',
                 'fecha_servicio' => now()->addDays(7)->toDateString(),
@@ -214,6 +217,7 @@ class TenantController extends Controller
                 'owner_telefono' => '+525512345678',
                 'owner_email'    => 'test@ejemplo.com',
                 'negocio'        => $tenant->nombre,
+                'negocio_telefono' => $negocioTelefono,
                 'pet_nombre'     => 'Firulais',
                 'edad_anos'      => 3,
             ],
@@ -225,6 +229,7 @@ class TenantController extends Controller
                 'owner_telefono' => '+525512345678',
                 'owner_email'    => 'test@ejemplo.com',
                 'negocio'        => $tenant->nombre,
+                'negocio_telefono' => $negocioTelefono,
                 'pet_nombre'     => 'Firulais',
                 'tipo_servicio'  => 'Baño y corte',
             ],
@@ -236,6 +241,7 @@ class TenantController extends Controller
                 'owner_telefono'      => '+525512345678',
                 'owner_email'         => 'test@ejemplo.com',
                 'negocio'             => $tenant->nombre,
+                'negocio_telefono'    => $negocioTelefono,
                 'pet_nombre'          => 'Firulais',
                 'plan_nombre'         => 'Plan Premium',
                 'saldo_por_servicio'  => ['bano' => 2, 'consulta' => 1],
@@ -252,6 +258,7 @@ class TenantController extends Controller
                 'phone'          => '+525512345678',
                 'email'          => 'test@ejemplo.com',
                 'negocio'        => $tenant->nombre,
+                'negocio_telefono' => $negocioTelefono,
                 'fecha_entrada'  => now()->toDateString(),
                 'fecha_salida'   => now()->addDays(3)->toDateString(),
                 'mensaje'        => 'Check-in de Firulais en el hotel.',
@@ -266,6 +273,7 @@ class TenantController extends Controller
                 'phone'          => '+525512345678',
                 'email'          => 'test@ejemplo.com',
                 'negocio'        => $tenant->nombre,
+                'negocio_telefono' => $negocioTelefono,
                 'fecha_salida'   => now()->toDateString(),
                 'mensaje'        => 'Firulais ya puede ser recogido.',
             ],
@@ -279,6 +287,7 @@ class TenantController extends Controller
                 'ticket_id'      => 0,
                 'ticket_url'     => url('/t/test'),
                 'business_name'  => $tenant->nombre,
+                'business_phone' => $negocioTelefono,
             ],
             'webhook_responsiva' => [
                 'tipo'           => 'responsiva',
@@ -288,6 +297,7 @@ class TenantController extends Controller
                 'owner_telefono' => '+525512345678',
                 'owner_email'    => 'test@ejemplo.com',
                 'negocio'        => $tenant->nombre,
+                'negocio_telefono' => $negocioTelefono,
                 'pet_nombre'     => 'Firulais',
                 'responsiva_url' => url('/r/test'),
             ],
