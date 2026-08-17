@@ -14,11 +14,12 @@ use App\Models\PosStockMovement;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
 use App\Models\PosTicketRefund;
+use App\Services\GhlService;
+use App\Services\PaymentRequestService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -81,7 +82,7 @@ class PosTicketController extends Controller
 
     public function show(PosTicket $ticket): JsonResponse
     {
-        $ticket->load(['owner:id,nombre,apellidos,telefono', 'lines.item:id,nombre,tipo', 'payments.paymentMethod:id,nombre', 'discount:id,nombre,tipo,valor']);
+        $ticket->load(['owner:id,nombre,apellidos,telefono', 'lines.item:id,nombre,tipo', 'payments.paymentMethod:id,nombre', 'discount:id,nombre,tipo,valor', 'paymentRequests' => fn($q) => $q->latest()->limit(1)]);
         return response()->json(['ticket' => $ticket]);
     }
 
@@ -207,7 +208,7 @@ class PosTicketController extends Controller
         return response()->json($this->ticketResponse($ticket));
     }
 
-    public function pay(Request $request, PosTicket $ticket): JsonResponse
+    public function pay(Request $request, PosTicket $ticket, GhlService $ghl): JsonResponse
     {
         $this->authorize_ticket($ticket);
 
@@ -247,7 +248,7 @@ class PosTicketController extends Controller
 
         $ticket->load(['owner:id,nombre,apellidos,telefono,email,ghl_contact_id', 'lines', 'discount']);
 
-        $waSent = $this->trySendWhatsapp($ticket);
+        $waSent = $ghl->notifyTicketPaid($ticket);
 
         return response()->json([
             'ok'      => true,
@@ -256,49 +257,27 @@ class PosTicketController extends Controller
         ]);
     }
 
-    private function trySendWhatsapp(PosTicket $ticket): bool
+    public function createPaymentRequest(Request $request, PosTicket $ticket, PaymentRequestService $service): JsonResponse
     {
-        $phone = preg_replace('/\D/', '', $ticket->owner?->telefono ?? '');
-        if (!$phone) return false;
+        $this->authorize_ticket($ticket);
 
-        $tenant = currentTenant();
-        $tenant->load('ghlConfig');
-        $webhookUrl = $tenant->ghlConfig?->webhook_whatsapp_pos;
-        if (!$webhookUrl) return false;
-
-        $lineas = $ticket->lines->map(fn($l) =>
-            "• {$l->nombre_snapshot} ×{$l->cantidad}  $" . number_format($l->subtotal, 2, '.', ',')
-        )->implode("\n");
-
-        $ticketUrl = url("/t/{$ticket->token}");
-
-        $mensaje = "🧾 *{$tenant->nombre}*\nTicket #{$ticket->folio}\n\n{$lineas}";
-
-        if (($ticket->discount_amount ?? 0) > 0) {
-            $mensaje .= "\n_Descuento: -$" . number_format($ticket->discount_amount, 2, '.', ',') . "_";
-        }
-
-        $mensaje .= "\n\n💰 *Total: $" . number_format($ticket->total, 2, '.', ',') . "*";
-        $mensaje .= "\n\n🔗 Ver tu ticket: {$ticketUrl}";
-        $mensaje .= "\n\n¡Gracias por su visita! 🐾";
+        $data = $request->validate(['notas' => 'nullable|string|max:255']);
 
         try {
-            Http::timeout(8)->post($webhookUrl, [
-                'phone'          => $phone,
-                'email'          => $ticket->owner?->email,
-                'owner_nombre'   => $ticket->owner?->nombre,
-                'owner_apellidos' => $ticket->owner?->apellidos,
-                'ghl_contact_id' => $ticket->owner?->ghl_contact_id,
-                'message'        => $mensaje,
-                'ticket_id'      => $ticket->id,
-                'ticket_url'     => $ticketUrl,
-                'business_name'  => $tenant->nombre,
-                'business_phone' => $tenant->getSetting('receta.telefono'),
-            ]);
-            return true;
-        } catch (\Exception) {
-            return false;
+            $result = $service->createForTicket($ticket, $data['notas'] ?? null);
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
         }
+
+        return response()->json([
+            'ok' => true,
+            'link' => $result['link'],
+            'wa_sent' => $result['wa_sent'],
+            'payment_request' => [
+                'id' => $result['request']->id,
+                'estado' => $result['request']->estado,
+            ],
+        ]);
     }
 
     public function cancel(Request $request, PosTicket $ticket): RedirectResponse
@@ -391,7 +370,7 @@ class PosTicketController extends Controller
 
     private function ticketResponse(PosTicket $ticket): array
     {
-        return ['ticket' => $ticket->fresh()->load(['owner:id,nombre,apellidos,telefono', 'lines.item', 'discount'])];
+        return ['ticket' => $ticket->fresh()->load(['owner:id,nombre,apellidos,telefono', 'lines.item', 'discount', 'paymentRequests' => fn($q) => $q->latest()->limit(1)])];
     }
 
     private function authorize_ticket(PosTicket $ticket): void

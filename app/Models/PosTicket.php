@@ -86,6 +86,11 @@ class PosTicket extends Model
         return $this->hasMany(PosTicketRefund::class, 'ticket_id');
     }
 
+    public function paymentRequests(): HasMany
+    {
+        return $this->hasMany(PaymentRequest::class, 'pos_ticket_id');
+    }
+
     public function isPaid(): bool
     {
         return $this->estado === 'pagado';

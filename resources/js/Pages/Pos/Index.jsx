@@ -1,4 +1,5 @@
 import TenantLayout from '@/Layouts/TenantLayout';
+import SolicitarPagoMpButton from '@/Components/SolicitarPagoMpButton';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
@@ -653,12 +654,13 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
                     </button>
                 </div>
             ) : !payMode ? (
-                <div className="px-4 pb-4">
+                <div className="px-4 pb-4 space-y-2">
                     <button onClick={() => { setPayMode(true); setPayments([{ payment_method_id: paymentMethods[0]?.id ?? '', monto: String(ticket.total) }]); }}
                         disabled={!ticket.lines?.length || processing}
                         className="w-full bg-green-600 text-white py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40">
                         Cobrar {fmt(ticket.total)}
                     </button>
+                    {ticket.lines?.length > 0 && <SolicitarPagoMpButton ticket={ticket} />}
                 </div>
             ) : null}
 

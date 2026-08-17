@@ -346,7 +346,8 @@ class HotelController extends Controller
             'membership.credits',
             'ticket',
             'charges',
-            'payments.ticket:id,folio',
+            'payments.ticket:id,folio,estado',
+            'payments.ticket.paymentRequests' => fn($q) => $q->latest()->limit(1),
             'payments.user:id,nombre,apellido',
             'createdBy:id,nombre,apellido',
             'photos' => fn($q) => $q->orderBy('created_at'),
@@ -481,8 +482,6 @@ class HotelController extends Controller
 
     private function createPaymentTicket(HotelStay $stay, array $data, string $tipo): PosTicket
     {
-        $shift = PosShift::where('estado', 'abierto')->first();
-
         $selectedRate = !empty($data['checkout_rate_id'])
             ? HotelRate::find($data['checkout_rate_id'])
             : $stay->rate;
@@ -494,28 +493,8 @@ class HotelController extends Controller
         $rateName = $selectedRate?->nombre ?? ($stay->tipo === 'hotel' ? 'Hotel' : 'Guardería');
         $nombreSnapshot = "{$tipoLabel} — {$rateName}: {$stay->pet?->nombre}";
 
-        $ticket = PosTicket::create([
-            'folio' => $this->nextFolio(),
-            'owner_id' => $stay->pet?->owner_id,
-            'estado' => 'abierto',
-            'shift_open_id' => $shift?->id,
-            'user_open_id' => auth()->id(),
-            'user_last_edit_id' => auth()->id(),
-            'subtotal' => $data['monto'],
-            'total' => $data['monto'],
-        ]);
-
-        PosTicketLine::create([
-            'ticket_id' => $ticket->id,
-            'item_id' => $itemId,
-            'nombre_snapshot' => $nombreSnapshot,
-            'precio_snapshot' => $data['monto'],
-            'costo_snapshot' => 0,
-            'cantidad' => 1,
-            'subtotal' => $data['monto'],
-        ]);
-
-        return $ticket;
+        return app(\App\Services\AdvanceTicketService::class)
+            ->create($stay->pet?->owner_id, $data['monto'], $nombreSnapshot, $itemId);
     }
 
     public function checkout(Request $request, HotelStay $stay, GhlService $ghl): RedirectResponse

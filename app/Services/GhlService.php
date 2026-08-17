@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\GhlContactLog;
 use App\Models\GhlWebhookLog;
 use App\Models\Owner;
+use App\Models\PosTicket;
 use App\Models\Tenant;
 use App\Models\TenantGhlConfig;
 use Illuminate\Support\Facades\Http;
@@ -202,6 +203,53 @@ class GhlService
         }
 
         return '+' . $digits;
+    }
+
+    public function notifyTicketPaid(PosTicket $ticket): bool
+    {
+        $phone = preg_replace('/\D/', '', $ticket->owner?->telefono ?? '');
+        if (! $phone) return false;
+
+        $tenant = Tenant::find($ticket->tenant_id);
+        if (! $tenant) return false;
+
+        $tenant->load('ghlConfig');
+        $webhookUrl = $tenant->ghlConfig?->webhook_whatsapp_pos;
+        if (! $webhookUrl) return false;
+
+        $lineas = $ticket->lines->map(fn($l) =>
+            "• {$l->nombre_snapshot} ×{$l->cantidad}  $" . number_format($l->subtotal, 2, '.', ',')
+        )->implode("\n");
+
+        $ticketUrl = url("/t/{$ticket->token}");
+
+        $mensaje = "🧾 *{$tenant->nombre}*\nTicket #{$ticket->folio}\n\n{$lineas}";
+
+        if (($ticket->discount_amount ?? 0) > 0) {
+            $mensaje .= "\n_Descuento: -$" . number_format($ticket->discount_amount, 2, '.', ',') . "_";
+        }
+
+        $mensaje .= "\n\n💰 *Total: $" . number_format($ticket->total, 2, '.', ',') . "*";
+        $mensaje .= "\n\n🔗 Ver tu ticket: {$ticketUrl}";
+        $mensaje .= "\n\n¡Gracias por su visita! 🐾";
+
+        try {
+            Http::timeout(8)->post($webhookUrl, [
+                'phone'          => $phone,
+                'email'          => $ticket->owner?->email,
+                'owner_nombre'   => $ticket->owner?->nombre,
+                'owner_apellidos' => $ticket->owner?->apellidos,
+                'ghl_contact_id' => $ticket->owner?->ghl_contact_id,
+                'message'        => $mensaje,
+                'ticket_id'      => $ticket->id,
+                'ticket_url'     => $ticketUrl,
+                'business_name'  => $tenant->nombre,
+                'business_phone' => $tenant->getSetting('receta.telefono'),
+            ]);
+            return true;
+        } catch (\Exception) {
+            return false;
+        }
     }
 
     public function sendWebhook(int $tenantId, string $type, array $payload): bool

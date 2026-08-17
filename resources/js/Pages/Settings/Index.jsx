@@ -399,6 +399,96 @@ function RecordatoriosConfigTab({ recordatoriosConfig }) {
     );
 }
 
+function MercadoPagoConfigTab({ mercadoPagoConfig }) {
+    const cfg = mercadoPagoConfig ?? { activo: false, public_key: '', access_token_preview: null, has_webhook_secret: false };
+    const form = useForm({
+        access_token: '',
+        public_key: cfg.public_key ?? '',
+        webhook_secret: '',
+        activo: cfg.activo ?? false,
+    });
+    const [test, setTest] = useState({ status: 'idle', detail: '' });
+
+    function handleSubmit(e) {
+        e.preventDefault();
+        form.post(route('settings.mercadopago.update'));
+    }
+
+    async function handleTest() {
+        setTest({ status: 'loading', detail: '' });
+        try {
+            const { default: axios } = await import('axios');
+            const r = await axios.post(route('settings.mercadopago.test'));
+            setTest({ status: r.data.ok ? 'ok' : 'error', detail: r.data.ok ? 'Conexión exitosa' : (r.data.error ?? 'Error') });
+        } catch (e) {
+            setTest({ status: 'error', detail: e.response?.data?.error ?? 'Error de conexión' });
+        }
+    }
+
+    return (
+        <div className="max-w-lg bg-white border border-zinc-100 shadow-sm rounded-xl p-5 space-y-5">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h3 className="font-semibold text-zinc-700">Mercado Pago</h3>
+                    <p className="text-xs text-zinc-400 mt-0.5">Configura tu cuenta para enviar links de cobro (adelantos de reservas, tickets, etc.).</p>
+                </div>
+                <button type="button" role="switch" aria-checked={form.data.activo}
+                    onClick={() => form.setData('activo', !form.data.activo)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${form.data.activo ? 'bg-zinc-900' : 'bg-zinc-200'}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.data.activo ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm text-zinc-600 mb-1">Access Token</label>
+                    <PasswordInput className="w-full border-gray-300 rounded-lg text-sm font-mono"
+                        placeholder={cfg.access_token_preview ? '(dejar vacío para conservar)' : 'APP_USR-...'}
+                        value={form.data.access_token}
+                        onChange={e => form.setData('access_token', e.target.value)} />
+                    {cfg.access_token_preview && (
+                        <p className="text-xs text-zinc-400 mt-1">Guardado: {cfg.access_token_preview}</p>
+                    )}
+                </div>
+
+                <div>
+                    <label className="block text-sm text-zinc-600 mb-1">Public Key</label>
+                    <input className="w-full border-gray-300 rounded-lg text-sm font-mono" placeholder="APP_USR-..."
+                        value={form.data.public_key}
+                        onChange={e => form.setData('public_key', e.target.value)} />
+                </div>
+
+                <div>
+                    <label className="block text-sm text-zinc-600 mb-1">Webhook secret</label>
+                    <PasswordInput className="w-full border-gray-300 rounded-lg text-sm font-mono"
+                        placeholder={cfg.has_webhook_secret ? '(dejar vacío para conservar)' : 'Clave secreta de notificaciones'}
+                        value={form.data.webhook_secret}
+                        onChange={e => form.setData('webhook_secret', e.target.value)} />
+                    <p className="text-xs text-zinc-400 mt-1">Opcional pero recomendada — valida que las notificaciones vengan realmente de Mercado Pago. La encuentras en tu cuenta de Mercado Pago, en Tus integraciones → tu aplicación → Webhooks.</p>
+                </div>
+
+                <div className="flex gap-2">
+                    <button type="submit" disabled={form.processing}
+                        className="flex-1 bg-zinc-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
+                        {form.processing ? 'Guardando…' : 'Guardar'}
+                    </button>
+                    <button type="button" onClick={handleTest} disabled={test.status === 'loading'}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors disabled:opacity-50 ${
+                            test.status === 'ok' ? 'bg-green-50 border-green-300 text-green-700' :
+                            test.status === 'error' ? 'bg-red-50 border-red-300 text-red-700' :
+                            'border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+                        }`}>
+                        {test.status === 'loading' ? 'Probando…' : 'Probar conexión'}
+                    </button>
+                </div>
+                {test.detail && (
+                    <p className={`text-xs ${test.status === 'ok' ? 'text-green-600' : 'text-red-500'}`}>{test.detail}</p>
+                )}
+            </form>
+        </div>
+    );
+}
+
 function WalksConfigTab({ walkConfig }) {
     const form = useForm({
         horas_anticipacion: walkConfig?.horas_anticipacion ?? 2,
@@ -1092,7 +1182,7 @@ function LinksTab({ slug }) {
     );
 }
 
-export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, generalConfig, walkConfig, recordatoriosConfig, responsivaConfig, teamMembers, razas }) {
+export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, generalConfig, walkConfig, recordatoriosConfig, responsivaConfig, mercadoPagoConfig, teamMembers, razas }) {
     const { auth, tenant } = usePage().props;
     const [tab, setTab] = useState('general');
 
@@ -1100,6 +1190,7 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
         { id: 'general', label: 'General' },
         { id: 'crm', label: 'CRM' },
         { id: 'payments', label: 'Métodos de pago' },
+        { id: 'mercadopago', label: 'Mercado Pago' },
         { id: 'ticket', label: 'Ticket' },
         { id: 'recetas', label: 'Recetas' },
         { id: 'grooming', label: 'Grooming' },
@@ -1123,6 +1214,7 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
             {tab === 'crm' && <RazasSection razas={razas ?? []} />}
             {tab === 'grooming' && <GroomingTab stations={stations ?? []} checklistItems={checklistItems ?? []} responsivaConfig={responsivaConfig ?? { texto: '', texto_default: '' }} />}
             {tab === 'payments' && <PaymentMethodsTab paymentMethods={paymentMethods} />}
+            {tab === 'mercadopago' && <MercadoPagoConfigTab mercadoPagoConfig={mercadoPagoConfig ?? { activo: false, public_key: '', access_token_preview: null, has_webhook_secret: false }} />}
             {tab === 'general' && <GeneralConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', telefono: '', cedula_profesional: '', nombre_veterinario: '' }} />}
             {tab === 'ticket' && <TicketConfigTab ticketConfig={ticketConfig ?? { color_primario: '#18181b', color_texto: '#1f2937', color_fondo: '#ffffff', mensaje_pie: '', logo_url: null }} onGoToGeneral={() => setTab('general')} />}
             {tab === 'recetas' && <RecetaConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', telefono: '', cedula_profesional: '', nombre_veterinario: '' }} onGoToGeneral={() => setTab('general')} />}

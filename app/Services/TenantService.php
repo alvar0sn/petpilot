@@ -65,6 +65,7 @@ class TenantService
             'webhook_checkout_hotel' => $data['webhook_checkout_hotel'] ?? null,
             'webhook_whatsapp_pos' => $data['webhook_whatsapp_pos'] ?? null,
             'webhook_responsiva' => $data['webhook_responsiva'] ?? null,
+            'webhook_solicitud_pago' => $data['webhook_solicitud_pago'] ?? null,
             'activo' => $data['activo'] ?? false,
         ]);
 

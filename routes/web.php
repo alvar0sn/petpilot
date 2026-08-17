@@ -25,6 +25,8 @@ use App\Http\Controllers\SuperAdmin\CsvImportController;
 use App\Http\Controllers\SuperAdmin\ImpersonationController;
 use App\Http\Controllers\SuperAdmin\LogController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\MercadoPagoWebhookController;
+use App\Http\Controllers\PublicPaymentController;
 use App\Http\Controllers\PublicResponsivaController;
 use App\Http\Controllers\PublicTicketController;
 use App\Http\Controllers\SuperAdmin\TenantController;
@@ -87,6 +89,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('pos/tickets/{ticket}/discount', [PosTicketController::class, 'applyDiscount'])->name('pos.tickets.discount');
         Route::post('pos/tickets/{ticket}/owner', [PosTicketController::class, 'setOwner'])->name('pos.tickets.owner');
         Route::post('pos/tickets/{ticket}/pay', [PosTicketController::class, 'pay'])->name('pos.tickets.pay');
+        Route::post('pos/tickets/{ticket}/payment-requests', [PosTicketController::class, 'createPaymentRequest'])->name('pos.tickets.payment-requests.store');
         Route::post('pos/tickets/{ticket}/cancel', [PosTicketController::class, 'cancel'])->name('pos.tickets.cancel');
         Route::post('pos/tickets/{ticket}/refund', [PosTicketController::class, 'refund'])->name('pos.tickets.refund');
 
@@ -239,6 +242,9 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
 
         Route::post('settings/razas', [SettingsController::class, 'storeRaza'])->name('settings.razas.store');
         Route::delete('settings/razas/{raza}', [SettingsController::class, 'destroyRaza'])->name('settings.razas.destroy');
+
+        Route::post('settings/mercadopago', [SettingsController::class, 'updateMercadoPago'])->name('settings.mercadopago.update');
+        Route::post('settings/mercadopago/test', [SettingsController::class, 'testMercadoPago'])->name('settings.mercadopago.test');
     });
 
     // Landing editor — always accessible
@@ -329,6 +335,12 @@ Route::get('/t/{token}', [PublicTicketController::class, 'show'])->name('ticket.
 // Public responsiva view + signing (no auth)
 Route::get('/r/{token}', [PublicResponsivaController::class, 'show'])->name('responsiva.public');
 Route::post('/r/{token}/firmar', [PublicResponsivaController::class, 'sign'])->name('responsiva.sign');
+
+// Public payment request view (no auth)
+Route::get('/p/{token}', [PublicPaymentController::class, 'show'])->name('payment.public');
+
+// Mercado Pago inbound webhook (no auth, no CSRF — ver bootstrap/app.php)
+Route::post('/webhooks/mercadopago/{token}', [MercadoPagoWebhookController::class, 'handle'])->name('webhooks.mercadopago');
 
 // Public studio landing — must be last to avoid catching other routes
 Route::get('/{slug}', [LandingController::class, 'show'])

@@ -46,6 +46,11 @@ class Tenant extends Model
         return $this->hasOne(TenantGhlConfig::class);
     }
 
+    public function mercadoPagoConfig(): HasOne
+    {
+        return $this->hasOne(TenantMercadoPagoConfig::class);
+    }
+
     public function owners(): HasMany
     {
         return $this->hasMany(Owner::class);

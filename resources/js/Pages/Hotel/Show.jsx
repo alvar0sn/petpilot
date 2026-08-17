@@ -1,5 +1,6 @@
 import TenantLayout from '@/Layouts/TenantLayout';
 import Lightbox from '@/Components/Lightbox';
+import SolicitarPagoMpButton from '@/Components/SolicitarPagoMpButton';
 import { compressImage } from '@/utils/compressImage';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -638,6 +639,7 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
     const totalPagado = (stay.payments ?? []).reduce((sum, p) => sum + Number(p.monto), 0)
         + (ticketPagado ? Number(stay.ticket.total) : 0);
     const saldoPendiente = montoEstimado !== null ? Math.max(0, montoEstimado - totalPagado) : null;
+    const pendingPayment = [...(stay.payments ?? [])].reverse().find(p => p.ticket && p.ticket.estado !== 'pagado');
 
     return (
         <TenantLayout title={`Estancia de ${stay.pet?.nombre ?? ''}`}>
@@ -761,6 +763,15 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
                                     {saldoPendiente > 0 && stay.ticket && !ticketPagado && (
                                         <p className="text-xs text-amber-600">→ por cobrar en el ticket #{stay.ticket.folio} (POS)</p>
                                     )}
+                                </div>
+                            )}
+
+                            {pendingPayment && (
+                                <div className="border-t pt-2 mt-1">
+                                    <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1.5">
+                                        Cobro pendiente — ticket #{pendingPayment.ticket.folio}
+                                    </p>
+                                    <SolicitarPagoMpButton ticket={pendingPayment.ticket} />
                                 </div>
                             )}
 

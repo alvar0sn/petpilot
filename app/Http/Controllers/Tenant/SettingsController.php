@@ -10,8 +10,11 @@ use App\Models\PosCatalogItem;
 use App\Models\PosPaymentMethod;
 use App\Models\PosTicketConfig;
 use App\Models\Raza;
+use App\Models\TenantMercadoPagoConfig;
 use App\Models\User;
+use App\Services\MercadoPagoService;
 use App\Services\RecetaPdfService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -65,6 +68,12 @@ class SettingsController extends Controller
             'responsivaConfig' => [
                 'texto'         => $tenant->getSetting('grooming.responsiva_texto') ?? '',
                 'texto_default' => \App\Models\Appointment::RESPONSIVA_TEXTO_DEFAULT,
+            ],
+            'mercadoPagoConfig' => [
+                'activo'                => (bool) ($tenant->mercadoPagoConfig?->activo ?? false),
+                'public_key'            => $tenant->mercadoPagoConfig?->public_key ?? '',
+                'access_token_preview'  => $tenant->mercadoPagoConfig?->access_token_preview,
+                'has_webhook_secret'    => (bool) $tenant->mercadoPagoConfig?->webhook_secret,
             ],
             'teamMembers' => User::where('tenant_id', app('current_tenant')->id)
                 ->whereIn('role', ['tenant_admin', 'colaborador'])
@@ -563,5 +572,49 @@ class SettingsController extends Controller
         app('current_tenant')->setSetting('grooming.responsiva_texto', $data['texto'] ?? '');
 
         return back()->with('success', 'Texto de responsiva guardado.');
+    }
+
+    public function updateMercadoPago(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'access_token' => 'nullable|string',
+            'public_key' => 'nullable|string|max:255',
+            'webhook_secret' => 'nullable|string',
+            'activo' => 'boolean',
+        ]);
+
+        $tenant = app('current_tenant');
+        $config = $tenant->mercadoPagoConfig ?? new TenantMercadoPagoConfig(['tenant_id' => $tenant->id]);
+
+        $config->public_key = $data['public_key'] ?? $config->public_key;
+        $config->activo = (bool) ($data['activo'] ?? false);
+
+        if (! empty($data['access_token'])) {
+            $config->access_token = $data['access_token'];
+        }
+
+        if (! empty($data['webhook_secret'])) {
+            $config->webhook_secret = $data['webhook_secret'];
+        }
+
+        $config->save();
+
+        return back()->with('success', 'Configuración de Mercado Pago actualizada.');
+    }
+
+    public function testMercadoPago(): JsonResponse
+    {
+        $config = app('current_tenant')->mercadoPagoConfig;
+
+        if (! $config || ! $config->access_token) {
+            return response()->json(['ok' => false, 'error' => 'Guarda un access token antes de probar la conexión.'], 422);
+        }
+
+        $ok = app(MercadoPagoService::class)->testConnection($config->access_token);
+
+        return response()->json([
+            'ok' => $ok,
+            'error' => $ok ? null : 'Mercado Pago rechazó el access token.',
+        ]);
     }
 }

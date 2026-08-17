@@ -19,6 +19,7 @@ class TenantGhlConfig extends Model
         'webhook_checkout_hotel',
         'webhook_whatsapp_pos',
         'webhook_responsiva',
+        'webhook_solicitud_pago',
         'activo',
     ];
 

@@ -160,6 +160,7 @@ class TenantController extends Controller
             'webhook_checkout_hotel' => 'nullable|url|max:500',
             'webhook_whatsapp_pos' => 'nullable|url|max:500',
             'webhook_responsiva' => 'nullable|url|max:500',
+            'webhook_solicitud_pago' => 'nullable|url|max:500',
             'activo' => 'boolean',
         ]);
 
@@ -179,6 +180,7 @@ class TenantController extends Controller
             'webhook_checkout_hotel',
             'webhook_whatsapp_pos',
             'webhook_responsiva',
+            'webhook_solicitud_pago',
         ];
 
         $data = $request->validate([
@@ -300,6 +302,17 @@ class TenantController extends Controller
                 'negocio_telefono' => $negocioTelefono,
                 'pet_nombre'     => 'Firulais',
                 'responsiva_url' => url('/r/test'),
+            ],
+            'webhook_solicitud_pago' => [
+                'ghl_contact_id' => 'TEST123',
+                'owner_nombre'   => 'Juan',
+                'owner_apellidos' => 'Pérez',
+                'owner_telefono' => '+525512345678',
+                'owner_email'    => 'test@ejemplo.com',
+                'negocio'        => $tenant->nombre,
+                'negocio_telefono' => $negocioTelefono,
+                'monto'          => '350.00',
+                'link'           => url('/p/test'),
             ],
         ];
 

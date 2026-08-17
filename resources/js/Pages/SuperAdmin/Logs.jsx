@@ -3,13 +3,13 @@ import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
 function LogBadge({ status }) {
-    const color = status === 'success' ? 'bg-green-100 text-green-700'
-        : status === 'skipped' ? 'bg-gray-100 text-gray-600'
+    const color = ['success', 'procesado'].includes(status) ? 'bg-green-100 text-green-700'
+        : ['skipped', 'ignorado'].includes(status) ? 'bg-gray-100 text-gray-600'
         : 'bg-red-100 text-red-700';
     return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>{status}</span>;
 }
 
-export default function Logs({ contactLogs, webhookLogs, tenants, filters }) {
+export default function Logs({ contactLogs, webhookLogs, mpWebhookLogs, tenants, filters }) {
     const [tab, setTab] = useState('contacto');
     const [f, setF] = useState(filters);
 
@@ -60,6 +60,10 @@ export default function Logs({ contactLogs, webhookLogs, tenants, filters }) {
                 <button onClick={() => setTab('webhook')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'webhook' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 shadow'}`}>
                     Webhooks ({webhookLogs.total})
+                </button>
+                <button onClick={() => setTab('mercadopago')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === 'mercadopago' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 shadow'}`}>
+                    Mercado Pago ({mpWebhookLogs?.total ?? 0})
                 </button>
             </div>
 
@@ -123,6 +127,42 @@ export default function Logs({ contactLogs, webhookLogs, tenants, filters }) {
                             ))}
                             {webhookLogs.data.length === 0 && (
                                 <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">Sin logs.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {tab === 'mercadopago' && (
+                <div className="bg-white rounded-xl shadow overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200 text-xs">
+                        <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
+                            <tr>
+                                <th className="px-4 py-3 text-left">Tenant</th>
+                                <th className="px-4 py-3 text-left">Payment ID</th>
+                                <th className="px-4 py-3 text-left">Topic</th>
+                                <th className="px-4 py-3 text-left">Firma</th>
+                                <th className="px-4 py-3 text-left">Estado</th>
+                                <th className="px-4 py-3 text-left">Error</th>
+                                <th className="px-4 py-3 text-left">Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {(mpWebhookLogs?.data ?? []).map(log => (
+                                <tr key={log.id}>
+                                    <td className="px-4 py-2">{log.tenant?.nombre ?? '—'}</td>
+                                    <td className="px-4 py-2 font-mono">{log.mp_payment_id ?? '—'}</td>
+                                    <td className="px-4 py-2 font-mono">{log.topic ?? '—'}</td>
+                                    <td className="px-4 py-2">
+                                        {log.signature_valid === null ? '—' : log.signature_valid ? '✓' : '✗'}
+                                    </td>
+                                    <td className="px-4 py-2"><LogBadge status={log.status} /></td>
+                                    <td className="px-4 py-2 text-red-500 font-mono text-[10px] max-w-xs truncate" title={log.error_message ?? ''}>{log.error_message ?? '—'}</td>
+                                    <td className="px-4 py-2 text-gray-400">{new Date(log.created_at).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                                </tr>
+                            ))}
+                            {(mpWebhookLogs?.data ?? []).length === 0 && (
+                                <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-400">Sin logs.</td></tr>
                             )}
                         </tbody>
                     </table>

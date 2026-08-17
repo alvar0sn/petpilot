@@ -429,6 +429,7 @@ function GhlTab({ tenant, ghlContactLogs, ghlWebhookLogs, errors }) {
         webhook_checkout_hotel: tenant.ghl_config?.webhook_checkout_hotel ?? '',
         webhook_whatsapp_pos: tenant.ghl_config?.webhook_whatsapp_pos ?? '',
         webhook_responsiva: tenant.ghl_config?.webhook_responsiva ?? '',
+        webhook_solicitud_pago: tenant.ghl_config?.webhook_solicitud_pago ?? '',
         activo: tenant.ghl_config?.activo ?? false,
     });
 
@@ -517,6 +518,21 @@ function GhlTab({ tenant, ghlContactLogs, ghlWebhookLogs, errors }) {
                     />
                     <p className="text-xs text-gray-400 mt-1">
                         Payload: <span className="font-mono text-[10px]">ghl_contact_id, owner_nombre, owner_telefono, owner_email, negocio, pet_nombre, responsiva_url</span>
+                    </p>
+                </div>
+
+                <div className="border-t pt-4 mt-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Mercado Pago</p>
+                    <WebhookField
+                        fieldKey="webhook_solicitud_pago"
+                        label="Webhook Solicitud de pago"
+                        value={ghlForm.data.webhook_solicitud_pago}
+                        onChange={e => ghlForm.setData('webhook_solicitud_pago', e.target.value)}
+                        error={errors?.webhook_solicitud_pago}
+                        tenantId={tenant.id}
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                        Payload: <span className="font-mono text-[10px]">ghl_contact_id, owner_nombre, owner_telefono, owner_email, negocio, monto, link</span>
                     </p>
                 </div>
 

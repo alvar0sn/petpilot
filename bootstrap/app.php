@@ -38,6 +38,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth.owner' => \App\Http\Middleware\RequireOwnerAuth::class,
             'module' => \App\Http\Middleware\CheckModulePermission::class,
         ]);
+
+        // Mercado Pago llama a este endpoint servidor-a-servidor, sin cookie de
+        // sesión ni token CSRF — necesita quedar fuera de la validación estándar.
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/mercadopago/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
