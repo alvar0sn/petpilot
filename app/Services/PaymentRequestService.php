@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\PaymentRequest;
 use App\Models\PosPayment;
 use App\Models\PosPaymentMethod;
+use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\Tenant;
 use App\Models\TenantMercadoPagoConfig;
@@ -124,7 +125,13 @@ class PaymentRequestService
                 'monto' => $ticket->total,
             ]);
 
-            $ticket->update(['estado' => 'pagado', 'cobrado_at' => now()]);
+            $shift = PosShift::forTenant($ticket->tenant_id)->where('estado', 'abierto')->first();
+
+            $ticket->update([
+                'estado' => 'pagado',
+                'shift_close_id' => $shift?->id,
+                'cobrado_at' => now(),
+            ]);
 
             $paymentRequest->update([
                 'estado' => 'aprobado',

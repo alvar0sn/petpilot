@@ -1190,7 +1190,6 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
         { id: 'general', label: 'General' },
         { id: 'crm', label: 'CRM' },
         { id: 'payments', label: 'Métodos de pago' },
-        { id: 'mercadopago', label: 'Mercado Pago' },
         { id: 'ticket', label: 'Ticket' },
         { id: 'recetas', label: 'Recetas' },
         { id: 'grooming', label: 'Grooming' },
@@ -1213,8 +1212,12 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
 
             {tab === 'crm' && <RazasSection razas={razas ?? []} />}
             {tab === 'grooming' && <GroomingTab stations={stations ?? []} checklistItems={checklistItems ?? []} responsivaConfig={responsivaConfig ?? { texto: '', texto_default: '' }} />}
-            {tab === 'payments' && <PaymentMethodsTab paymentMethods={paymentMethods} />}
-            {tab === 'mercadopago' && <MercadoPagoConfigTab mercadoPagoConfig={mercadoPagoConfig ?? { activo: false, public_key: '', access_token_preview: null, has_webhook_secret: false }} />}
+            {tab === 'payments' && (
+                <div className="space-y-6">
+                    <PaymentMethodsTab paymentMethods={paymentMethods} />
+                    <MercadoPagoConfigTab mercadoPagoConfig={mercadoPagoConfig ?? { activo: false, public_key: '', access_token_preview: null, has_webhook_secret: false }} />
+                </div>
+            )}
             {tab === 'general' && <GeneralConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', telefono: '', cedula_profesional: '', nombre_veterinario: '' }} />}
             {tab === 'ticket' && <TicketConfigTab ticketConfig={ticketConfig ?? { color_primario: '#18181b', color_texto: '#1f2937', color_fondo: '#ffffff', mensaje_pie: '', logo_url: null }} onGoToGeneral={() => setTab('general')} />}
             {tab === 'recetas' && <RecetaConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', telefono: '', cedula_profesional: '', nombre_veterinario: '' }} onGoToGeneral={() => setTab('general')} />}

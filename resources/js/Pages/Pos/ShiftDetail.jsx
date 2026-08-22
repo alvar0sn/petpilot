@@ -132,9 +132,14 @@ function CloseForm({ shift }) {
     );
 }
 
+const TICKETS_PER_PAGE = 20;
+
 export default function ShiftDetail({ shift, efectivo, ventas, articulos, membresias, servicios, otros, porCategoria, reembolsos, tickets }) {
     const tz = useTenantTimezone();
     const abierto = shift.estado === 'abierto';
+    const [ticketPage, setTicketPage] = useState(1);
+    const totalTicketPages = Math.max(1, Math.ceil(tickets.length / TICKETS_PER_PAGE));
+    const pagedTickets = tickets.slice((ticketPage - 1) * TICKETS_PER_PAGE, ticketPage * TICKETS_PER_PAGE);
 
     const totalCosasVendidas = [...articulos, ...membresias, ...servicios, ...otros]
         .reduce((s, r) => s + Number(r.cantidad), 0);
@@ -262,7 +267,7 @@ export default function ShiftDetail({ shift, efectivo, ventas, articulos, membre
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-50">
-                            {tickets.map(t => (
+                            {pagedTickets.map(t => (
                                 <tr key={t.id}>
                                     <td className="py-2 font-mono">
                                         {t.token ? (
@@ -283,6 +288,25 @@ export default function ShiftDetail({ shift, efectivo, ventas, articulos, membre
                             )}
                         </tbody>
                     </table>
+
+                    {totalTicketPages > 1 && (
+                        <div className="flex items-center justify-center gap-2 pt-4 text-sm">
+                            <button onClick={() => setTicketPage(p => Math.max(1, p - 1))} disabled={ticketPage === 1}
+                                className="px-3 py-1 rounded-lg text-zinc-600 hover:bg-zinc-100 disabled:opacity-40 transition-colors">
+                                ← Anterior
+                            </button>
+                            {Array.from({ length: totalTicketPages }, (_, i) => i + 1).map(p => (
+                                <button key={p} onClick={() => setTicketPage(p)}
+                                    className={`px-3 py-1 rounded-lg transition-colors ${p === ticketPage ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}>
+                                    {p}
+                                </button>
+                            ))}
+                            <button onClick={() => setTicketPage(p => Math.min(totalTicketPages, p + 1))} disabled={ticketPage === totalTicketPages}
+                                className="px-3 py-1 rounded-lg text-zinc-600 hover:bg-zinc-100 disabled:opacity-40 transition-colors">
+                                Siguiente →
+                            </button>
+                        </div>
+                    )}
                 </CollapsibleSection>
             </div>
         </TenantLayout>
