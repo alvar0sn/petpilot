@@ -179,8 +179,9 @@ export default function Dashboard({ period, from, to, metricas, alertas, recorda
                         </div>
                     ) : (
                         <div className="bg-white border border-zinc-100 shadow-sm rounded-xl overflow-hidden">
+                            <div className="max-h-[420px] overflow-y-auto">
                             <table className="min-w-full text-sm divide-y divide-zinc-100">
-                                <thead className="bg-zinc-50 text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+                                <thead className="bg-zinc-50 text-xs font-semibold text-zinc-400 uppercase tracking-wide sticky top-0 z-10">
                                     <tr>
                                         <th className="px-4 py-3 text-left">Mascota / Dueño</th>
                                         <th className="px-4 py-3 text-left">Tipo</th>
@@ -239,6 +240,7 @@ export default function Dashboard({ period, from, to, metricas, alertas, recorda
                                     })}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     )}
                 </div>
