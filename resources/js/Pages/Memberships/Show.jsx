@@ -219,6 +219,52 @@ export default function MembershipShow({ membership }) {
                             </table>
                         </div>
                     </div>
+
+                    {/* Historial de renovaciones */}
+                    <div>
+                        <h3 className="text-sm font-semibold text-zinc-600 uppercase tracking-wide mb-2">Historial de renovaciones</h3>
+                        <div className="bg-white border border-zinc-100 shadow-sm rounded-xl overflow-hidden">
+                            <table className="min-w-full text-xs divide-y divide-zinc-100">
+                                <thead className="bg-zinc-50 text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+                                    <tr>
+                                        <th className="px-3 py-2 text-left">Periodo</th>
+                                        <th className="px-3 py-2 text-right">Días</th>
+                                        <th className="px-3 py-2 text-right">Monto</th>
+                                        <th className="px-3 py-2 text-left">Ticket</th>
+                                        <th className="px-3 py-2 text-left">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-zinc-50">
+                                    {membership.renewals?.map(r => (
+                                        <tr key={r.id}>
+                                            <td className="px-3 py-2 text-zinc-600">
+                                                {formatDate(r.fecha_inicio, tz)} — {formatDate(r.fecha_fin, tz)}
+                                            </td>
+                                            <td className="px-3 py-2 text-right font-mono text-zinc-600">{r.dias_agregados}</td>
+                                            <td className="px-3 py-2 text-right font-mono text-zinc-600">${Number(r.monto).toFixed(2)}</td>
+                                            <td className="px-3 py-2">
+                                                {r.ticket ? (
+                                                    <a href={`/t/${r.ticket.token}`} target="_blank" rel="noopener noreferrer" className="text-zinc-700 hover:underline">
+                                                        #{r.ticket.folio}
+                                                    </a>
+                                                ) : '—'}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {r.reembolsada ? (
+                                                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-rose-50 text-rose-600 ring-1 ring-rose-200">Reembolsada</span>
+                                                ) : (
+                                                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">Vigente</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {!membership.renewals?.length && (
+                                        <tr><td colSpan={5} className="px-3 py-6 text-center text-zinc-400">Sin renovaciones registradas.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </TenantLayout>

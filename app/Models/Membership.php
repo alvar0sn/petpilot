@@ -53,6 +53,11 @@ class Membership extends Model
         return $this->hasMany(MembershipCredit::class);
     }
 
+    public function renewals(): HasMany
+    {
+        return $this->hasMany(MembershipRenewal::class);
+    }
+
     public function creditMovements(): HasMany
     {
         return $this->hasMany(MembershipCreditMovement::class);

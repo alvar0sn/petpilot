@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Models\Membership;
+use App\Models\MembershipCredit;
+use App\Models\MembershipCreditMovement;
+use App\Models\MembershipRenewal;
 use App\Models\Owner;
 use App\Models\PosCatalogItem;
 use App\Models\PosCategory;
@@ -327,9 +331,84 @@ class PosTicketController extends Controller
             ]);
 
             $ticket->increment('refunded_amount', $data['monto']);
+
+            // Un reembolso total revierte la renovación de membresía que ese
+            // ticket haya pagado (periodo + créditos otorgados). Uno parcial no
+            // toca la membresía.
+            if ($ticket->refundableAmount() <= 0.01) {
+                $this->reverseMembershipRenewal($ticket);
+            }
         });
 
         return back()->with('success', "Reembolso registrado en el ticket #{$ticket->folio}.");
+    }
+
+    /**
+     * Revierte la renovación de membresía asociada a este ticket (si la hay y
+     * sigue siendo la más reciente sin reembolsar) al reembolsarlo por completo.
+     */
+    private function reverseMembershipRenewal(PosTicket $ticket): void
+    {
+        $renewal = MembershipRenewal::where('pos_ticket_id', $ticket->id)
+            ->where('reembolsada', false)
+            ->first();
+
+        if (! $renewal) {
+            return;
+        }
+
+        $masReciente = MembershipRenewal::where('membership_id', $renewal->membership_id)
+            ->where('reembolsada', false)
+            ->orderByDesc('fecha_fin')
+            ->first();
+
+        if (! $masReciente || $masReciente->id !== $renewal->id) {
+            // Ya hay una renovación posterior sin reembolsar — revertir esta
+            // automáticamente descuadraría las fechas. Requiere ajuste manual.
+            return;
+        }
+
+        $membership = Membership::with('credits')->find($renewal->membership_id);
+        if (! $membership) {
+            return;
+        }
+
+        $movimientos = MembershipCreditMovement::where('referencia_tipo', 'renovacion')
+            ->where('referencia_id', $renewal->id)
+            ->get();
+
+        foreach ($movimientos as $mov) {
+            $credit = MembershipCredit::find($mov->credit_id);
+            if (! $credit) {
+                continue;
+            }
+
+            $saldoAntes = $credit->saldo_actual;
+            $saldoNuevo = max(0, $saldoAntes - $mov->cantidad);
+            $credit->update(['saldo_actual' => $saldoNuevo]);
+
+            MembershipCreditMovement::create([
+                'membership_id' => $membership->id,
+                'credit_id' => $credit->id,
+                'servicio_tipo' => $credit->servicio_tipo,
+                'tipo' => 'ajuste',
+                'cantidad' => $saldoNuevo - $saldoAntes,
+                'saldo_antes' => $saldoAntes,
+                'saldo_despues' => $saldoNuevo,
+                'referencia_tipo' => 'renovacion',
+                'referencia_id' => $renewal->id,
+                'notas' => "Reversión por reembolso del ticket #{$ticket->folio}",
+            ]);
+        }
+
+        $nuevaFechaVencimiento = $membership->fecha_vencimiento->clone()->subDays($renewal->dias_agregados);
+
+        $membership->update([
+            'fecha_vencimiento' => $nuevaFechaVencimiento,
+            'activa' => $nuevaFechaVencimiento->isPast() ? false : $membership->activa,
+        ]);
+
+        $renewal->update(['reembolsada' => true]);
     }
 
     public function history(Request $request): Response

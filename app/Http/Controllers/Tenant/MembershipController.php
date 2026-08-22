@@ -8,6 +8,7 @@ use App\Models\MembershipCredit;
 use App\Models\MembershipCreditMovement;
 use App\Models\MembershipPlan;
 use App\Models\MembershipPlanCredit;
+use App\Models\MembershipRenewal;
 use App\Models\Pet;
 use App\Models\PosCatalogItem;
 use App\Models\PosCategory;
@@ -82,10 +83,28 @@ class MembershipController extends Controller
         $pet = Pet::with('owner:id,nombre')->findOrFail($data['pet_id']);
 
         $ticket = null;
+        $esRenovacion = false;
 
-        DB::transaction(function () use ($plan, $pet, $data, &$ticket) {
-            $fechaInicio = \Carbon\Carbon::parse($data['fecha_inicio']);
-            $fechaVencimiento = $fechaInicio->clone()->addDays($plan->vigencia_dias);
+        DB::transaction(function () use ($plan, $pet, $data, &$ticket, &$esRenovacion) {
+            $fechaInicioInput = \Carbon\Carbon::parse($data['fecha_inicio']);
+
+            // Si ya existe una membresía de este plan para esta mascota (activa o
+            // vencida), se renueva esa misma fila en vez de crear una nueva — así
+            // el vínculo con reservas/citas pasadas (membership_id) no se pierde
+            // y un reembolso posterior puede revertir la renovación con precisión
+            // (ver PosTicketController::reverseMembershipRenewal).
+            $membership = Membership::where('pet_id', $pet->id)->where('plan_id', $plan->id)
+                ->orderByDesc('fecha_vencimiento')
+                ->first();
+            $esRenovacion = (bool) $membership;
+
+            // Si sigue activa y vigente, la renovación se cuenta a partir de su
+            // vencimiento actual (no se pierden días ya pagados); si ya venció o
+            // es la primera vez, se cuenta desde la fecha elegida en el formulario.
+            $ancla = ($membership && $membership->activa && $membership->fecha_vencimiento->isFuture())
+                ? $membership->fecha_vencimiento->clone()
+                : $fechaInicioInput;
+            $fechaVencimiento = $ancla->clone()->addDays($plan->vigencia_dias);
 
             // Crear ticket en POS si el plan tiene un pos_item
             $shift = PosShift::where('estado', 'abierto')->first();
@@ -112,38 +131,79 @@ class MembershipController extends Controller
                 ]);
             }
 
-            $membership = Membership::create([
-                'pet_id' => $pet->id,
-                'plan_id' => $plan->id,
-                'fecha_inicio' => $fechaInicio,
-                'fecha_vencimiento' => $fechaVencimiento,
-                'activa' => true,
-                'pos_ticket_id' => $ticket?->id,
-            ]);
+            if ($membership) {
+                $membership->update([
+                    'fecha_inicio' => $ancla,
+                    'fecha_vencimiento' => $fechaVencimiento,
+                    'activa' => true,
+                    'congelada' => false,
+                    'congelada_desde' => null,
+                    'aviso_enviado' => false,
+                    'pos_ticket_id' => $ticket?->id,
+                ]);
+            } else {
+                $membership = Membership::create([
+                    'pet_id' => $pet->id,
+                    'plan_id' => $plan->id,
+                    'fecha_inicio' => $ancla,
+                    'fecha_vencimiento' => $fechaVencimiento,
+                    'activa' => true,
+                    'pos_ticket_id' => $ticket?->id,
+                ]);
+            }
 
             $proximoReinicio = match ($plan->reinicio_creditos) {
-                'semanal' => $fechaInicio->clone()->addWeek(),
-                'mensual' => $fechaInicio->clone()->addMonth(),
+                'semanal' => $ancla->clone()->addWeek(),
+                'mensual' => $ancla->clone()->addMonth(),
                 default => null,
             };
 
+            $renewal = MembershipRenewal::create([
+                'membership_id' => $membership->id,
+                'plan_id' => $plan->id,
+                'pos_ticket_id' => $ticket?->id,
+                'fecha_inicio' => $ancla,
+                'fecha_fin' => $fechaVencimiento,
+                'dias_agregados' => $plan->vigencia_dias,
+                'monto' => $plan->precio,
+            ]);
+
+            // Los créditos se reinician al valor del plan en cada renovación (no
+            // se acumulan periodos sin usar).
             foreach ($plan->planCredits as $pc) {
-                MembershipCredit::create([
+                $credit = MembershipCredit::firstOrNew([
                     'membership_id' => $membership->id,
                     'servicio_tipo' => $pc->servicio_tipo,
-                    'saldo_inicial' => $pc->creditos,
-                    'saldo_actual' => $pc->creditos,
-                    'proximo_reinicio' => $proximoReinicio,
+                ]);
+                $saldoAntes = $credit->exists ? $credit->saldo_actual : 0;
+                $credit->saldo_inicial = $pc->creditos;
+                $credit->saldo_actual = $pc->creditos;
+                $credit->proximo_reinicio = $proximoReinicio;
+                $credit->save();
+
+                MembershipCreditMovement::create([
+                    'membership_id' => $membership->id,
+                    'credit_id' => $credit->id,
+                    'servicio_tipo' => $pc->servicio_tipo,
+                    'tipo' => 'recarga',
+                    'cantidad' => $pc->creditos - $saldoAntes,
+                    'saldo_antes' => $saldoAntes,
+                    'saldo_despues' => $pc->creditos,
+                    'referencia_tipo' => 'renovacion',
+                    'referencia_id' => $renewal->id,
+                    'notas' => $esRenovacion ? 'Renovación de membresía' : 'Asignación de membresía',
                 ]);
             }
         });
 
+        $accion = $esRenovacion ? 'renovada' : 'asignada';
+
         if ($ticket) {
             return redirect()->route('pos.index', ['ticket' => $ticket->id])
-                ->with('success', "Membresía asignada a {$pet->nombre}. Completa el cobro en el POS.");
+                ->with('success', "Membresía {$accion} a {$pet->nombre}. Completa el cobro en el POS.");
         }
 
-        return back()->with('success', "Membresía asignada a {$pet->nombre}.");
+        return back()->with('success', "Membresía {$accion} a {$pet->nombre}.");
     }
 
     public function show(Membership $membership): Response
@@ -153,6 +213,7 @@ class MembershipController extends Controller
             'plan.planCredits',
             'credits',
             'creditMovements' => fn($q) => $q->latest()->limit(50),
+            'renewals' => fn($q) => $q->with('ticket:id,folio,token')->latest('fecha_fin'),
         ]);
 
         return Inertia::render('Memberships/Show', [
