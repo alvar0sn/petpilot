@@ -39,6 +39,7 @@ return [
         'url' => env('WHATSAPP_GATEWAY_URL'),
         'token' => env('WHATSAPP_GATEWAY_TOKEN'),
         'app_id' => env('WHATSAPP_GATEWAY_APP_ID', 2),
+        'inbound_secret' => env('WHATSAPP_GATEWAY_INBOUND_SECRET'),
     ],
 
 ];

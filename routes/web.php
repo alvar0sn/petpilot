@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\WhatsappTriggerCatalogController;
 use App\Http\Controllers\Tenant\EventController;
 use App\Http\Controllers\Tenant\OwnerController;
 use App\Http\Controllers\Tenant\PetController;
@@ -41,6 +42,10 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+// Consumido por el whatsapp-gateway para poblar el selector de disparadores
+// al crear plantillas compartidas — protegido con X-Gateway-Secret, no con sesión.
+Route::get('/api/whatsapp-triggers', [WhatsappTriggerCatalogController::class, 'index']);
 
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
