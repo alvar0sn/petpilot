@@ -89,7 +89,10 @@ export default function TenantLayout({ children, title, noPadding = false }) {
     const toggleSection = (href) => setExpanded(prev => ({ ...prev, [href]: !prev[href] }));
 
     const permisos = auth.user?.permisos_modulos;
-    const isAdmin  = auth.user?.role === 'tenant_admin';
+    // super_admin conserva ese rol mientras impersona un tenant (solo cambia
+    // current_tenant en el backend) — se trata como admin aquí igual que
+    // RequireRole lo deja pasar sin importar el rol exacto.
+    const isAdmin  = auth.user?.role === 'tenant_admin' || auth.user?.role === 'super_admin';
     const hasModule = (mod) => {
         if (!mod || isAdmin) return true;
         if (!permisos || permisos.length === 0) return true;
