@@ -20,6 +20,7 @@ const nav = [
     { label: 'Paseos',          href: 'walks.index',        icon: 'ti-dog',              module: 'paseos', badge: 'walks_pending_count' },
     { label: 'Reporte financiero', href: 'reports.financial', icon: 'ti-report-money',   module: 'pos' },
     { label: 'Landing',         href: 'landing.editor',     icon: 'ti-world',            module: null },
+    { label: 'WhatsApp',        href: 'whatsapp.index',     icon: 'ti-brand-whatsapp',   module: null, adminOnly: true },
     { label: 'Configuración',   href: 'settings.index',     icon: 'ti-settings',         module: null },
 ];
 
@@ -94,7 +95,7 @@ export default function TenantLayout({ children, title, noPadding = false }) {
         if (!permisos || permisos.length === 0) return true;
         return permisos.includes(mod);
     };
-    const visibleNav = nav.filter(item => hasModule(item.module));
+    const visibleNav = nav.filter(item => hasModule(item.module) && (!item.adminOnly || isAdmin));
 
     return (
         <>

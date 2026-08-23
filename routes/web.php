@@ -20,6 +20,7 @@ use App\Http\Controllers\Tenant\PosDiscountController;
 use App\Http\Controllers\Tenant\PosShiftController;
 use App\Http\Controllers\Tenant\PosTicketController;
 use App\Http\Controllers\Tenant\SettingsController;
+use App\Http\Controllers\Tenant\WhatsappMessageController;
 use App\Http\Controllers\SuperAdmin\BacklogController;
 use App\Http\Controllers\SuperAdmin\CsvImportController;
 use App\Http\Controllers\SuperAdmin\ImpersonationController;
@@ -245,6 +246,11 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
 
         Route::post('settings/mercadopago', [SettingsController::class, 'updateMercadoPago'])->name('settings.mercadopago.update');
         Route::post('settings/mercadopago/test', [SettingsController::class, 'testMercadoPago'])->name('settings.mercadopago.test');
+
+        Route::get('whatsapp-messages', [WhatsappMessageController::class, 'index'])->name('whatsapp.index');
+        Route::get('whatsapp-messages/{trigger}/edit', [WhatsappMessageController::class, 'edit'])->name('whatsapp.edit');
+        Route::post('whatsapp-messages', [WhatsappMessageController::class, 'update'])->name('whatsapp.update');
+        Route::post('whatsapp-messages/{trigger}/toggle', [WhatsappMessageController::class, 'toggle'])->name('whatsapp.toggle');
     });
 
     // Landing editor — always accessible

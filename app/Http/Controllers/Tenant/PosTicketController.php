@@ -20,6 +20,7 @@ use App\Models\PosTicketLine;
 use App\Models\PosTicketRefund;
 use App\Services\GhlService;
 use App\Services\PaymentRequestService;
+use App\Services\WhatsappGatewayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -253,6 +254,16 @@ class PosTicketController extends Controller
         $ticket->load(['owner:id,nombre,apellidos,telefono,email,ghl_contact_id', 'lines', 'discount']);
 
         $waSent = $ghl->notifyTicketPaid($ticket);
+
+        $tenant = app('current_tenant');
+        if ($tenant && $ticket->owner) {
+            WhatsappGatewayService::send($tenant, 'receipt', $ticket->owner, [
+                'ticket_url' => url("/t/{$ticket->token}"),
+                'total' => '$' . number_format((float) $ticket->total, 2),
+                'folio' => (string) $ticket->folio,
+                'date' => $ticket->cobrado_at?->locale('es')->isoFormat('D [de] MMMM YYYY') ?? now()->locale('es')->isoFormat('D [de] MMMM YYYY'),
+            ], "receipt:{$ticket->id}");
+        }
 
         return response()->json([
             'ok'      => true,
