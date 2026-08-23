@@ -167,11 +167,7 @@ class PosShiftController extends Controller
             ]);
 
         $tickets = $ticketsQuery()
-            ->with([
-                'owner:id,nombre,apellidos',
-                'payments.paymentMethod:id,nombre',
-                'paymentRequests' => fn($q) => $q->where('estado', 'aprobado')->latest()->limit(1),
-            ])
+            ->with(['owner:id,nombre,apellidos', 'payments.paymentMethod:id,nombre'])
             ->orderBy('cobrado_at')
             ->get()
             ->map(fn($t) => [
@@ -180,7 +176,6 @@ class PosShiftController extends Controller
                 'token' => $t->token,
                 'cliente' => $t->owner ? trim("{$t->owner->nombre} {$t->owner->apellidos}") : 'Sin cliente',
                 'metodo' => $t->payments->pluck('paymentMethod.nombre')->filter()->unique()->implode(' + '),
-                'mp_payment_id' => $t->paymentRequests->first()?->mp_payment_id,
                 'descuento' => $t->discount_amount,
                 'total' => $t->total,
                 'cobrado_at' => $t->cobrado_at,
@@ -232,6 +227,37 @@ class PosShiftController extends Controller
             'reembolsos' => $refunds,
             'tickets' => $tickets,
             'paymentMethods' => PosPaymentMethod::where('activo', true)->orderBy('orden')->get(['id', 'nombre']),
+        ]);
+    }
+
+    public function mercadoPago(PosShift $shift): Response
+    {
+        $tickets = PosTicket::where('shift_close_id', $shift->id)
+            ->where('estado', 'pagado')
+            ->whereHas('payments.paymentMethod', fn($q) => $q->where('nombre', 'Mercado Pago'))
+            ->with([
+                'owner:id,nombre,apellidos',
+                'paymentRequests' => fn($q) => $q->where('estado', 'aprobado')->latest()->limit(1),
+            ])
+            ->orderBy('cobrado_at')
+            ->get()
+            ->map(fn($t) => [
+                'id' => $t->id,
+                'folio' => $t->folio,
+                'token' => $t->token,
+                'cliente' => $t->owner ? trim("{$t->owner->nombre} {$t->owner->apellidos}") : 'Sin cliente',
+                'mp_payment_id' => $t->paymentRequests->first()?->mp_payment_id,
+                'total' => $t->total,
+                'cobrado_at' => $t->cobrado_at,
+            ]);
+
+        return Inertia::render('Pos/ShiftMercadoPago', [
+            'shift' => [
+                'id' => $shift->id,
+                'fecha_apertura' => $shift->fecha_apertura,
+            ],
+            'tickets' => $tickets,
+            'total' => $tickets->sum('total'),
         ]);
     }
 

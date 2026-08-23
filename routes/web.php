@@ -102,6 +102,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::get('pos/shifts', [PosShiftController::class, 'index'])->name('pos.shift.index');
         Route::post('pos/shifts', [PosShiftController::class, 'store'])->name('pos.shift.store');
         Route::get('pos/shifts/{shift}', [PosShiftController::class, 'show'])->name('pos.shift.show');
+        Route::get('pos/shifts/{shift}/mercadopago', [PosShiftController::class, 'mercadoPago'])->name('pos.shift.mercadopago');
         Route::post('pos/shifts/{shift}/close', [PosShiftController::class, 'close'])->name('pos.shift.close');
         Route::post('pos/shifts/{shift}/movement', [PosShiftController::class, 'addMovement'])->name('pos.shift.movement');
 
