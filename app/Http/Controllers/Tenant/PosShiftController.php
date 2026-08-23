@@ -167,7 +167,11 @@ class PosShiftController extends Controller
             ]);
 
         $tickets = $ticketsQuery()
-            ->with(['owner:id,nombre,apellidos', 'payments.paymentMethod:id,nombre'])
+            ->with([
+                'owner:id,nombre,apellidos',
+                'payments.paymentMethod:id,nombre',
+                'paymentRequests' => fn($q) => $q->where('estado', 'aprobado')->latest()->limit(1),
+            ])
             ->orderBy('cobrado_at')
             ->get()
             ->map(fn($t) => [
@@ -176,6 +180,7 @@ class PosShiftController extends Controller
                 'token' => $t->token,
                 'cliente' => $t->owner ? trim("{$t->owner->nombre} {$t->owner->apellidos}") : 'Sin cliente',
                 'metodo' => $t->payments->pluck('paymentMethod.nombre')->filter()->unique()->implode(' + '),
+                'mp_payment_id' => $t->paymentRequests->first()?->mp_payment_id,
                 'descuento' => $t->discount_amount,
                 'total' => $t->total,
                 'cobrado_at' => $t->cobrado_at,

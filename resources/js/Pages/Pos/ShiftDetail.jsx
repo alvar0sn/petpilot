@@ -112,6 +112,53 @@ function CashMovementsSummary({ shift }) {
     );
 }
 
+function MpTransactionsModal({ tickets, tz, onClose }) {
+    const mpTickets = tickets.filter(t => t.metodo?.includes('Mercado Pago'));
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+            <div className="bg-white border border-zinc-200 rounded-xl shadow-lg w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center justify-between">
+                    <h3 className="font-semibold text-zinc-800">Transacciones de Mercado Pago</h3>
+                    <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 transition-colors">✕</button>
+                </div>
+                <div className="overflow-y-auto px-5 py-3">
+                    {mpTickets.length === 0 ? (
+                        <p className="text-sm text-zinc-400 py-4 text-center">Sin transacciones de Mercado Pago en este turno.</p>
+                    ) : (
+                        <table className="min-w-full text-sm">
+                            <thead>
+                                <tr className="text-xs text-zinc-400 uppercase tracking-wide">
+                                    <th className="text-left pb-2">Ticket</th>
+                                    <th className="text-left pb-2">Fecha</th>
+                                    <th className="text-left pb-2">ID de pago (MP)</th>
+                                    <th className="text-right pb-2">Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-50">
+                                {mpTickets.map(t => (
+                                    <tr key={t.id}>
+                                        <td className="py-2 font-mono">
+                                            {t.token ? (
+                                                <a href={`/t/${t.token}`} target="_blank" rel="noopener noreferrer" className="hover:underline underline-offset-2">
+                                                    #{t.folio}
+                                                </a>
+                                            ) : `#${t.folio}`}
+                                        </td>
+                                        <td className="py-2 text-zinc-500">{t.cobrado_at ? formatDateTime(t.cobrado_at, tz) : '—'}</td>
+                                        <td className="py-2 font-mono text-zinc-600">{t.mp_payment_id ?? '—'}</td>
+                                        <td className="py-2 text-right font-mono">{fmt(t.total)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function CloseForm({ shift }) {
     const closeForm = useForm({ efectivo_contado: '' });
 
@@ -138,6 +185,7 @@ export default function ShiftDetail({ shift, efectivo, ventas, articulos, membre
     const tz = useTenantTimezone();
     const abierto = shift.estado === 'abierto';
     const [ticketPage, setTicketPage] = useState(1);
+    const [showMpTransactions, setShowMpTransactions] = useState(false);
     const totalTicketPages = Math.max(1, Math.ceil(tickets.length / TICKETS_PER_PAGE));
     const pagedTickets = tickets.slice((ticketPage - 1) * TICKETS_PER_PAGE, ticketPage * TICKETS_PER_PAGE);
 
@@ -202,7 +250,17 @@ export default function ShiftDetail({ shift, efectivo, ventas, articulos, membre
                             <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">Por método</p>
                             {ventas.por_metodo.length === 0 && <p className="text-xs text-zinc-400">Sin ventas.</p>}
                             {ventas.por_metodo.map((m, i) => (
-                                <Row key={i} label={`${m.nombre} (${m.cantidad})`} value={fmt(m.total)} />
+                                m.nombre === 'Mercado Pago' ? (
+                                    <div key={i} className="flex justify-between text-sm py-1">
+                                        <button type="button" onClick={() => setShowMpTransactions(true)}
+                                            className="text-zinc-500 hover:text-zinc-800 hover:underline underline-offset-2 transition-colors text-left">
+                                            {m.nombre} ({m.cantidad}) →
+                                        </button>
+                                        <span className="font-mono text-zinc-700">{fmt(m.total)}</span>
+                                    </div>
+                                ) : (
+                                    <Row key={i} label={`${m.nombre} (${m.cantidad})`} value={fmt(m.total)} />
+                                )
                             ))}
                         </div>
                     </div>
@@ -309,6 +367,10 @@ export default function ShiftDetail({ shift, efectivo, ventas, articulos, membre
                     )}
                 </CollapsibleSection>
             </div>
+
+            {showMpTransactions && (
+                <MpTransactionsModal tickets={tickets} tz={tz} onClose={() => setShowMpTransactions(false)} />
+            )}
         </TenantLayout>
     );
 }
