@@ -1,6 +1,6 @@
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Link, useForm } from '@inertiajs/react';
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 const SAMPLE_BY_KEY = {
     name: 'Juan',
@@ -21,27 +21,42 @@ const SAMPLE_BY_KEY = {
     expires_at: '31 ago 2026',
     days_before: '3',
     payment_link: 'https://vetrkt.app/pago/abc123',
+    business_name: 'Vetrkt Clínica',
+    business_phone: '55 8765 4321',
 };
 
 function brace(n) {
     return '{' + '{' + n + '}' + '}';
 }
 
+function hasVariableAtBoundary(body) {
+    const trimmed = body.trim();
+    if (/^\{\{\d+\}\}/.test(trimmed)) return true;
+    return /\{\{\d+\}\}[\s.,!?¡¿:;)\]}"']*$/.test(trimmed);
+}
+
 export default function WhatsappMessagesEdit({ trigger }) {
     const textareaRef = useRef(null);
+    const [usedKeys, setUsedKeys] = useState(trigger.variable_order);
     const form = useForm({
         trigger: trigger.key,
         body: trigger.body,
         days_before: trigger.days_before,
     });
 
-    const variableKeys = Object.keys(trigger.variables);
+    function insertVar(key) {
+        let idx = usedKeys.indexOf(key);
+        let nextUsedKeys = usedKeys;
+        if (idx === -1) {
+            nextUsedKeys = [...usedKeys, key];
+            idx = nextUsedKeys.length - 1;
+            setUsedKeys(nextUsedKeys);
+        }
 
-    function insertVar(index) {
         const el = textareaRef.current;
         const start = el.selectionStart ?? 0;
         const end = el.selectionEnd ?? 0;
-        const placeholder = brace(index);
+        const placeholder = brace(idx + 1);
         const next = form.data.body.slice(0, start) + placeholder + form.data.body.slice(end);
         form.setData('body', next);
         requestAnimationFrame(() => {
@@ -52,15 +67,18 @@ export default function WhatsappMessagesEdit({ trigger }) {
 
     const preview = useMemo(() => {
         let text = form.data.body;
-        variableKeys.forEach((key, i) => {
+        usedKeys.forEach((key, i) => {
             const placeholder = brace(i + 1);
             text = text.split(placeholder).join(SAMPLE_BY_KEY[key] ?? placeholder);
         });
         return text || 'Vista previa del mensaje…';
-    }, [form.data.body]);
+    }, [form.data.body, usedKeys]);
+
+    const boundaryError = useMemo(() => hasVariableAtBoundary(form.data.body), [form.data.body]);
 
     function handleSubmit(e) {
         e.preventDefault();
+        form.transform(data => ({ ...data, variable_order: JSON.stringify(usedKeys) }));
         form.post(route('whatsapp.update'));
     }
 
@@ -105,11 +123,14 @@ export default function WhatsappMessagesEdit({ trigger }) {
                                 onChange={e => form.setData('body', e.target.value)}
                             />
                             {form.errors.body && <p className="text-rose-500 text-xs mt-1">{form.errors.body}</p>}
+                            {!form.errors.body && boundaryError && (
+                                <p className="text-rose-500 text-xs mt-1">Las variables no pueden estar al principio ni al final de la plantilla.</p>
+                            )}
 
                             <p className="text-xs text-zinc-400 mt-2 mb-1.5">Toca una variable para agregarla:</p>
                             <div className="flex flex-wrap gap-1.5">
-                                {variableKeys.map((key, i) => (
-                                    <button key={key} type="button" onClick={() => insertVar(i + 1)}
+                                {Object.keys(trigger.variables).map(key => (
+                                    <button key={key} type="button" onClick={() => insertVar(key)}
                                         className="text-xs bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-full px-2.5 py-1 transition-colors">
                                         + {trigger.variables[key]}
                                     </button>
@@ -123,7 +144,7 @@ export default function WhatsappMessagesEdit({ trigger }) {
                             </div>
                         )}
 
-                        <button type="submit" disabled={form.processing}
+                        <button type="submit" disabled={form.processing || boundaryError}
                             className="w-full bg-zinc-900 text-white font-semibold py-3 rounded-xl hover:bg-zinc-700 disabled:opacity-50 transition-colors mt-4">
                             {form.processing ? 'Guardando…' : 'Guardar cambios'}
                         </button>

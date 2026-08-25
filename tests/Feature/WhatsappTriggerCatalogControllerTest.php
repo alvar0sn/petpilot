@@ -29,6 +29,9 @@ class WhatsappTriggerCatalogControllerTest extends TestCase
         $response->assertJsonPath('receipt.label', 'Recibo de venta');
         $response->assertJsonPath('receipt.category', 'utility');
         $response->assertJsonPath('membership_expiring.label', 'Membresía por vencer');
+        $response->assertJsonPath('receipt.variables.name', 'Nombre');
+        $response->assertJsonPath('receipt.variables.business_name', 'Nombre del negocio');
+        $response->assertJsonPath('receipt.variables.business_phone', 'Teléfono del negocio');
         $response->assertJsonCount(9);
     }
 }

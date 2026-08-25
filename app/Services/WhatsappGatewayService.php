@@ -37,9 +37,17 @@ class WhatsappGatewayService
             return;
         }
 
+        $context = array_merge([
+            'business_name' => $tenant->nombre,
+            'business_phone' => $tenant->getSetting('whatsapp.business_phone') ?? '',
+        ], $context);
+
+        $current = self::resolveCurrentTemplate($tenant, $trigger);
+        $order = $current['variable_order'] ?? array_keys($variables);
+
         $params = array_map(
             fn (string $key) => self::resolveVariable($key, $owner, $context),
-            array_keys($variables)
+            $order
         );
 
         $payload = [
@@ -79,7 +87,7 @@ class WhatsappGatewayService
         }
     }
 
-    public static function saveTemplate(Tenant $tenant, string $templateName, string $body, string $category, string $language = 'es'): bool
+    public static function saveTemplate(Tenant $tenant, string $templateName, string $body, string $category, ?array $variableOrder = null, string $language = 'es'): bool
     {
         try {
             $response = Http::withToken(config('services.whatsapp_gateway.token'))
@@ -90,12 +98,26 @@ class WhatsappGatewayService
                     'language' => $language,
                     'category' => $category,
                     'body' => $body,
+                    'variable_order' => $variableOrder,
                 ]);
 
             return $response->successful();
         } catch (Throwable $e) {
             return false;
         }
+    }
+
+    /**
+     * De las plantillas de este tenant, la que realmente se va a usar para
+     * este disparador — propia si tiene, si no la compartida.
+     */
+    private static function resolveCurrentTemplate(Tenant $tenant, string $trigger): ?array
+    {
+        $fetched = collect(self::fetchTemplates($tenant));
+        $own = $fetched->first(fn ($row) => $row['template_name'] === $trigger && !$row['shared']);
+        $shared = $fetched->first(fn ($row) => $row['template_name'] === $trigger && $row['shared']);
+
+        return $own ?? $shared;
     }
 
     private static function sendUrl(): string

@@ -78,7 +78,7 @@ class WhatsappMessageControllerTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('whatsapp.update'), [
             'trigger' => 'receipt',
-            'body' => 'Hola {{1}}.',
+            'body' => 'Hola {{1}}, gracias.',
         ]);
 
         $response->assertRedirect();
@@ -155,5 +155,51 @@ class WhatsappMessageControllerTest extends TestCase
         ['admin' => $admin] = $this->makeContext();
 
         $this->actingAs($admin)->get(route('whatsapp.edit', 'no-existe'))->assertNotFound();
+    }
+
+    public function test_rechaza_una_variable_pegada_al_final(): void
+    {
+        ['admin' => $admin] = $this->makeContext();
+
+        Http::fake();
+
+        $response = $this->actingAs($admin)->post(route('whatsapp.update'), [
+            'trigger' => 'receipt',
+            'body' => 'Hola {{1}}, tu ticket es {{2}}.',
+        ]);
+
+        $response->assertSessionHasErrors('body');
+        Http::assertNothingSent();
+    }
+
+    public function test_rechaza_una_variable_pegada_al_principio(): void
+    {
+        ['admin' => $admin] = $this->makeContext();
+
+        Http::fake();
+
+        $response = $this->actingAs($admin)->post(route('whatsapp.update'), [
+            'trigger' => 'receipt',
+            'body' => '{{1}}, gracias por tu compra.',
+        ]);
+
+        $response->assertSessionHasErrors('body');
+        Http::assertNothingSent();
+    }
+
+    public function test_guardar_manda_el_orden_de_variables_usado_al_gateway(): void
+    {
+        ['admin' => $admin] = $this->makeContext();
+
+        Http::fake(['*/templates*' => Http::response(['id' => 1], 201)]);
+
+        $this->actingAs($admin)->post(route('whatsapp.update'), [
+            'trigger' => 'receipt',
+            'body' => 'Hola {{1}}, tu ticket: {{2}}. ¡Gracias!',
+            'variable_order' => json_encode(['name', 'ticket_url']),
+        ])->assertRedirect();
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/templates')
+            && $request['variable_order'] === ['name', 'ticket_url']);
     }
 }

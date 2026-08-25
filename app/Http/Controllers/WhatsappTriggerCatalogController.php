@@ -24,6 +24,10 @@ class WhatsappTriggerCatalogController extends Controller
         $catalog = collect(config('whatsapp_triggers'))->map(fn (array $definition, string $key) => [
             'label' => $definition['label'],
             'category' => $definition['category'],
+            'variables' => array_merge($definition['variables'], [
+                'business_name' => 'Nombre del negocio',
+                'business_phone' => 'Teléfono del negocio',
+            ]),
         ]);
 
         return response()->json($catalog);

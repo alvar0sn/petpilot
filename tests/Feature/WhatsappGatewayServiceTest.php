@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use App\Models\WhatsappGatewayLog;
 use App\Services\WhatsappGatewayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -89,6 +90,57 @@ class WhatsappGatewayServiceTest extends TestCase
 
         $this->assertSame(0, WhatsappGatewayLog::count());
         Queue::assertNotPushed(SendWhatsappGatewayMessage::class);
+    }
+
+    public function test_respeta_el_variable_order_de_la_plantilla_vigente(): void
+    {
+        Queue::fake();
+
+        ['tenant' => $tenant, 'owner' => $owner] = $this->makeContext();
+
+        Http::fake(['*/templates*' => Http::response(['data' => [[
+            'template_name' => 'receipt',
+            'language' => 'es',
+            'category' => 'utility',
+            'body' => 'Hola {{1}}, total {{2}}.',
+            'variable_order' => ['name', 'total'],
+            'shared' => false,
+            'status' => 'approved',
+            'rejected_reason' => null,
+            'updated_at' => now()->toIso8601String(),
+        ]]])]);
+
+        WhatsappGatewayService::send($tenant, 'receipt', $owner, ['total' => '$99.00']);
+
+        $params = WhatsappGatewayLog::first()->payload['params'];
+
+        $this->assertSame(['Juan', '$99.00'], $params);
+    }
+
+    public function test_resuelve_business_name_y_business_phone_cuando_la_plantilla_compartida_los_usa(): void
+    {
+        Queue::fake();
+
+        ['tenant' => $tenant, 'owner' => $owner] = $this->makeContext();
+        $tenant->update(['nombre' => 'Clínica Bruno']);
+
+        Http::fake(['*/templates*' => Http::response(['data' => [[
+            'template_name' => 'receipt',
+            'language' => 'es',
+            'category' => 'utility',
+            'body' => 'Hola {{1}}, gracias por tu compra en {{2}}.',
+            'variable_order' => ['name', 'business_name'],
+            'shared' => true,
+            'status' => 'approved',
+            'rejected_reason' => null,
+            'updated_at' => now()->toIso8601String(),
+        ]]])]);
+
+        WhatsappGatewayService::send($tenant, 'receipt', $owner, ['ticket_url' => 'x', 'total' => 'x', 'folio' => 'x', 'date' => 'x']);
+
+        $params = WhatsappGatewayLog::first()->payload['params'];
+
+        $this->assertSame(['Juan', 'Clínica Bruno'], $params);
     }
 
     public function test_no_hace_nada_si_el_owner_no_tiene_telefono(): void

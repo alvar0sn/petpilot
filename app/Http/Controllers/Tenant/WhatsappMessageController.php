@@ -39,20 +39,32 @@ class WhatsappMessageController extends Controller
     {
         $validated = $request->validate([
             'trigger' => ['required', 'string'],
-            'body' => ['required', 'string'],
+            'body' => ['required', 'string', function ($attribute, $value, $fail) {
+                if (self::hasVariableAtBoundary($value)) {
+                    $fail('Las variables no pueden estar al principio ni al final de la plantilla.');
+                }
+            }],
             'days_before' => ['nullable', 'integer', 'min:0', 'max:30'],
+            'variable_order' => ['nullable', 'string'],
         ]);
 
         $catalog = config('whatsapp_triggers');
 
         abort_unless(isset($catalog[$validated['trigger']]), 404);
 
+        $availableKeys = array_keys($catalog[$validated['trigger']]['variables']);
+        $order = json_decode($validated['variable_order'] ?? '', true);
+        $variableOrder = (is_array($order) && $order === array_values(array_intersect($order, $availableKeys)))
+            ? array_values(array_unique($order))
+            : null;
+
         $tenant = app('current_tenant');
         $saved = WhatsappGatewayService::saveTemplate(
             $tenant,
             $validated['trigger'],
             $validated['body'],
-            $catalog[$validated['trigger']]['category']
+            $catalog[$validated['trigger']]['category'],
+            $variableOrder
         );
 
         if (!$saved) {
@@ -64,6 +76,24 @@ class WhatsappMessageController extends Controller
         }
 
         return redirect()->route('whatsapp.index')->with('success', 'Mensaje guardado.');
+    }
+
+    /**
+     * Meta rechaza una plantilla si {{N}} queda pegado al inicio o al final
+     * (sin texto real antes/después) — lo validamos aquí para no gastar un
+     * intento de sometimiento fallido.
+     */
+    private static function hasVariableAtBoundary(string $body): bool
+    {
+        $trimmed = trim($body);
+
+        if (preg_match('/^\{\{\d+\}\}/', $trimmed)) {
+            return true;
+        }
+
+        // Ojo: NO usar rtrim con un charset que incluya "}" — se comería las
+        // llaves de cierre del propio {{N}} y el chequeo nunca detectaría nada.
+        return (bool) preg_match('/\{\{\d+\}\}[\s.,!?¡¿:;)\]}"\']*$/', $trimmed);
     }
 
     public function toggle(Request $request, string $trigger)
@@ -101,6 +131,7 @@ class WhatsappMessageController extends Controller
                 'is_own' => (bool) $own,
                 'enabled' => $tenant->getSetting("whatsapp.triggers.{$key}.enabled") ?? true,
                 'days_before' => $tenant->getSetting("whatsapp.triggers.{$key}.days_before") ?? 3,
+                'variable_order' => $current['variable_order'] ?? array_keys($definition['variables']),
             ]);
         });
     }
