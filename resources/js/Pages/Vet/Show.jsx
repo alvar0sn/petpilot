@@ -334,6 +334,23 @@ export default function VetShow({ appointment, veterinarios, catalogItems }) {
                                 <p className="text-zinc-700 whitespace-pre-line">{appt.notas_internas}</p>
                             </div>
                         )}
+                        {appt.pet && appt.owner && (
+                            <div className="bg-cyan-50 border border-cyan-100 rounded-lg px-3 py-2 space-y-1.5">
+                                <p className="text-xs font-medium text-cyan-700">🚚 Recolección</p>
+                                <button type="button"
+                                    onClick={() => router.post(route('collection.quick-request'), {
+                                        pet_id: appt.pet.id,
+                                        owner_id: appt.owner.id,
+                                        fecha: appt.fecha,
+                                        tipo_viaje: 'recoleccion',
+                                        origen_tipo: 'appointment',
+                                        origen_id: appt.id,
+                                    })}
+                                    className="text-xs bg-cyan-700 text-white px-2.5 py-1 rounded-lg hover:bg-cyan-800 transition-colors">
+                                    Solicitar recolección →
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

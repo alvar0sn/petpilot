@@ -25,19 +25,23 @@ class CollectionBookingController extends Controller
             'owner_id' => 'required|exists:owners,id',
             'fecha' => 'required|date',
             'tipo_viaje' => 'required|in:recoleccion,entrega,ida_y_vuelta',
-            'origen_tipo' => 'required|string|in:appointment,hotel_stay',
+            'origen_tipo' => 'required|string|in:appointment,hotel_stay,walk_booking',
             'origen_id' => 'required|integer',
         ]);
 
-        $slot = DB::transaction(function () use ($data) {
-            $slot = CollectionSlot::whereDate('fecha', $data['fecha'])
+        // Normaliza a 'Y-m-d': el origen puede mandar la fecha como string plano
+        // o como datetime serializado (ej. modelos Eloquent con cast 'date').
+        $fecha = \Carbon\Carbon::parse($data['fecha'])->toDateString();
+
+        $slot = DB::transaction(function () use ($data, $fecha) {
+            $slot = CollectionSlot::whereDate('fecha', $fecha)
                 ->where('estado', 'abierto')
                 ->whereNull('recolector_id')
                 ->first();
 
             if (!$slot) {
                 $slot = CollectionSlot::create([
-                    'fecha' => $data['fecha'],
+                    'fecha' => $fecha,
                     'estado' => 'abierto',
                     'created_by' => auth()->id(),
                 ]);

@@ -129,7 +129,7 @@ function AddPetModal({ slot, walkers, onClose }) {
     );
 }
 
-function BookingRow({ booking }) {
+function BookingRow({ booking, fecha }) {
     const [cancelMode, setCancelMode] = useState(false);
 
     return (
@@ -146,6 +146,19 @@ function BookingRow({ booking }) {
                         <button onClick={() => router.post(route('walks.bookings.approve', booking.id))}
                             className="text-xs bg-emerald-600 text-white px-2 py-1 rounded-lg hover:bg-emerald-700 transition-colors">
                             Aprobar
+                        </button>
+                    )}
+                    {booking.estado !== 'cancelado' && booking.pet?.owner && (
+                        <button onClick={() => router.post(route('collection.quick-request'), {
+                                pet_id: booking.pet.id,
+                                owner_id: booking.pet.owner.id,
+                                fecha,
+                                tipo_viaje: 'recoleccion',
+                                origen_tipo: 'walk_booking',
+                                origen_id: booking.id,
+                            })}
+                            className="text-xs bg-cyan-50 border border-cyan-200 text-cyan-700 rounded-lg px-2 py-1 hover:bg-cyan-100 transition-colors">
+                            🚚 Recolección
                         </button>
                     )}
                     {booking.estado !== 'cancelado' && !cancelMode && (
@@ -287,7 +300,7 @@ export default function WalksShow({ slot, walkers, recurrence }) {
                             )}
                         </div>
                         <div className="space-y-2">
-                            {(slot.bookings ?? []).map(b => <BookingRow key={b.id} booking={b} />)}
+                            {(slot.bookings ?? []).map(b => <BookingRow key={b.id} booking={b} fecha={slot.fecha} />)}
                             {(slot.bookings ?? []).length === 0 && (
                                 <p className="text-sm text-zinc-400 py-4 text-center">Sin mascotas en este slot aún.</p>
                             )}

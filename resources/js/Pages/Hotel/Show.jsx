@@ -708,6 +708,19 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
                             Cancelar reserva
                         </button>
                     )}
+                    {stay.estado !== 'cancelado' && stay.pet?.owner && (
+                        <button onClick={() => router.post(route('collection.quick-request'), {
+                                pet_id: stay.pet.id,
+                                owner_id: stay.pet.owner.id,
+                                fecha: stay.fecha_entrada,
+                                tipo_viaje: 'recoleccion',
+                                origen_tipo: 'hotel_stay',
+                                origen_id: stay.id,
+                            })}
+                            className="bg-cyan-50 border border-cyan-200 text-cyan-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-cyan-100 transition-colors">
+                            🚚 Solicitar recolección
+                        </button>
+                    )}
                 </div>
             </div>
 
