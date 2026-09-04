@@ -416,9 +416,23 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                 ) : (
                     <div className="space-y-3 text-sm">
                         {appt.servicio_domicilio && (
-                            <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                            <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 space-y-2">
                                 <p className="text-xs font-medium text-blue-700 mb-0.5">🛵 Servicio a domicilio</p>
                                 {appt.direccion_entrega && <p className="text-zinc-700 text-xs">{appt.direccion_entrega}</p>}
+                                {appt.pet && appt.owner && (
+                                    <button type="button"
+                                        onClick={() => router.post(route('collection.quick-request'), {
+                                            pet_id: appt.pet.id,
+                                            owner_id: appt.owner.id,
+                                            fecha: appt.fecha,
+                                            tipo_viaje: 'recoleccion',
+                                            origen_tipo: 'appointment',
+                                            origen_id: appt.id,
+                                        })}
+                                        className="text-xs bg-cyan-700 text-white px-2.5 py-1 rounded-lg hover:bg-cyan-800 transition-colors">
+                                        Solicitar recolección →
+                                    </button>
+                                )}
                             </div>
                         )}
                         {appt.notas_internas && (

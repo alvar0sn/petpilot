@@ -34,6 +34,8 @@ TEXTO;
         'notas_internas',
         'accesorios',
         'recepcion',
+        'servicio_domicilio',
+        'direccion_entrega',
         'created_via',
         'solicitud_owner',
         'franja',

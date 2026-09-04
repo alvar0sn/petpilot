@@ -863,6 +863,7 @@ const MODULES = [
     { key: 'memberships',  label: 'Membresías' },
     { key: 'hotel',        label: 'Hotel' },
     { key: 'paseos',       label: 'Paseos' },
+    { key: 'recoleccion',  label: 'Recolección' },
     { key: 'grooming',     label: 'Grooming' },
     { key: 'veterinaria',  label: 'Veterinaria' },
     { key: 'entrenamiento', label: 'Entrenamientos' },

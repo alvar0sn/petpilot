@@ -221,6 +221,8 @@ class AppointmentController extends Controller
                 'notas_internas' => $appointment->notas_internas,
                 'accesorios' => $appointment->accesorios,
                 'recepcion' => $appointment->recepcion,
+                'servicio_domicilio' => $appointment->servicio_domicilio,
+                'direccion_entrega' => $appointment->direccion_entrega,
                 'created_via' => $appointment->created_via,
                 'responsiva_token' => $appointment->responsiva_token,
                 'responsiva_enviado_at' => $appointment->responsiva_enviado_at?->toDateTimeString(),

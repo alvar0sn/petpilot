@@ -13,6 +13,9 @@ use App\Http\Controllers\Tenant\TrainingController;
 use App\Http\Controllers\Tenant\VetController;
 use App\Http\Controllers\Tenant\WalkSlotController;
 use App\Http\Controllers\Tenant\WalkBookingController;
+use App\Http\Controllers\Tenant\CollectionRateController;
+use App\Http\Controllers\Tenant\CollectionSlotController;
+use App\Http\Controllers\Tenant\CollectionBookingController;
 use App\Http\Controllers\Auth\TenantAuthController;
 use App\Http\Controllers\Portal\OwnerAuthController;
 use App\Http\Controllers\Portal\OwnerPortalController;
@@ -166,6 +169,25 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('walks/{walkSlot}/bookings', [WalkBookingController::class, 'store'])->name('walks.bookings.store');
         Route::post('walk-bookings/{walkBooking}/approve', [WalkBookingController::class, 'approve'])->name('walks.bookings.approve');
         Route::post('walk-bookings/{walkBooking}/cancel', [WalkBookingController::class, 'cancel'])->name('walks.bookings.cancel');
+    });
+
+    // Recolección
+    Route::middleware('module:recoleccion')->group(function () {
+        Route::get('collection-config', [CollectionRateController::class, 'config'])->name('collection.config');
+        Route::post('collection-config/rates', [CollectionRateController::class, 'store'])->name('collection.rates.store');
+        Route::put('collection-config/rates/{rate}', [CollectionRateController::class, 'update'])->name('collection.rates.update');
+        Route::delete('collection-config/rates/{rate}', [CollectionRateController::class, 'destroy'])->name('collection.rates.destroy');
+
+        Route::get('collection', [CollectionSlotController::class, 'index'])->name('collection.index');
+        Route::post('collection', [CollectionSlotController::class, 'store'])->name('collection.store');
+        Route::get('collection/{collectionSlot}', [CollectionSlotController::class, 'show'])->name('collection.show');
+        Route::put('collection/{collectionSlot}', [CollectionSlotController::class, 'update'])->name('collection.update');
+        Route::post('collection/{collectionSlot}/complete', [CollectionSlotController::class, 'complete'])->name('collection.complete');
+        Route::post('collection/{collectionSlot}/cancel', [CollectionSlotController::class, 'cancel'])->name('collection.cancel');
+        Route::post('collection/{collectionSlot}/bookings', [CollectionBookingController::class, 'store'])->name('collection.bookings.store');
+        Route::put('collection-bookings/{collectionBooking}/estado', [CollectionBookingController::class, 'updateEstado'])->name('collection.bookings.estado');
+        Route::post('collection-bookings/{collectionBooking}/cancel', [CollectionBookingController::class, 'cancel'])->name('collection.bookings.cancel');
+        Route::post('collection/quick-request', [CollectionBookingController::class, 'quickRequest'])->name('collection.quick-request');
     });
 
     // Grooming

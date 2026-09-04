@@ -18,6 +18,7 @@ const nav = [
     { label: 'Hotel',           href: 'hotel.index',        icon: 'ti-building',         module: 'hotel' },
     { label: 'Membresías',      href: 'memberships.index',  icon: 'ti-star',             module: 'memberships' },
     { label: 'Paseos',          href: 'walks.index',        icon: 'ti-dog',              module: 'paseos', badge: 'walks_pending_count' },
+    { label: 'Recolección',     href: 'collection.index',   icon: 'ti-truck-delivery',   module: 'recoleccion' },
     { label: 'Reporte financiero', href: 'reports.financial', icon: 'ti-report-money',   module: 'pos' },
     { label: 'Landing',         href: 'landing.editor',     icon: 'ti-world',            module: null },
     { label: 'WhatsApp',        href: 'whatsapp.index',     icon: 'ti-brand-whatsapp',   module: null, adminOnly: true },
