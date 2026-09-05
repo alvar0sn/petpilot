@@ -11,6 +11,7 @@ use App\Models\Owner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CollectionBookingController extends Controller
 {
@@ -34,46 +35,52 @@ class CollectionBookingController extends Controller
         $fecha = \Carbon\Carbon::parse($data['fecha'])->toDateString();
 
         $slot = DB::transaction(function () use ($data, $fecha) {
-            $slot = CollectionSlot::whereDate('fecha', $fecha)
-                ->where('estado', 'abierto')
-                ->whereNull('recolector_id')
-                ->first();
+            $slot = $this->findOrCreateOpenSlot($fecha);
+            $this->addBookingToSlot($slot, $data);
+            return $slot;
+        });
 
-            if (!$slot) {
-                $slot = CollectionSlot::create([
-                    'fecha' => $fecha,
-                    'estado' => 'abierto',
-                    'created_by' => auth()->id(),
-                ]);
+        return redirect()->route('collection.show', $slot)->with('success', 'Recolección solicitada.');
+    }
+
+    /**
+     * Atajo desde el propio calendario de Recolección: agenda una mascota para una fecha
+     * sin necesidad de crear la ruta primero — reutiliza o crea la ruta abierta del día.
+     */
+    public function quickAdd(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'pet_id' => 'required|exists:pets,id',
+            'owner_id' => 'required|exists:owners,id',
+            'fecha' => 'required|date',
+            'direccion' => 'nullable|string',
+            'ubicacion_url' => 'nullable|string|max:2048',
+            'rate_id' => 'nullable|exists:collection_rates,id',
+            'tipo_viaje' => 'required|in:recoleccion,entrega,ida_y_vuelta',
+            'cobro_membresia' => 'boolean',
+            'membership_id' => 'nullable|exists:memberships,id',
+            'notas' => 'nullable|string|max:500',
+        ]);
+        $data['cobro_membresia'] = $request->boolean('cobro_membresia');
+
+        $fecha = \Carbon\Carbon::parse($data['fecha'])->toDateString();
+        unset($data['fecha']);
+
+        $slot = DB::transaction(function () use ($data, $fecha) {
+            $slot = $this->findOrCreateOpenSlot($fecha);
+            $result = $this->addBookingToSlot($slot, $data);
+
+            if ($result === 'duplicado') {
+                throw ValidationException::withMessages(['pet_id' => 'Esta mascota ya está en la ruta de ese día.']);
             }
-
-            $yaExiste = $slot->bookings()
-                ->where('pet_id', $data['pet_id'])
-                ->where('tipo_viaje', $data['tipo_viaje'])
-                ->whereIn('estado', ['programado', 'en_ruta'])
-                ->exists();
-
-            if (!$yaExiste) {
-                $owner = Owner::find($data['owner_id']);
-
-                CollectionBooking::create([
-                    'slot_id' => $slot->id,
-                    'pet_id' => $data['pet_id'],
-                    'owner_id' => $data['owner_id'],
-                    'direccion' => $owner?->direccion,
-                    'ubicacion_url' => $owner?->ubicacion_url,
-                    'tipo_viaje' => $data['tipo_viaje'],
-                    'estado' => 'programado',
-                    'origen_tipo' => $data['origen_tipo'],
-                    'origen_id' => $data['origen_id'],
-                    'created_by' => auth()->id(),
-                ]);
+            if ($result === 'lleno') {
+                throw ValidationException::withMessages(['pet_id' => 'La ruta de ese día está llena.']);
             }
 
             return $slot;
         });
 
-        return redirect()->route('collection.show', $slot)->with('success', 'Recolección solicitada.');
+        return redirect()->route('collection.show', $slot)->with('success', 'Recolección agendada.');
     }
 
     public function store(Request $request, CollectionSlot $collectionSlot): RedirectResponse
@@ -93,14 +100,44 @@ class CollectionBookingController extends Controller
             'origen_id' => 'nullable|integer',
             'notas' => 'nullable|string|max:500',
         ]);
+        $data['cobro_membresia'] = $request->boolean('cobro_membresia');
 
-        if ($collectionSlot->bookings()->where('pet_id', $data['pet_id'])->where('tipo_viaje', $data['tipo_viaje'])
-            ->whereIn('estado', ['programado', 'en_ruta'])->exists()) {
+        $result = DB::transaction(fn () => $this->addBookingToSlot($collectionSlot, $data));
+
+        if ($result === 'duplicado') {
             return back()->withErrors(['pet_id' => 'Esta mascota ya está en esta ruta.']);
+        }
+        if ($result === 'lleno') {
+            return back()->withErrors(['pet_id' => 'La ruta está llena.']);
+        }
+
+        return back()->with('success', 'Mascota agregada a la ruta.');
+    }
+
+    private function findOrCreateOpenSlot(string $fecha): CollectionSlot
+    {
+        return CollectionSlot::whereDate('fecha', $fecha)
+            ->where('estado', 'abierto')
+            ->whereNull('recolector_id')
+            ->first() ?? CollectionSlot::create([
+                'fecha' => $fecha,
+                'estado' => 'abierto',
+                'created_by' => auth()->id(),
+            ]);
+    }
+
+    /** @return CollectionBooking|'duplicado'|'lleno' */
+    private function addBookingToSlot(CollectionSlot $collectionSlot, array $data): CollectionBooking|string
+    {
+        $tipoViaje = $data['tipo_viaje'] ?? 'recoleccion';
+
+        if ($collectionSlot->bookings()->where('pet_id', $data['pet_id'])->where('tipo_viaje', $tipoViaje)
+            ->whereIn('estado', ['programado', 'en_ruta'])->exists()) {
+            return 'duplicado';
         }
 
         if ($collectionSlot->cupo_maximo && !$collectionSlot->tieneEspacio()) {
-            return back()->withErrors(['pet_id' => 'La ruta está llena.']);
+            return 'lleno';
         }
 
         // Mismo domicilio: si el dueño ya tiene otra mascota en esta ruta, reutilizamos su
@@ -110,26 +147,22 @@ class CollectionBookingController extends Controller
                 ->whereIn('estado', ['programado', 'en_ruta', 'completado'])->first();
 
             $owner = $existing ?: Owner::find($data['owner_id']);
-            $data['direccion'] = $data['direccion'] ?: ($existing->direccion ?? $owner?->direccion);
-            $data['ubicacion_url'] = $data['ubicacion_url'] ?: ($existing->ubicacion_url ?? $owner?->ubicacion_url);
+            $data['direccion'] = $data['direccion'] ?? ($existing->direccion ?? $owner?->direccion);
+            $data['ubicacion_url'] = $data['ubicacion_url'] ?? ($existing->ubicacion_url ?? $owner?->ubicacion_url);
             $data['rate_id'] = $data['rate_id'] ?? $existing?->rate_id;
         }
 
-        $booking = DB::transaction(function () use ($collectionSlot, $data, $request) {
-            $booking = CollectionBooking::create([
-                ...$data,
-                'slot_id' => $collectionSlot->id,
-                'estado' => 'programado',
-                'cobro_membresia' => $request->boolean('cobro_membresia'),
-                'created_by' => auth()->id(),
-            ]);
+        $booking = CollectionBooking::create([
+            ...$data,
+            'tipo_viaje' => $tipoViaje,
+            'slot_id' => $collectionSlot->id,
+            'estado' => 'programado',
+            'created_by' => auth()->id(),
+        ]);
 
-            $this->processPayment($booking);
+        $this->processPayment($booking);
 
-            return $booking;
-        });
-
-        return back()->with('success', 'Mascota agregada a la ruta.');
+        return $booking;
     }
 
     public function updateEstado(Request $request, CollectionBooking $collectionBooking): RedirectResponse

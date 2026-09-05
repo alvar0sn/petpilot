@@ -188,6 +188,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::put('collection-bookings/{collectionBooking}/estado', [CollectionBookingController::class, 'updateEstado'])->name('collection.bookings.estado');
         Route::post('collection-bookings/{collectionBooking}/cancel', [CollectionBookingController::class, 'cancel'])->name('collection.bookings.cancel');
         Route::post('collection/quick-request', [CollectionBookingController::class, 'quickRequest'])->name('collection.quick-request');
+        Route::post('collection/quick-add', [CollectionBookingController::class, 'quickAdd'])->name('collection.quick-add');
     });
 
     // Grooming
