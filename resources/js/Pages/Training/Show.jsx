@@ -1,4 +1,5 @@
 import AppointmentTimePicker from '@/Components/AppointmentTimePicker';
+import ResponsivaStatus from '@/Components/ResponsivaStatus';
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
@@ -168,6 +169,15 @@ export default function TrainingShow({ appointment, entrenadores, catalogItems }
                     </div>
                 </div>
 
+                <div className="mb-3 pb-3 border-b border-zinc-100">
+                    <ResponsivaStatus
+                        sendUrl={route('training.responsiva.send', appt.id)}
+                        downloadUrl={route('training.responsiva.download', appt.id)}
+                        enviadoAt={appt.responsiva_enviado_at}
+                        firmadoAt={appt.responsiva_firmado_at}
+                    />
+                </div>
+
                 {appt.pet && (<>
                     <button type="button" onClick={() => setPetInfoOpen(o => !o)}
                         className="text-xs text-zinc-400 hover:text-zinc-600 md:hidden flex items-center gap-1 transition-colors mb-1">
@@ -296,7 +306,12 @@ export default function TrainingShow({ appointment, entrenadores, catalogItems }
                         <div className="divide-y border border-zinc-100 rounded-lg text-sm">
                             {chargesForm.data.items.map((item, idx) => (
                                 <div key={idx} className="flex items-center gap-2 px-3 py-2">
-                                    <span className="flex-1 text-zinc-800">{item.nombre}</span>
+                                    <span className="flex-1 text-zinc-800">
+                                        {item.nombre}
+                                        {appt.items?.[idx]?.cubierto_por_paquete && (
+                                            <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200">paquete</span>
+                                        )}
+                                    </span>
                                     <span className="text-zinc-500 text-xs whitespace-nowrap">{item.cantidad}× {fmt(item.precio)}</span>
                                     <span className="text-zinc-700 text-xs font-medium whitespace-nowrap">{fmt(Number(item.precio) * Number(item.cantidad))}</span>
                                     {canEdit && (

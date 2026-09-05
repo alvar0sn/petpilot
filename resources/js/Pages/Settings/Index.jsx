@@ -213,13 +213,13 @@ function GroomingTab({ stations, checklistItems, responsivaConfig }) {
         <div className="space-y-6">
             <StationsSection stations={stations} />
             <ChecklistSection checklistItems={checklistItems} />
-            <ResponsivaSection responsivaConfig={responsivaConfig} />
+            <ResponsivaSection responsivaConfig={responsivaConfig} modulo="grooming" label="Grooming" />
         </div>
     );
 }
 
-function ResponsivaSection({ responsivaConfig }) {
-    const form = useForm({ texto: responsivaConfig?.texto || responsivaConfig?.texto_default || '' });
+function ResponsivaSection({ responsivaConfig, modulo = 'grooming', label = 'grooming' }) {
+    const form = useForm({ modulo, texto: responsivaConfig?.texto || responsivaConfig?.texto_default || '' });
 
     function handleSubmit(e) {
         e.preventDefault();
@@ -229,9 +229,9 @@ function ResponsivaSection({ responsivaConfig }) {
     return (
         <div className="max-w-2xl bg-white border border-zinc-100 shadow-sm rounded-xl p-5 space-y-4">
             <div>
-                <h3 className="font-semibold text-zinc-700">Responsiva digital</h3>
+                <h3 className="font-semibold text-zinc-700">Responsiva digital — {label}</h3>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                    Texto legal que el dueño ve y firma cuando le mandas la responsiva desde una cita de grooming. Ya viene precargado con un texto genérico que puedes editar libremente.
+                    Texto legal que el dueño ve y firma cuando le mandas la responsiva desde {modulo === 'grooming' ? 'una cita de grooming' : `un servicio de ${label.toLowerCase()}`}. Ya viene precargado con un texto genérico que puedes editar libremente.
                 </p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -245,6 +245,20 @@ function ResponsivaSection({ responsivaConfig }) {
                     {form.processing ? 'Guardando…' : 'Guardar responsiva'}
                 </button>
             </form>
+        </div>
+    );
+}
+
+function ResponsivasTab({ responsivaConfigs }) {
+    const modulos = ['hotel', 'paseos', 'recoleccion', 'entrenamiento'];
+    return (
+        <div className="space-y-6">
+            {modulos.map(modulo => (
+                <ResponsivaSection key={modulo}
+                    modulo={modulo}
+                    label={responsivaConfigs?.[modulo]?.label ?? modulo}
+                    responsivaConfig={responsivaConfigs?.[modulo]} />
+            ))}
         </div>
     );
 }
@@ -867,6 +881,7 @@ const MODULES = [
     { key: 'grooming',     label: 'Grooming' },
     { key: 'veterinaria',  label: 'Veterinaria' },
     { key: 'entrenamiento', label: 'Entrenamientos' },
+    { key: 'paquetes',     label: 'Paquetes' },
 ];
 
 function ModuleCheckboxes({ permisos, onChange }) {
@@ -1183,7 +1198,7 @@ function LinksTab({ slug }) {
     );
 }
 
-export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, generalConfig, walkConfig, recordatoriosConfig, responsivaConfig, mercadoPagoConfig, teamMembers, razas }) {
+export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, generalConfig, walkConfig, recordatoriosConfig, responsivaConfig, responsivaConfigs, mercadoPagoConfig, teamMembers, razas }) {
     const { auth, tenant } = usePage().props;
     const [tab, setTab] = useState('general');
 
@@ -1196,6 +1211,7 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
         { id: 'grooming', label: 'Grooming' },
         { id: 'walks', label: 'Paseos' },
         { id: 'recordatorios', label: 'Recordatorios' },
+        { id: 'responsivas', label: 'Responsivas' },
         { id: 'team', label: 'Equipo' },
         { id: 'links', label: 'Links' },
     ];
@@ -1223,6 +1239,7 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
             {tab === 'ticket' && <TicketConfigTab ticketConfig={ticketConfig ?? { color_primario: '#18181b', color_texto: '#1f2937', color_fondo: '#ffffff', mensaje_pie: '', logo_url: null }} onGoToGeneral={() => setTab('general')} />}
             {tab === 'recetas' && <RecetaConfigTab generalConfig={generalConfig ?? { logo_url: null, direccion: '', telefono: '', cedula_profesional: '', nombre_veterinario: '' }} onGoToGeneral={() => setTab('general')} />}
             {tab === 'walks' && <WalksConfigTab walkConfig={walkConfig ?? { horas_anticipacion: 2, dias_adelante: 14 }} />}
+            {tab === 'responsivas' && <ResponsivasTab responsivaConfigs={responsivaConfigs ?? {}} />}
             {tab === 'recordatorios' && <RecordatoriosConfigTab recordatoriosConfig={recordatoriosConfig ?? { activo: true, dias_antes: 0 }} />}
             {tab === 'team' && <TeamTab teamMembers={teamMembers ?? []} currentUserId={auth.user?.id} />}
             {tab === 'links' && <LinksTab slug={tenant?.slug} />}

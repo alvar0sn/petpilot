@@ -10,11 +10,13 @@ use App\Http\Controllers\Tenant\PetController;
 use App\Http\Controllers\Tenant\DashboardController;
 use App\Http\Controllers\Tenant\HotelController;
 use App\Http\Controllers\Tenant\MembershipController;
+use App\Http\Controllers\Tenant\PackageController;
 use App\Http\Controllers\Tenant\AppointmentController;
 use App\Http\Controllers\Tenant\TrainingController;
 use App\Http\Controllers\Tenant\VetController;
 use App\Http\Controllers\Tenant\WalkSlotController;
 use App\Http\Controllers\Tenant\WalkBookingController;
+use App\Http\Controllers\Tenant\WalkRateController;
 use App\Http\Controllers\Tenant\CollectionRateController;
 use App\Http\Controllers\Tenant\CollectionSlotController;
 use App\Http\Controllers\Tenant\CollectionBookingController;
@@ -123,6 +125,14 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::get('reportes/financiero/exportar', [FinancialReportController::class, 'export'])->name('reports.financial.export');
     });
 
+    // Paquetes
+    Route::middleware('module:paquetes')->group(function () {
+        Route::get('paquetes', [PackageController::class, 'index'])->name('packages.index');
+        Route::get('paquetes/nuevo', [PackageController::class, 'create'])->name('packages.create');
+        Route::post('paquetes', [PackageController::class, 'store'])->name('packages.store');
+        Route::get('paquetes/{package}', [PackageController::class, 'show'])->name('packages.show');
+    });
+
     // Membresías
     Route::middleware('module:memberships')->group(function () {
         Route::get('memberships', [MembershipController::class, 'index'])->name('memberships.index');
@@ -158,10 +168,17 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('hotel/{stay}/cancel', [HotelController::class, 'cancel'])->name('hotel.cancel');
         Route::post('hotel/{stay}/photos', [HotelController::class, 'storePhoto'])->name('hotel.photos.store');
         Route::delete('hotel/{stay}/photos/{photo}', [HotelController::class, 'destroyPhoto'])->name('hotel.photos.destroy');
+        Route::post('hotel/{stay}/responsiva/enviar', [HotelController::class, 'sendResponsiva'])->name('hotel.responsiva.send');
+        Route::get('hotel/{stay}/responsiva/descargar', [HotelController::class, 'downloadResponsiva'])->name('hotel.responsiva.download');
     });
 
     // Paseos
     Route::middleware('module:paseos')->group(function () {
+        Route::get('walks-config', [WalkRateController::class, 'config'])->name('walks.config');
+        Route::post('walks-config/rates', [WalkRateController::class, 'store'])->name('walks.rates.store');
+        Route::put('walks-config/rates/{rate}', [WalkRateController::class, 'update'])->name('walks.rates.update');
+        Route::delete('walks-config/rates/{rate}', [WalkRateController::class, 'destroy'])->name('walks.rates.destroy');
+
         Route::get('walks', [WalkSlotController::class, 'index'])->name('walks.index');
         Route::post('walks', [WalkSlotController::class, 'store'])->name('walks.store');
         Route::get('walks/{walkSlot}', [WalkSlotController::class, 'show'])->name('walks.show');
@@ -172,6 +189,8 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('walks/{walkSlot}/bookings', [WalkBookingController::class, 'store'])->name('walks.bookings.store');
         Route::post('walk-bookings/{walkBooking}/approve', [WalkBookingController::class, 'approve'])->name('walks.bookings.approve');
         Route::post('walk-bookings/{walkBooking}/cancel', [WalkBookingController::class, 'cancel'])->name('walks.bookings.cancel');
+        Route::post('walk-bookings/{walkBooking}/responsiva/enviar', [WalkBookingController::class, 'sendResponsiva'])->name('walks.bookings.responsiva.send');
+        Route::get('walk-bookings/{walkBooking}/responsiva/descargar', [WalkBookingController::class, 'downloadResponsiva'])->name('walks.bookings.responsiva.download');
     });
 
     // Recolección
@@ -192,6 +211,8 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('collection-bookings/{collectionBooking}/cancel', [CollectionBookingController::class, 'cancel'])->name('collection.bookings.cancel');
         Route::post('collection/quick-request', [CollectionBookingController::class, 'quickRequest'])->name('collection.quick-request');
         Route::post('collection/quick-add', [CollectionBookingController::class, 'quickAdd'])->name('collection.quick-add');
+        Route::post('collection-bookings/{collectionBooking}/responsiva/enviar', [CollectionBookingController::class, 'sendResponsiva'])->name('collection.bookings.responsiva.send');
+        Route::get('collection-bookings/{collectionBooking}/responsiva/descargar', [CollectionBookingController::class, 'downloadResponsiva'])->name('collection.bookings.responsiva.download');
     });
 
     // Grooming
@@ -210,6 +231,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::delete('grooming/{appointment}/photos/{photo}', [AppointmentController::class, 'destroyPhoto'])->name('grooming.photos.destroy');
         Route::post('grooming/{appointment}/responsiva/enviar', [AppointmentController::class, 'sendResponsiva'])->name('grooming.responsiva.send');
         Route::get('grooming/{appointment}/responsiva/descargar', [AppointmentController::class, 'downloadResponsiva'])->name('grooming.responsiva.download');
+        Route::post('grooming/{appointment}/payments', [AppointmentController::class, 'storePayment'])->name('grooming.payments.store');
     });
 
     // Veterinaria
@@ -238,6 +260,8 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('entrenamiento/{appointment}/complete', [TrainingController::class, 'complete'])->name('training.complete');
         Route::post('entrenamiento/{appointment}/cancel', [TrainingController::class, 'cancel'])->name('training.cancel');
         Route::post('entrenamiento/{appointment}/no-show', [TrainingController::class, 'noShow'])->name('training.noShow');
+        Route::post('entrenamiento/{appointment}/responsiva/enviar', [AppointmentController::class, 'sendResponsiva'])->name('training.responsiva.send');
+        Route::get('entrenamiento/{appointment}/responsiva/descargar', [AppointmentController::class, 'downloadResponsiva'])->name('training.responsiva.download');
     });
 
     // Settings — always accessible

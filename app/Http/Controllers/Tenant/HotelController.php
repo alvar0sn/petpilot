@@ -10,12 +10,15 @@ use App\Models\HotelStayPayment;
 use App\Models\HotelStayPhoto;
 use App\Models\Membership;
 use App\Models\MembershipCreditMovement;
+use App\Models\PackageCredit;
 use App\Models\PosCatalogItem;
 use App\Models\PosCategory;
 use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
 use App\Services\GhlService;
+use App\Services\PackageCreditService;
+use App\Services\ResponsivaService;
 use App\Services\WhatsappGatewayService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -183,6 +186,53 @@ class HotelController extends Controller
     }
 
     /**
+     * Igual que reconcileMembershipCredits pero con créditos de paquete — solo cubre
+     * las noches que la membresía no alcance (o que no haya membresía). Requiere que
+     * la estancia tenga una tarifa (rate_id) ligada a un artículo de catálogo, porque
+     * los créditos de paquete son por artículo exacto, no por tipo de servicio.
+     */
+    private function reconcilePackageCredits(HotelStay $stay, int $nochesObjetivo): void
+    {
+        if (! $stay->rate_id) {
+            return;
+        }
+
+        $rate = $stay->rate ?? HotelRate::find($stay->rate_id);
+        if (! $rate?->pos_item_id) {
+            return;
+        }
+
+        $nochesRestantes = max(0, $nochesObjetivo - ($stay->creditos_consumidos ?? 0));
+        $actuales = $stay->creditos_paquete_consumidos ?? 0;
+
+        $credit = $stay->package_credit_id
+            ? PackageCredit::find($stay->package_credit_id)
+            : PackageCreditService::findCredit($stay->pet_id, $rate->pos_item_id);
+
+        if (! $credit) {
+            return;
+        }
+
+        $deseados = min($nochesRestantes, $credit->saldo_actual + $actuales);
+        $delta = $deseados - $actuales;
+
+        if ($delta === 0) {
+            return;
+        }
+
+        if ($delta > 0) {
+            PackageCreditService::consume($credit, $delta, 'hotel_stay', $stay->id, "Se reservan {$delta} noche(s) de crédito de paquete para esta estancia.");
+        } else {
+            PackageCreditService::restore($credit, abs($delta), 'hotel_stay', $stay->id, 'Se liberan ' . abs($delta) . ' noche(s) de crédito de paquete de esta estancia.');
+        }
+
+        $stay->update([
+            'package_credit_id' => $credit->id,
+            'creditos_paquete_consumidos' => $deseados,
+        ]);
+    }
+
+    /**
      * Costo total estimado de la estancia (noches a cobrar × precio), o null si no hay
      * tarifa/precio conocido y por lo tanto no se puede topar el monto de un pago.
      */
@@ -198,7 +248,7 @@ class HotelController extends Controller
         $noches = $stay->fecha_salida
             ? max(1, $stay->fecha_entrada->diffInDays($stay->fecha_salida))
             : 1;
-        $creditosAUsar = $stay->cobro_membresia ? ($stay->creditos_consumidos ?? 0) : 0;
+        $creditosAUsar = ($stay->cobro_membresia ? ($stay->creditos_consumidos ?? 0) : 0) + ($stay->creditos_paquete_consumidos ?? 0);
         $nochesACobrar = max(0, $noches - $creditosAUsar);
 
         return $nochesACobrar * (float) $precio;
@@ -288,9 +338,9 @@ class HotelController extends Controller
             ]);
 
             $mensaje = 'Reserva creada.';
+            $noches = $this->estimateNights($data['fecha_entrada'], $data['fecha_salida'] ?? null);
 
             if ($stay->cobro_membresia && $stay->membership_id) {
-                $noches = $this->estimateNights($data['fecha_entrada'], $data['fecha_salida'] ?? null);
                 $this->reconcileMembershipCredits($stay, $noches);
 
                 if ($stay->creditos_consumidos > 0) {
@@ -298,6 +348,11 @@ class HotelController extends Controller
                         ? "Reserva creada. Se reservaron {$stay->creditos_consumidos} de {$noches} crédito(s) de membresía (créditos insuficientes para cubrir toda la estancia; el resto se cobrará en POS al hacer check-out)."
                         : "Reserva creada. Se reservaron {$stay->creditos_consumidos} crédito(s) de la membresía para esta estancia.";
                 }
+            }
+
+            $this->reconcilePackageCredits($stay, $noches);
+            if ($stay->creditos_paquete_consumidos > 0) {
+                $mensaje .= " Se cubrieron {$stay->creditos_paquete_consumidos} noche(s) con crédito de paquete.";
             }
 
             $ticket = null;
@@ -389,9 +444,14 @@ class HotelController extends Controller
         DB::transaction(function () use ($stay, $data) {
             $stay->update($data);
 
-            if ($stay->cobro_membresia && $stay->membership_id && $stay->isActive()) {
+            if ($stay->isActive()) {
                 $noches = $this->estimateNights($data['fecha_entrada'], $data['fecha_salida'] ?? null);
-                $this->reconcileMembershipCredits($stay, $noches);
+
+                if ($stay->cobro_membresia && $stay->membership_id) {
+                    $this->reconcileMembershipCredits($stay, $noches);
+                }
+
+                $this->reconcilePackageCredits($stay, $noches);
             }
         });
 
@@ -517,7 +577,10 @@ class HotelController extends Controller
                 $stay->refresh();
             }
 
-            $creditosAUsar = $stay->cobro_membresia ? ($stay->creditos_consumidos ?? 0) : 0;
+            $this->reconcilePackageCredits($stay, $noches);
+            $stay->refresh();
+
+            $creditosAUsar = ($stay->cobro_membresia ? ($stay->creditos_consumidos ?? 0) : 0) + ($stay->creditos_paquete_consumidos ?? 0);
             $nochesExtra = $noches - $creditosAUsar;
 
             $selectedRate = !empty($data['checkout_rate_id'])
@@ -602,8 +665,9 @@ class HotelController extends Controller
         ]);
 
         DB::transaction(function () use ($stay, $data) {
-            // Libera de vuelta a la membresía cualquier crédito que se hubiera reservado para esta estancia
+            // Libera de vuelta a la membresía y al paquete cualquier crédito reservado para esta estancia
             $this->reconcileMembershipCredits($stay, 0);
+            $this->reconcilePackageCredits($stay, 0);
 
             $stay->update([
                 'estado' => 'cancelado',
@@ -642,6 +706,22 @@ class HotelController extends Controller
         $photo->delete();
 
         return back()->with('success', 'Foto eliminada.');
+    }
+
+    public function sendResponsiva(HotelStay $stay): RedirectResponse
+    {
+        if ($stay->responsiva_firmado_at) {
+            return back()->with('error', 'Esta responsiva ya fue firmada.');
+        }
+
+        $url = ResponsivaService::send($stay, 'hotel');
+
+        return back()->with(['success' => "Responsiva enviada. Link: {$url}", 'responsiva_url' => $url]);
+    }
+
+    public function downloadResponsiva(HotelStay $stay): \Symfony\Component\HttpFoundation\Response
+    {
+        return ResponsivaService::download($stay);
     }
 
     // Configuración: espacios y tarifas

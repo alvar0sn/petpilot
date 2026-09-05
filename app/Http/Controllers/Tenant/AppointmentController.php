@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Tenant;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\AppointmentItem;
+use App\Models\AppointmentPayment;
 use App\Models\AppointmentPhoto;
 use App\Models\Event;
 use App\Models\EventType;
@@ -18,15 +19,14 @@ use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
 use App\Models\User;
-use App\Services\GhlService;
-use App\Services\ResponsivaPdfService;
-use App\Services\WhatsappGatewayService;
+use App\Services\AdvanceTicketService;
+use App\Services\PackageCreditService;
+use App\Services\ResponsivaService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -66,7 +66,9 @@ class AppointmentController extends Controller
                 'owner' => $a->pet?->owner?->nombre_completo,
                 'tipo_servicio' => $a->tipoServicio?->nombre,
                 'groomer' => $a->groomer ? trim($a->groomer->nombre . ' ' . $a->groomer->apellido) : null,
+                'groomer_id' => $a->groomer_id,
                 'station' => $a->station?->nombre,
+                'station_id' => $a->station_id,
                 'notas_internas' => $a->notas_internas,
                 'solicitud_owner' => $a->solicitud_owner,
                 'franja' => $a->franja,
@@ -158,13 +160,7 @@ class AppointmentController extends Controller
             ]);
 
             foreach ($data['items'] ?? [] as $item) {
-                AppointmentItem::create([
-                    'appointment_id'  => $appointment->id,
-                    'catalog_item_id' => $item['catalog_item_id'] ?? null,
-                    'nombre'          => $item['nombre'],
-                    'precio'          => $item['precio'],
-                    'cantidad'        => $item['cantidad'] ?? 1,
-                ]);
+                $this->createAppointmentItem($appointment, $item);
             }
 
             if ($usaMembresia) {
@@ -210,6 +206,9 @@ class AppointmentController extends Controller
             'ticket:id,folio,estado',
             'event.checklistItems:id',
             'membership.credits',
+            'payments.ticket:id,folio,estado',
+            'payments.ticket.paymentRequests' => fn($q) => $q->latest()->limit(1),
+            'payments.user:id,nombre,apellido',
         ]);
 
         return Inertia::render('Grooming/Show', [
@@ -256,6 +255,7 @@ class AppointmentController extends Controller
                     'precio' => $i->precio,
                     'cantidad' => $i->cantidad,
                     'catalog_item_id' => $i->catalog_item_id,
+                    'cubierto_por_paquete' => (bool) $i->package_credit_id,
                 ]),
                 'photos' => $appointment->photos->map(fn($p) => [
                     'id'          => $p->id,
@@ -273,6 +273,21 @@ class AppointmentController extends Controller
                 'cobro_membresia'  => $appointment->cobro_membresia,
                 'membership_id'    => $appointment->membership_id,
                 'creditos_estetica_saldo' => $appointment->membership?->getCredit('estetica')?->saldo_actual,
+                'payments' => $appointment->payments->map(fn($p) => [
+                    'id' => $p->id,
+                    'monto' => $p->monto,
+                    'tipo' => $p->tipo,
+                    'notas' => $p->notas,
+                    'created_at' => $p->created_at->toDateTimeString(),
+                    'user' => $p->user ? trim("{$p->user->nombre} {$p->user->apellido}") : null,
+                    'ticket' => $p->ticket ? [
+                        'id' => $p->ticket->id,
+                        'folio' => $p->ticket->folio,
+                        'estado' => $p->ticket->estado,
+                        'payment_requests' => $p->ticket->paymentRequests,
+                    ] : null,
+                ]),
+                'saldo_pendiente' => $this->saldoPendienteEstimado($appointment),
             ],
             'stations' => GroomingStation::where('activo', true)->orderBy('orden')->get(['id', 'nombre']),
             'eventTypes' => EventType::where('nombre', 'Estética')->get(['id', 'nombre']),
@@ -343,15 +358,10 @@ class AppointmentController extends Controller
         ]);
 
         DB::transaction(function () use ($appointment, $data) {
+            $this->restorePackageCredits($appointment, 'Cargos editados.');
             $appointment->items()->delete();
             foreach ($data['items'] ?? [] as $item) {
-                AppointmentItem::create([
-                    'appointment_id'  => $appointment->id,
-                    'catalog_item_id' => $item['catalog_item_id'] ?? null,
-                    'nombre'          => $item['nombre'],
-                    'precio'          => $item['precio'],
-                    'cantidad'        => $item['cantidad'] ?? 1,
-                ]);
+                $this->createAppointmentItem($appointment, $item);
             }
         });
 
@@ -419,11 +429,14 @@ class AppointmentController extends Controller
 
             $appointment->update(['event_id' => $event->id]);
 
-            // Crear ticket en POS si hay items
+            // Crear ticket en POS si hay items — los cubiertos por crédito de
+            // paquete (package_credit_id) ya se cobraron al vender el paquete,
+            // así que no se facturan de nuevo.
             $appointment->load('items');
-            if ($appointment->items->isNotEmpty()) {
+            $itemsACobrar = $appointment->items->whereNull('package_credit_id');
+            if ($itemsACobrar->isNotEmpty()) {
                 $shift = PosShift::where('estado', 'abierto')->first();
-                $subtotal = $appointment->items->sum(fn($i) => $i->precio * $i->cantidad);
+                $subtotal = $itemsACobrar->sum(fn($i) => $i->precio * $i->cantidad);
 
                 $ticket = PosTicket::create([
                     'folio' => $this->nextFolio(),
@@ -436,7 +449,7 @@ class AppointmentController extends Controller
                     'total' => $subtotal,
                 ]);
 
-                foreach ($appointment->items as $item) {
+                foreach ($itemsACobrar as $item) {
                     PosTicketLine::create([
                         'ticket_id' => $ticket->id,
                         'item_id' => $item->catalog_item_id,
@@ -465,6 +478,7 @@ class AppointmentController extends Controller
         DB::transaction(function () use ($appointment) {
             $appointment->update(['estado' => 'cancelada']);
             $this->restoreMembershipCredit($appointment, 'Cita cancelada.');
+            $this->restorePackageCredits($appointment, 'Cita cancelada.');
         });
 
         return back()->with('success', 'Cita cancelada.');
@@ -477,9 +491,64 @@ class AppointmentController extends Controller
         DB::transaction(function () use ($appointment) {
             $appointment->update(['estado' => 'no_show']);
             $this->restoreMembershipCredit($appointment, 'No se presentó.');
+            $this->restorePackageCredits($appointment, 'No se presentó.');
         });
 
         return back()->with('success', 'Cita marcada como no presentado.');
+    }
+
+    /**
+     * Busca (y consume, si hay saldo) un crédito de paquete para este artículo
+     * exacto al agregar un cargo — mismo momento en que hoy se aplicaría
+     * "cobrar con membresía", pero por artículo en vez de por servicio completo.
+     */
+    private function createAppointmentItem(Appointment $appointment, array $item): AppointmentItem
+    {
+        $cantidad = $item['cantidad'] ?? 1;
+        $catalogItemId = $item['catalog_item_id'] ?? null;
+        $packageCreditId = null;
+
+        if ($catalogItemId) {
+            $credit = PackageCreditService::findCredit($appointment->pet_id, $catalogItemId);
+            if ($credit && $credit->saldo_actual >= $cantidad) {
+                PackageCreditService::consume(
+                    $credit,
+                    $cantidad,
+                    'appointment',
+                    $appointment->id,
+                    "Cita #{$appointment->id}: {$item['nombre']}"
+                );
+                $packageCreditId = $credit->id;
+            }
+        }
+
+        return AppointmentItem::create([
+            'appointment_id'    => $appointment->id,
+            'catalog_item_id'   => $catalogItemId,
+            'package_credit_id' => $packageCreditId,
+            'nombre'            => $item['nombre'],
+            'precio'            => $item['precio'],
+            'cantidad'          => $cantidad,
+        ]);
+    }
+
+    private function restorePackageCredits(Appointment $appointment, string $motivo): void
+    {
+        $appointment->load('items.packageCredit');
+
+        foreach ($appointment->items as $item) {
+            if (! $item->packageCredit) {
+                continue;
+            }
+
+            PackageCreditService::restore(
+                $item->packageCredit,
+                (float) $item->cantidad,
+                'appointment',
+                $appointment->id,
+                "{$motivo} (cita #{$appointment->id}: {$item->nombre})"
+            );
+        }
     }
 
     private function restoreMembershipCredit(Appointment $appointment, string $motivo): void
@@ -567,59 +636,69 @@ class AppointmentController extends Controller
             return back()->with('error', 'Esta responsiva ya fue firmada.');
         }
 
-        if (! $appointment->recepcion) {
+        if ($appointment->modulo === 'grooming' && ! $appointment->recepcion) {
             return back()->with('error', 'Completa el formulario de recepción antes de enviar la responsiva.');
         }
 
-        $tenant = app('current_tenant');
-
-        if (! $appointment->responsiva_token) {
-            do {
-                $token = Str::random(10);
-            } while (Appointment::withoutTenantScope()->where('responsiva_token', $token)->exists());
-
-            $appointment->responsiva_token = $token;
-        }
-
-        $appointment->responsiva_texto = $tenant->getSetting('grooming.responsiva_texto') ?: Appointment::RESPONSIVA_TEXTO_DEFAULT;
-        $appointment->responsiva_enviado_at = now();
-        $appointment->save();
-
-        $url = url("/r/{$appointment->responsiva_token}");
-
-        $appointment->loadMissing('pet:id,nombre', 'owner:id,nombre,apellidos,telefono,email,ghl_contact_id');
-
-        app(GhlService::class)->sendWebhook($tenant->id, 'responsiva', [
-            'tipo'           => 'responsiva',
-            'ghl_contact_id' => $appointment->owner?->ghl_contact_id,
-            'owner_nombre'   => $appointment->owner?->nombre,
-            'owner_apellidos' => $appointment->owner?->apellidos,
-            'owner_telefono' => $appointment->owner?->telefono,
-            'owner_email'    => $appointment->owner?->email,
-            'negocio'        => $tenant->nombre,
-            'pet_nombre'     => $appointment->pet?->nombre,
-            'responsiva_url' => $url,
-        ]);
-
-        if ($appointment->owner) {
-            WhatsappGatewayService::send($tenant, 'responsiva', $appointment->owner, [
-                'pet_name' => $appointment->pet?->nombre ?? '',
-                'responsiva_url' => $url,
-            ], "responsiva:{$appointment->id}");
-        }
+        $url = ResponsivaService::send($appointment, $appointment->modulo);
 
         return back()->with(['success' => "Responsiva enviada. Link: {$url}", 'responsiva_url' => $url]);
     }
 
     public function downloadResponsiva(Appointment $appointment): \Symfony\Component\HttpFoundation\Response
     {
-        abort_unless($appointment->responsiva_firmado_at, 404);
-        abort_unless($appointment->recepcion, 422, 'Completa el formulario de recepción antes de descargar la responsiva.');
+        return ResponsivaService::download($appointment);
+    }
 
-        $pdf = ResponsivaPdfService::build($appointment);
-        $filename = 'responsiva-' . Str::slug($appointment->pet?->nombre ?? 'mascota') . '-' . $appointment->fecha->toDateString() . '.pdf';
+    private function saldoPendienteEstimado(Appointment $appointment): float
+    {
+        $appointment->loadMissing('items');
+        $total = $appointment->items->sum(fn($i) => $i->precio * $i->cantidad);
+        $pagado = (float) $appointment->payments()->sum('monto');
 
-        return $pdf->download($filename);
+        return max(0, round($total - $pagado, 2));
+    }
+
+    public function storePayment(Request $request, Appointment $appointment): RedirectResponse
+    {
+        abort_unless(in_array($appointment->estado, ['pendiente', 'confirmada']), 422, 'Solo se pueden registrar pagos para citas pendientes o confirmadas.');
+
+        $data = $request->validate([
+            'monto' => 'required|numeric|min:0.01',
+            'notas' => 'nullable|string|max:255',
+        ]);
+
+        $saldoPendiente = $this->saldoPendienteEstimado($appointment);
+
+        if ($saldoPendiente <= 0) {
+            return back()->withErrors(['monto' => 'Agrega servicios a la cita antes de registrar un adelanto.'])->withInput();
+        }
+
+        if ($data['monto'] > $saldoPendiente + 0.01) {
+            return back()->withErrors(['monto' => 'El adelanto no puede exceder los servicios agregados a la cita (' . number_format($saldoPendiente, 2) . ').'])->withInput();
+        }
+
+        $ticket = DB::transaction(function () use ($appointment, $data) {
+            $ticket = app(AdvanceTicketService::class)->create(
+                $appointment->owner_id,
+                $data['monto'],
+                "Adelanto — Estética: {$appointment->pet?->nombre}",
+            );
+
+            AppointmentPayment::create([
+                'appointment_id' => $appointment->id,
+                'pos_ticket_id' => $ticket->id,
+                'monto' => $data['monto'],
+                'tipo' => 'adelanto',
+                'notas' => $data['notas'] ?? null,
+                'user_id' => auth()->id(),
+            ]);
+
+            return $ticket;
+        });
+
+        return redirect()->route('pos.index', ['ticket' => $ticket->id])
+            ->with('success', 'Adelanto registrado. Completa el cobro en POS.');
     }
 
     private function nextFolio(): int

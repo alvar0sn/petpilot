@@ -1,4 +1,5 @@
 import TenantLayout from '@/Layouts/TenantLayout';
+import ResponsivaStatus from '@/Components/ResponsivaStatus';
 import { Link, useForm, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import axios from 'axios';
@@ -20,13 +21,13 @@ const bookingEstadoColor = {
     cancelado:  'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200',
 };
 
-function AddPetModal({ slot, walkers, onClose }) {
+function AddPetModal({ slot, walkers, rates, onClose }) {
     const { version } = usePage();
     const [petSearch, setPetSearch] = useState('');
     const [petResults, setPetResults] = useState([]);
     const [selectedPet, setSelectedPet] = useState(null);
     const [memberships, setMemberships] = useState([]);
-    const form = useForm({ pet_id: '', owner_id: '', cobro_membresia: false, membership_id: '', notas: '' });
+    const form = useForm({ pet_id: '', owner_id: '', rate_id: '', cobro_membresia: false, membership_id: '', notas: '' });
 
     async function searchPet(q) {
         setPetSearch(q);
@@ -98,6 +99,18 @@ function AddPetModal({ slot, walkers, onClose }) {
                     )}
                     {form.errors.pet_id && <p className="text-rose-500 text-xs mt-0.5">{form.errors.pet_id}</p>}
                 </div>
+
+                {rates?.length > 0 && (
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Tarifa (opcional)</label>
+                        <select className="w-full border-gray-300 rounded-lg text-sm py-1.5"
+                            value={form.data.rate_id} onChange={e => form.setData('rate_id', e.target.value)}>
+                            <option value="">Sin tarifa</option>
+                            {rates.map(r => <option key={r.id} value={r.id}>{r.nombre} — {Number(r.precio).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}</option>)}
+                        </select>
+                        <p className="text-xs text-zinc-400 mt-0.5">Se usa para facturar o para descontar un crédito de paquete si la mascota tiene uno de esta tarifa exacta.</p>
+                    </div>
+                )}
 
                 {selectedPet && hasCredits && (
                     <label className="flex items-start gap-2 border border-zinc-200 rounded-lg p-2.5 bg-zinc-50 cursor-pointer">
@@ -172,6 +185,15 @@ function BookingRow({ booking, fecha }) {
                 {booking.notas && <span className="ml-2 text-zinc-400">· {booking.notas}</span>}
             </div>
 
+            {booking.estado !== 'cancelado' && (
+                <ResponsivaStatus compact
+                    sendUrl={route('walks.bookings.responsiva.send', booking.id)}
+                    downloadUrl={route('walks.bookings.responsiva.download', booking.id)}
+                    enviadoAt={booking.responsiva_enviado_at}
+                    firmadoAt={booking.responsiva_firmado_at}
+                />
+            )}
+
             {cancelMode && (
                 <div className="bg-rose-50 border border-rose-200 rounded-lg p-2 flex items-center justify-between gap-2">
                     <span className="text-xs text-rose-700">¿Cancelar a {booking.pet?.nombre}?</span>
@@ -223,7 +245,7 @@ function ExtendRecurrencePanel({ recurrence }) {
     );
 }
 
-export default function WalksShow({ slot, walkers, recurrence }) {
+export default function WalksShow({ slot, walkers, recurrence, rates = [] }) {
     const tz = useTenantTimezone();
     const [showAddPet, setShowAddPet] = useState(false);
     const [cancelSlot, setCancelSlot] = useState(false);
@@ -243,7 +265,7 @@ export default function WalksShow({ slot, walkers, recurrence }) {
 
     return (
         <TenantLayout title="Slot de paseo">
-            {showAddPet && <AddPetModal slot={slot} walkers={walkers} onClose={() => setShowAddPet(false)} />}
+            {showAddPet && <AddPetModal slot={slot} walkers={walkers} rates={rates} onClose={() => setShowAddPet(false)} />}
 
             <div className="mb-4 flex items-center gap-2 text-sm text-zinc-500">
                 <Link href={route('walks.index')} className="hover:text-zinc-700 transition-colors">Paseos</Link>

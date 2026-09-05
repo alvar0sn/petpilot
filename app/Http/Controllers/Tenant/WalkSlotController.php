@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\WalkRate;
 use App\Models\WalkRecurrence;
 use App\Models\WalkSlot;
 use Carbon\Carbon;
@@ -185,6 +186,7 @@ class WalkSlotController extends Controller
             'slot' => $walkSlot,
             'walkers' => $walkers,
             'recurrence' => $recurrenceMeta,
+            'rates' => WalkRate::where('activa', true)->orderBy('nombre')->get(['id', 'nombre', 'tipo', 'precio']),
         ]);
     }
 

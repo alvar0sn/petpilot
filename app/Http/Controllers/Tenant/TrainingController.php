@@ -16,6 +16,7 @@ use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
 use App\Models\User;
+use App\Services\PackageCreditService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -110,13 +111,7 @@ class TrainingController extends Controller
             ]);
 
             foreach ($data['items'] ?? [] as $item) {
-                AppointmentItem::create([
-                    'appointment_id'  => $appointment->id,
-                    'catalog_item_id' => $item['catalog_item_id'] ?? null,
-                    'nombre'          => $item['nombre'],
-                    'precio'          => $item['precio'],
-                    'cantidad'        => $item['cantidad'] ?? 1,
-                ]);
+                $this->createAppointmentItem($appointment, $item);
             }
 
             if ($usaMembresia) {
@@ -170,6 +165,9 @@ class TrainingController extends Controller
                 'estado'         => $appointment->estado,
                 'notas_internas' => $appointment->notas_internas,
                 'created_via'    => $appointment->created_via,
+                'responsiva_token' => $appointment->responsiva_token,
+                'responsiva_enviado_at' => $appointment->responsiva_enviado_at?->toDateTimeString(),
+                'responsiva_firmado_at' => $appointment->responsiva_firmado_at?->toDateTimeString(),
                 'pet' => $appointment->pet ? [
                     'id'                 => $appointment->pet->id,
                     'nombre'             => $appointment->pet->nombre,
@@ -193,6 +191,7 @@ class TrainingController extends Controller
                     'precio'          => $i->precio,
                     'cantidad'        => $i->cantidad,
                     'catalog_item_id' => $i->catalog_item_id,
+                    'cubierto_por_paquete' => (bool) $i->package_credit_id,
                 ]),
                 'ticket_folio'              => $appointment->ticket?->folio,
                 'ticket_id'                 => $appointment->pos_ticket_id,
@@ -247,15 +246,10 @@ class TrainingController extends Controller
         ]);
 
         DB::transaction(function () use ($appointment, $data) {
+            $this->restorePackageCredits($appointment, 'Cargos editados.');
             $appointment->items()->delete();
             foreach ($data['items'] ?? [] as $item) {
-                AppointmentItem::create([
-                    'appointment_id'  => $appointment->id,
-                    'catalog_item_id' => $item['catalog_item_id'] ?? null,
-                    'nombre'          => $item['nombre'],
-                    'precio'          => $item['precio'],
-                    'cantidad'        => $item['cantidad'] ?? 1,
-                ]);
+                $this->createAppointmentItem($appointment, $item);
             }
         });
 
@@ -295,11 +289,13 @@ class TrainingController extends Controller
 
             $appointment->update(['event_id' => $event->id]);
 
-            // Crear ticket en POS si hay items (venta directa, sin membresía)
+            // Crear ticket en POS si hay items (venta directa, sin membresía) —
+            // los cubiertos por crédito de paquete ya se cobraron al venderlo.
             $appointment->load('items');
-            if ($appointment->items->isNotEmpty()) {
+            $itemsACobrar = $appointment->items->whereNull('package_credit_id');
+            if ($itemsACobrar->isNotEmpty()) {
                 $shift = PosShift::where('estado', 'abierto')->first();
-                $subtotal = $appointment->items->sum(fn($i) => $i->precio * $i->cantidad);
+                $subtotal = $itemsACobrar->sum(fn($i) => $i->precio * $i->cantidad);
 
                 $ticket = PosTicket::create([
                     'folio' => $this->nextFolio(),
@@ -312,7 +308,7 @@ class TrainingController extends Controller
                     'total' => $subtotal,
                 ]);
 
-                foreach ($appointment->items as $item) {
+                foreach ($itemsACobrar as $item) {
                     PosTicketLine::create([
                         'ticket_id' => $ticket->id,
                         'item_id' => $item->catalog_item_id,
@@ -341,6 +337,7 @@ class TrainingController extends Controller
         DB::transaction(function () use ($appointment) {
             $appointment->update(['estado' => 'cancelada']);
             $this->restoreMembershipCredit($appointment, 'Clase cancelada.');
+            $this->restorePackageCredits($appointment, 'Clase cancelada.');
         });
 
         return back()->with('success', 'Clase cancelada.');
@@ -353,9 +350,59 @@ class TrainingController extends Controller
         DB::transaction(function () use ($appointment) {
             $appointment->update(['estado' => 'no_show']);
             $this->restoreMembershipCredit($appointment, 'No se presentó.');
+            $this->restorePackageCredits($appointment, 'No se presentó.');
         });
 
         return back()->with('success', 'Clase marcada como no presentado.');
+    }
+
+    private function createAppointmentItem(Appointment $appointment, array $item): AppointmentItem
+    {
+        $cantidad = $item['cantidad'] ?? 1;
+        $catalogItemId = $item['catalog_item_id'] ?? null;
+        $packageCreditId = null;
+
+        if ($catalogItemId) {
+            $credit = PackageCreditService::findCredit($appointment->pet_id, $catalogItemId);
+            if ($credit && $credit->saldo_actual >= $cantidad) {
+                PackageCreditService::consume(
+                    $credit,
+                    $cantidad,
+                    'appointment',
+                    $appointment->id,
+                    "Clase #{$appointment->id}: {$item['nombre']}"
+                );
+                $packageCreditId = $credit->id;
+            }
+        }
+
+        return AppointmentItem::create([
+            'appointment_id'    => $appointment->id,
+            'catalog_item_id'   => $catalogItemId,
+            'package_credit_id' => $packageCreditId,
+            'nombre'            => $item['nombre'],
+            'precio'            => $item['precio'],
+            'cantidad'          => $cantidad,
+        ]);
+    }
+
+    private function restorePackageCredits(Appointment $appointment, string $motivo): void
+    {
+        $appointment->load('items.packageCredit');
+
+        foreach ($appointment->items as $item) {
+            if (! $item->packageCredit) {
+                continue;
+            }
+
+            PackageCreditService::restore(
+                $item->packageCredit,
+                (float) $item->cantidad,
+                'appointment',
+                $appointment->id,
+                "{$motivo} (clase #{$appointment->id}: {$item->nombre})"
+            );
+        }
     }
 
     private function restoreMembershipCredit(Appointment $appointment, string $motivo): void

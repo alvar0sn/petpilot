@@ -107,6 +107,11 @@ TEXTO;
         return $this->hasMany(AppointmentItem::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(AppointmentPayment::class)->orderBy('created_at');
+    }
+
     public function photos(): HasMany
     {
         return $this->hasMany(AppointmentPhoto::class);

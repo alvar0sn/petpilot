@@ -619,7 +619,7 @@ function PetAvatar({ pet }) {
     );
 }
 
-export default function PetShow({ pet, activeMembership, eventTypes, checklistItems, hotelStays, walkBookings, media = [] }) {
+export default function PetShow({ pet, activeMembership, activePackages = [], eventTypes, checklistItems, hotelStays, walkBookings, media = [] }) {
     const tz = useTenantTimezone();
     const [showForm, setShowForm] = useState(false);
     const [filtro, setFiltro] = useState('todos');
@@ -628,6 +628,7 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
     const [page, setPage] = useState(1);
     const PAGE_SIZE = 10;
     const [membershipOpen, setMembershipOpen] = useState(false);
+    const [openPackageId, setOpenPackageId] = useState(null);
 
     const allEvents  = (pet.events ?? []).map(e => ({ _kind: 'event',  _fecha: e.fecha,        ...e }));
     const allHotel   = (hotelStays ?? []).map(s => ({ _kind: 'hotel',  _fecha: s.fecha_entrada, ...s }));
@@ -703,6 +704,25 @@ export default function PetShow({ pet, activeMembership, eventTypes, checklistIt
                                         )}
                                     </div>
                                 )}
+                                {activePackages.map(pkg => (
+                                    <div key={pkg.id} className="mt-1.5">
+                                        <button type="button" onClick={() => setOpenPackageId(id => id === pkg.id ? null : pkg.id)}
+                                            className="inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 font-medium hover:bg-indigo-100 transition-colors">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+                                            Paquete · vence {formatDate(pkg.fecha_vencimiento, tz)}
+                                            <i className={`ti ti-chevron-down transition-transform duration-200 ${openPackageId === pkg.id ? 'rotate-180' : ''}`} style={{ fontSize: 13 }} />
+                                        </button>
+                                        {openPackageId === pkg.id && (
+                                            <div className="mt-1.5 flex flex-wrap gap-1">
+                                                {pkg.credits.map(c => (
+                                                    <span key={c.id} className={`inline-block whitespace-nowrap text-xs px-1.5 py-0.5 rounded-full font-medium ${c.saldo_actual <= 0 ? 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200' : 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200'}`}>
+                                                        {c.nombre} {c.saldo_actual}/{c.saldo_inicial}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
 

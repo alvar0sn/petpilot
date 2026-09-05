@@ -18,6 +18,7 @@ class CollectionBooking extends Model
         'direccion',
         'ubicacion_url',
         'rate_id',
+        'package_credit_id',
         'tipo_viaje',
         'estado',
         'cobro_membresia',
@@ -27,10 +28,18 @@ class CollectionBooking extends Model
         'origen_id',
         'notas',
         'created_by',
+        'responsiva_token',
+        'responsiva_texto',
+        'responsiva_enviado_at',
+        'responsiva_firma_path',
+        'responsiva_firmante_nombre',
+        'responsiva_firmado_at',
     ];
 
     protected $casts = [
         'cobro_membresia' => 'boolean',
+        'responsiva_enviado_at' => 'datetime',
+        'responsiva_firmado_at' => 'datetime',
     ];
 
     public function slot(): BelongsTo
@@ -51,6 +60,11 @@ class CollectionBooking extends Model
     public function rate(): BelongsTo
     {
         return $this->belongsTo(CollectionRate::class, 'rate_id');
+    }
+
+    public function packageCredit(): BelongsTo
+    {
+        return $this->belongsTo(PackageCredit::class);
     }
 
     public function membership(): BelongsTo

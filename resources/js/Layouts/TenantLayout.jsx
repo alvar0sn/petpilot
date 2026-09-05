@@ -17,6 +17,7 @@ const nav = [
     { label: 'Entrenamientos',  href: 'training.index',     icon: 'ti-whistle',          module: 'entrenamiento' },
     { label: 'Hotel',           href: 'hotel.index',        icon: 'ti-building',         module: 'hotel' },
     { label: 'Membresías',      href: 'memberships.index',  icon: 'ti-star',             module: 'memberships' },
+    { label: 'Paquetes',        href: 'packages.index',     icon: 'ti-package',          module: 'paquetes' },
     { label: 'Paseos',          href: 'walks.index',        icon: 'ti-dog',              module: 'paseos', badge: 'walks_pending_count' },
     { label: 'Recolección',     href: 'collection.index',   icon: 'ti-truck-delivery',   module: 'recoleccion' },
     { label: 'Reporte financiero', href: 'reports.financial', icon: 'ti-report-money',   module: 'pos' },

@@ -383,9 +383,16 @@ export default function GroomingIndex({ appointments, weekStart, stations, event
     const defaultDay = isCurrentWeek ? todayStr : weekDays[0];
     const [selectedDay, setSelectedDay] = useState(null);
     const activeMobileDay = selectedDay && weekDays.includes(selectedDay) ? selectedDay : defaultDay;
+    const [filterGroomer, setFilterGroomer] = useState('');
+    const [filterStation, setFilterStation] = useState('');
+
+    const filteredAppointments = appointments.filter(a =>
+        (!filterGroomer || String(a.groomer_id) === filterGroomer) &&
+        (!filterStation || String(a.station_id) === filterStation)
+    );
 
     const byDay = Object.fromEntries(weekDays.map(d => [d, []]));
-    appointments.forEach(a => { if (a.fecha in byDay) byDay[a.fecha].push(a); });
+    filteredAppointments.forEach(a => { if (a.fecha in byDay) byDay[a.fecha].push(a); });
 
     function goWeek(delta) {
         router.get(route('grooming.index'), { week_start: addDays(weekStart, delta * 7) }, { preserveState: false, replace: true });
@@ -412,6 +419,25 @@ export default function GroomingIndex({ appointments, weekStart, stations, event
             </div>
 
             <PendingRequestsPanel requests={pendingRequests} onApprove={setApproving} />
+
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+                <select value={filterGroomer} onChange={e => setFilterGroomer(e.target.value)}
+                    className="border-gray-300 rounded-lg text-sm py-1.5">
+                    <option value="">Todos los groomers</option>
+                    {groomers.map(g => <option key={g.id} value={g.id}>{g.nombre} {g.apellido}</option>)}
+                </select>
+                <select value={filterStation} onChange={e => setFilterStation(e.target.value)}
+                    className="border-gray-300 rounded-lg text-sm py-1.5">
+                    <option value="">Todas las estaciones</option>
+                    {stations.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                </select>
+                {(filterGroomer || filterStation) && (
+                    <button onClick={() => { setFilterGroomer(''); setFilterStation(''); }}
+                        className="text-xs text-zinc-500 hover:text-zinc-700 transition-colors">
+                        Limpiar filtros
+                    </button>
+                )}
+            </div>
 
             <div className="flex items-center justify-center gap-4 mb-6">
                 <button onClick={() => goWeek(-1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 text-zinc-500 text-xl font-light transition-colors">‹</button>

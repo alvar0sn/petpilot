@@ -104,7 +104,7 @@ class PosTicket extends Model
     public function displayEstado(): string
     {
         if ($this->estado === 'pagado' && (float) $this->refunded_amount > 0) {
-            return (float) $this->refunded_amount >= (float) $this->total ? 'reembolsado' : 'reembolso_parcial';
+            return 'reembolsado';
         }
 
         return $this->estado;

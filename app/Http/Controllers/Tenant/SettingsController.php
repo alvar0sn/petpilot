@@ -67,8 +67,15 @@ class SettingsController extends Controller
             ],
             'responsivaConfig' => [
                 'texto'         => $tenant->getSetting('grooming.responsiva_texto') ?? '',
-                'texto_default' => \App\Models\Appointment::RESPONSIVA_TEXTO_DEFAULT,
+                'texto_default' => \App\Support\ResponsivaTextos::default('grooming'),
             ],
+            'responsivaConfigs' => collect(['entrenamiento', 'hotel', 'paseos', 'recoleccion'])
+                ->mapWithKeys(fn($modulo) => [$modulo => [
+                    'texto'         => $tenant->getSetting(\App\Support\ResponsivaTextos::settingKey($modulo)) ?? '',
+                    'texto_default' => \App\Support\ResponsivaTextos::default($modulo),
+                    'label'         => \App\Support\ResponsivaTextos::label($modulo),
+                ]])
+                ->all(),
             'mercadoPagoConfig' => [
                 'activo'                => (bool) ($tenant->mercadoPagoConfig?->activo ?? false),
                 'public_key'            => $tenant->mercadoPagoConfig?->public_key ?? '',
@@ -123,7 +130,7 @@ class SettingsController extends Controller
             'role'              => 'required|in:tenant_admin,colaborador',
             'password'          => ['required', Password::min(8)],
             'permisos_modulos'  => 'nullable|array',
-            'permisos_modulos.*'=> 'in:crm,pos,memberships,hotel,paseos,grooming,veterinaria,entrenamiento',
+            'permisos_modulos.*'=> 'in:crm,pos,memberships,hotel,paseos,recoleccion,grooming,veterinaria,entrenamiento,paquetes',
         ]);
 
         app('current_tenant')->users()->create([
@@ -150,7 +157,7 @@ class SettingsController extends Controller
             'role'              => 'required|in:tenant_admin,colaborador',
             'activo'            => 'boolean',
             'permisos_modulos'  => 'nullable|array',
-            'permisos_modulos.*'=> 'in:crm,pos,memberships,hotel,paseos,grooming,veterinaria,entrenamiento',
+            'permisos_modulos.*'=> 'in:crm,pos,memberships,hotel,paseos,recoleccion,grooming,veterinaria,entrenamiento,paquetes',
         ]);
 
         if (! ($data['activo'] ?? true) || $data['role'] !== 'tenant_admin') {
@@ -566,10 +573,13 @@ class SettingsController extends Controller
     public function updateResponsivaConfig(Request $request): RedirectResponse
     {
         $data = $request->validate([
+            'modulo' => 'nullable|in:grooming,entrenamiento,hotel,paseos,recoleccion',
             'texto' => 'nullable|string|max:5000',
         ]);
 
-        app('current_tenant')->setSetting('grooming.responsiva_texto', $data['texto'] ?? '');
+        $modulo = $data['modulo'] ?? 'grooming';
+
+        app('current_tenant')->setSetting(\App\Support\ResponsivaTextos::settingKey($modulo), $data['texto'] ?? '');
 
         return back()->with('success', 'Texto de responsiva guardado.');
     }

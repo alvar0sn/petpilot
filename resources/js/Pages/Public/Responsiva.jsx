@@ -78,7 +78,9 @@ export default function PublicResponsiva({ negocio, appointment, texto, recepcio
                         <img src={negocio.logo_url} alt="Logo" style={{ maxHeight: '80px', maxWidth: '200px', objectFit: 'contain', margin: '0 auto 0.75rem' }} />
                     ) : null}
                     <div style={{ color: '#fff', fontSize: '1rem', fontWeight: 600 }}>{negocio.nombre}</div>
-                    <div style={{ color: '#fff', fontSize: '0.85rem', opacity: 0.85, marginTop: '0.15rem' }}>Carta responsiva</div>
+                    <div style={{ color: '#fff', fontSize: '0.85rem', opacity: 0.85, marginTop: '0.15rem' }}>
+                        Carta responsiva{appointment.servicio ? ` — ${appointment.servicio}` : ''}
+                    </div>
                 </div>
 
                 <div style={{ padding: '1.5rem' }}>

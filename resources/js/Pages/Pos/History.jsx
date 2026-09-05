@@ -9,11 +9,10 @@ function fmt(n) {
 }
 
 const estadoBadge = {
-    pagado:            'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-    cancelado:         'bg-rose-50 text-rose-600 ring-1 ring-rose-200',
-    abierto:           'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-    reembolsado:       'bg-rose-50 text-rose-600 ring-1 ring-rose-200',
-    reembolso_parcial: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',
+    pagado:      'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+    cancelado:   'bg-rose-50 text-rose-600 ring-1 ring-rose-200',
+    abierto:     'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+    reembolsado: 'bg-rose-50 text-rose-600 ring-1 ring-rose-200',
 };
 
 const estadoLabel = {
@@ -21,12 +20,10 @@ const estadoLabel = {
     cancelado: 'cancelado',
     abierto: 'abierto',
     reembolsado: 'reembolsado',
-    reembolso_parcial: 'reembolso parcial',
 };
 
 function RefundModal({ ticket, paymentMethods, onClose }) {
     const form = useForm({
-        monto: String(ticket.saldo_reembolsable.toFixed(2)),
         payment_method_id: paymentMethods[0]?.id ? String(paymentMethods[0].id) : '',
         motivo: '',
     });
@@ -40,15 +37,8 @@ function RefundModal({ ticket, paymentMethods, onClose }) {
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-lg w-full max-w-sm p-5">
                 <h3 className="font-semibold text-zinc-800 mb-1">Reembolsar ticket #{ticket.folio}</h3>
-                <p className="text-xs text-zinc-400 mb-4">Saldo reembolsable: {fmt(ticket.saldo_reembolsable)}</p>
+                <p className="text-xs text-zinc-400 mb-4">Se reembolsará el total: {fmt(ticket.saldo_reembolsable)}</p>
                 <form onSubmit={submit} className="space-y-3">
-                    <div>
-                        <label className="block text-xs font-medium text-zinc-600 mb-1">Monto</label>
-                        <input type="number" step="0.01" min="0.01" max={ticket.saldo_reembolsable}
-                            className="w-full border-gray-300 rounded-lg text-sm"
-                            value={form.data.monto} onChange={e => form.setData('monto', e.target.value)} />
-                        {form.errors.monto && <p className="text-red-500 text-xs mt-1">{form.errors.monto}</p>}
-                    </div>
                     <div>
                         <label className="block text-xs font-medium text-zinc-600 mb-1">Método de devolución</label>
                         <select className="w-full border-gray-300 rounded-lg text-sm"
@@ -180,12 +170,7 @@ export default function PosHistory({ tickets, filters, selectedOwner, paymentMet
                                     <td className="px-5 py-3.5">
                                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium inline-flex items-center ${estadoBadge[t.estado_display]}`}>{estadoLabel[t.estado_display] ?? t.estado_display}</span>
                                     </td>
-                                    <td className="px-5 py-3.5 text-right">
-                                        <div className="font-mono">{fmt(t.total)}</div>
-                                        {Number(t.refunded_amount) > 0 && (
-                                            <div className="text-xs text-rose-600">−{fmt(t.refunded_amount)} reembolsado</div>
-                                        )}
-                                    </td>
+                                    <td className="px-5 py-3.5 text-right font-mono">{fmt(t.total)}</td>
                                     <td className="px-5 py-3.5 text-zinc-400 text-xs">
                                         {t.cobrado_at ? formatDate(t.cobrado_at, tz) : formatDate(t.created_at, tz)}
                                     </td>

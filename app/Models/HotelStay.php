@@ -31,8 +31,16 @@ class HotelStay extends Model
         'cobro_membresia',
         'membership_id',
         'creditos_consumidos',
+        'package_credit_id',
+        'creditos_paquete_consumidos',
         'pos_ticket_id',
         'created_by',
+        'responsiva_token',
+        'responsiva_texto',
+        'responsiva_enviado_at',
+        'responsiva_firma_path',
+        'responsiva_firmante_nombre',
+        'responsiva_firmado_at',
     ];
 
     protected $casts = [
@@ -41,6 +49,9 @@ class HotelStay extends Model
         'precio_por_noche' => 'decimal:2',
         'cobro_membresia' => 'boolean',
         'creditos_consumidos' => 'integer',
+        'creditos_paquete_consumidos' => 'integer',
+        'responsiva_enviado_at' => 'datetime',
+        'responsiva_firmado_at' => 'datetime',
     ];
 
     public function pet(): BelongsTo
@@ -61,6 +72,11 @@ class HotelStay extends Model
     public function membership(): BelongsTo
     {
         return $this->belongsTo(Membership::class);
+    }
+
+    public function packageCredit(): BelongsTo
+    {
+        return $this->belongsTo(PackageCredit::class);
     }
 
     public function ticket(): BelongsTo

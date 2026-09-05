@@ -1,5 +1,6 @@
 import TenantLayout from '@/Layouts/TenantLayout';
 import Lightbox from '@/Components/Lightbox';
+import ResponsivaStatus from '@/Components/ResponsivaStatus';
 import SolicitarPagoMpButton from '@/Components/SolicitarPagoMpButton';
 import { compressImage } from '@/utils/compressImage';
 import { Link, router, useForm } from '@inertiajs/react';
@@ -722,6 +723,15 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
                         </button>
                     )}
                 </div>
+
+                <div className="mt-3 pt-3 border-t border-zinc-100">
+                    <ResponsivaStatus
+                        sendUrl={route('hotel.responsiva.send', stay.id)}
+                        downloadUrl={route('hotel.responsiva.download', stay.id)}
+                        enviadoAt={stay.responsiva_enviado_at}
+                        firmadoAt={stay.responsiva_firmado_at}
+                    />
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -754,6 +764,12 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
                                 <div className="flex justify-between text-green-700">
                                     <span>Cubiertas por membresía</span>
                                     <span className="font-semibold">{creditosReservados} noche{creditosReservados !== 1 ? 's' : ''}</span>
+                                </div>
+                            )}
+                            {stay.creditos_paquete_consumidos > 0 && (
+                                <div className="flex justify-between text-indigo-700">
+                                    <span>Cubiertas por paquete</span>
+                                    <span className="font-semibold">{stay.creditos_paquete_consumidos} noche{stay.creditos_paquete_consumidos !== 1 ? 's' : ''}</span>
                                 </div>
                             )}
 

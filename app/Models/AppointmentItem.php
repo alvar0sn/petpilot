@@ -16,6 +16,7 @@ class AppointmentItem extends Model
         'tenant_id',
         'appointment_id',
         'catalog_item_id',
+        'package_credit_id',
         'nombre',
         'precio',
         'cantidad',
@@ -35,5 +36,10 @@ class AppointmentItem extends Model
     public function catalogItem(): BelongsTo
     {
         return $this->belongsTo(PosCatalogItem::class, 'catalog_item_id');
+    }
+
+    public function packageCredit(): BelongsTo
+    {
+        return $this->belongsTo(PackageCredit::class);
     }
 }

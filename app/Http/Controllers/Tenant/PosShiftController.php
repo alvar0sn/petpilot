@@ -178,6 +178,8 @@ class PosShiftController extends Controller
                 'metodo' => $t->payments->pluck('paymentMethod.nombre')->filter()->unique()->implode(' + '),
                 'descuento' => $t->discount_amount,
                 'total' => $t->total,
+                'refunded_amount' => $t->refunded_amount,
+                'estado_display' => $t->displayEstado(),
                 'cobrado_at' => $t->cobrado_at,
             ]);
 

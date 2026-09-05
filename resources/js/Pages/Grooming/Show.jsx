@@ -1,5 +1,6 @@
 import AppointmentTimePicker from '@/Components/AppointmentTimePicker';
 import Lightbox from '@/Components/Lightbox';
+import SolicitarPagoMpButton from '@/Components/SolicitarPagoMpButton';
 import TenantLayout from '@/Layouts/TenantLayout';
 import { compressImage } from '@/utils/compressImage';
 import { Link, router, useForm } from '@inertiajs/react';
@@ -7,6 +8,63 @@ import { useRef, useState } from 'react';
 
 function fmt(n) {
     return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+}
+
+function PaymentModal({ appointment, saldoPendiente, onClose }) {
+    const hayTope = saldoPendiente > 0;
+    const form = useForm({
+        monto: hayTope ? String(saldoPendiente.toFixed(2)) : '',
+        notas: '',
+    });
+
+    function clampMonto(e) {
+        const n = parseFloat(e.target.value);
+        if (!isNaN(n) && n > saldoPendiente) {
+            form.setData('monto', String(saldoPendiente.toFixed(2)));
+        } else {
+            form.setData('monto', e.target.value);
+        }
+    }
+
+    function submit(e) {
+        e.preventDefault();
+        form.post(route('grooming.payments.store', appointment.id), { onSuccess: onClose });
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <form onSubmit={submit} className="bg-white border border-zinc-200 rounded-xl shadow-lg p-5 w-full max-w-sm space-y-3">
+                <h3 className="font-semibold text-zinc-800">Registrar adelanto — {appointment.pet?.nombre}</h3>
+                <p className="text-xs text-zinc-500">
+                    Servicios agregados: <span className="font-semibold text-zinc-800">{fmt(saldoPendiente)}</span>
+                </p>
+                {!hayTope && (
+                    <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                        Agrega servicios en "Cargos" antes de registrar un adelanto.
+                    </p>
+                )}
+                <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Monto del adelanto *</label>
+                    <input type="number" step="0.01" min="0.01" max={hayTope ? saldoPendiente : undefined}
+                        className="w-full border-gray-300 rounded-lg text-sm py-1.5"
+                        value={form.data.monto} onChange={clampMonto} disabled={!hayTope} required />
+                    {form.errors.monto && <p className="text-rose-500 text-xs mt-0.5">{form.errors.monto}</p>}
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Notas</label>
+                    <input type="text" className="w-full border-gray-300 rounded-lg text-sm py-1.5"
+                        value={form.data.notas} onChange={e => form.setData('notas', e.target.value)} />
+                </div>
+                <div className="flex gap-2 pt-1">
+                    <button type="button" onClick={onClose} className="flex-1 bg-white border border-zinc-200 text-zinc-600 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors">Cancelar</button>
+                    <button type="submit" disabled={!hayTope || form.processing}
+                        className="flex-1 bg-zinc-900 text-white py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
+                        {form.processing ? 'Procesando...' : 'Registrar'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
 }
 
 function fmtNac(dateStr) {
@@ -76,6 +134,11 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
     const [duracion, setDuracion] = useState(() => inferDuracion(appt.hora_inicio, appt.hora_fin));
     function saveEdit(e) { e.preventDefault(); form.put(route('grooming.update', appt.id), { onSuccess: () => setEditing(false) }); }
     function doAction(routeName) { router.post(route(routeName, appt.id)); }
+
+    const [showPayment, setShowPayment] = useState(false);
+    const [paymentsOpen, setPaymentsOpen] = useState((appt.payments ?? []).length > 0);
+    const totalPagado = (appt.payments ?? []).reduce((sum, p) => sum + Number(p.monto), 0);
+    const pendingPayment = [...(appt.payments ?? [])].reverse().find(p => p.ticket && p.ticket.estado !== 'pagado');
 
     const [sendingResponsiva, setSendingResponsiva] = useState(false);
     function sendResponsiva() {
@@ -210,6 +273,8 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
 
     return (
         <TenantLayout title="Cita de Grooming">
+            {showPayment && <PaymentModal appointment={appt} saldoPendiente={appt.saldo_pendiente ?? 0} onClose={() => setShowPayment(false)} />}
+
             <div className="mb-4">
                 <Link href={route('grooming.index', { week_start: appt.fecha })} className="text-sm text-zinc-500 hover:text-zinc-700 transition-colors">
                     ← Volver al calendario
@@ -285,6 +350,11 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                                 className="bg-zinc-50 text-zinc-400 border border-zinc-200 px-3 py-1.5 rounded-lg text-sm font-medium cursor-not-allowed">
                                 Descargar responsiva
                             </span>
+                        )}
+                        {canEdit && (
+                            <button onClick={() => setShowPayment(true)} className="bg-white border border-zinc-200 text-zinc-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors">
+                                Registrar adelanto
+                            </button>
                         )}
                         {canEdit && (
                             <button onClick={() => doAction('grooming.cancel')} className="bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-rose-100 transition-colors">Cancelar</button>
@@ -466,7 +536,12 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                         <div className="divide-y border border-zinc-100 rounded-lg text-sm">
                             {chargesForm.data.items.map((item, idx) => (
                                 <div key={idx} className="flex items-center gap-2 px-3 py-2">
-                                    <span className="flex-1 text-zinc-800">{item.nombre}</span>
+                                    <span className="flex-1 text-zinc-800">
+                                        {item.nombre}
+                                        {appt.items?.[idx]?.cubierto_por_paquete && (
+                                            <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200">paquete</span>
+                                        )}
+                                    </span>
                                     <span className="text-zinc-500 text-xs whitespace-nowrap">{item.cantidad}× {fmt(item.precio)}</span>
                                     <span className="text-zinc-700 text-xs font-medium whitespace-nowrap">{fmt(Number(item.precio) * Number(item.cantidad))}</span>
                                     {canEdit && (
@@ -541,6 +616,49 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                     )}
                 </div>}
             </div>
+
+            {/* Pagos */}
+            {(appt.payments ?? []).length > 0 && (
+                <div className="bg-white border border-zinc-100 shadow-sm rounded-xl mb-4 overflow-hidden">
+                    <button type="button" onClick={() => setPaymentsOpen(o => !o)}
+                        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-zinc-50 transition-colors">
+                        <h2 className="font-semibold text-zinc-700 text-sm flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-zinc-400" />
+                            Pagos
+                            {totalPagado > 0 && <span className="text-zinc-500 font-normal">· {fmt(totalPagado)} pagado</span>}
+                        </h2>
+                        <i className={`ti ti-chevron-down text-zinc-400 transition-transform duration-200 ${paymentsOpen ? 'rotate-180' : ''}`} style={{ fontSize: '16px' }} />
+                    </button>
+                    {paymentsOpen && (
+                        <div className="px-5 pb-5 pt-1 space-y-2 border-t border-zinc-100">
+                            {appt.payments.map(p => (
+                                <div key={p.id} className="flex items-center justify-between gap-2 text-sm py-1.5">
+                                    <div className="min-w-0">
+                                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${p.tipo === 'adelanto' ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-200' : 'bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200'}`}>
+                                            {p.tipo}
+                                        </span>
+                                        <span className="ml-2 font-medium text-zinc-800">{fmt(p.monto)}</span>
+                                        {p.notas && <span className="ml-2 text-zinc-400 text-xs">{p.notas}</span>}
+                                    </div>
+                                    {p.ticket && (
+                                        <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded font-medium ${p.ticket.estado === 'pagado' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'}`}>
+                                            {p.ticket.estado === 'pagado' ? 'pagado' : p.ticket.estado}
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+                            {pendingPayment && (
+                                <div className="pt-2 border-t border-zinc-100">
+                                    <p className="text-xs text-zinc-500 mb-1.5">
+                                        Cobro pendiente — ticket #{pendingPayment.ticket.folio}
+                                    </p>
+                                    <SolicitarPagoMpButton ticket={pendingPayment.ticket} />
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Recepción */}
             <div className="bg-white border border-amber-200 shadow-sm rounded-xl mb-4 overflow-hidden">

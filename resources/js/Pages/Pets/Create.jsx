@@ -68,6 +68,7 @@ export default function PetCreate({ owner, razasCustom = [] }) {
                         <div className="col-span-2">
                             <label className="block text-sm font-medium text-zinc-700 mb-1">Raza</label>
                             <BreedCombobox value={data.raza} onChange={v => setData('raza', v)} tipo={data.tipo} razasCustom={razasCustom} />
+                            <p className="text-xs text-zinc-400 mt-1">Si la mascota es mestiza, busca "Criollo" en el listado.</p>
                         </div>
 
                         <div>

@@ -8,6 +8,8 @@ use App\Models\CollectionSlot;
 use App\Models\Membership;
 use App\Models\MembershipCreditMovement;
 use App\Models\Owner;
+use App\Services\PackageCreditService;
+use App\Services\ResponsivaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -186,40 +188,84 @@ class CollectionBookingController extends Controller
     {
         abort_unless(in_array($collectionBooking->estado, ['programado', 'en_ruta']), 422, 'No se puede cancelar.');
 
-        $collectionBooking->update(['estado' => 'cancelado']);
+        DB::transaction(function () use ($collectionBooking) {
+            $collectionBooking->update(['estado' => 'cancelado']);
+
+            if ($collectionBooking->package_credit_id) {
+                PackageCreditService::restore(
+                    $collectionBooking->packageCredit,
+                    1,
+                    'collection_booking',
+                    $collectionBooking->id,
+                    "Recolección cancelada — {$collectionBooking->pet?->nombre}"
+                );
+            }
+        });
 
         return back()->with('success', 'Recolección cancelada.');
     }
 
+    public function sendResponsiva(CollectionBooking $collectionBooking): RedirectResponse
+    {
+        if ($collectionBooking->responsiva_firmado_at) {
+            return back()->with('error', 'Esta responsiva ya fue firmada.');
+        }
+
+        $url = ResponsivaService::send($collectionBooking, 'recoleccion');
+
+        return back()->with(['success' => "Responsiva enviada. Link: {$url}", 'responsiva_url' => $url]);
+    }
+
+    public function downloadResponsiva(CollectionBooking $collectionBooking): \Symfony\Component\HttpFoundation\Response
+    {
+        return ResponsivaService::download($collectionBooking);
+    }
+
     private function processPayment(CollectionBooking $booking): void
     {
-        if (!$booking->cobro_membresia || !$booking->membership_id) {
+        if ($booking->cobro_membresia && $booking->membership_id) {
+            $membership = Membership::with('credits')->find($booking->membership_id);
+            $credit = $membership?->getCredit('recoleccion');
+
+            if ($credit && $credit->saldo_actual > 0) {
+                $saldoAntes = $credit->saldo_actual;
+                $saldoNuevo = $saldoAntes - 1;
+                $credit->update(['saldo_actual' => $saldoNuevo]);
+
+                MembershipCreditMovement::create([
+                    'membership_id' => $membership->id,
+                    'credit_id' => $credit->id,
+                    'servicio_tipo' => 'recoleccion',
+                    'tipo' => 'consumo',
+                    'cantidad' => -1,
+                    'saldo_antes' => $saldoAntes,
+                    'saldo_despues' => $saldoNuevo,
+                    'referencia_tipo' => 'collection',
+                    'referencia_id' => $booking->id,
+                    'user_id' => auth()->id(),
+                    'notas' => "Recolección — {$booking->pet?->nombre} (ruta #{$booking->slot_id})",
+                ]);
+
+                return;
+            }
+        }
+
+        // Sin membresía (o sin saldo) — ¿tiene crédito de paquete para esta tarifa exacta?
+        if (! $booking->rate_id) {
             return;
         }
 
-        $membership = Membership::with('credits')->find($booking->membership_id);
-        $credit = $membership?->getCredit('recoleccion');
-
-        if (!$credit || $credit->saldo_actual <= 0) {
+        $booking->loadMissing('rate');
+        if (! $booking->rate?->pos_item_id) {
             return;
         }
 
-        $saldoAntes = $credit->saldo_actual;
-        $saldoNuevo = $saldoAntes - 1;
-        $credit->update(['saldo_actual' => $saldoNuevo]);
+        $credit = PackageCreditService::findCredit($booking->pet_id, $booking->rate->pos_item_id);
+        if (! $credit) {
+            return;
+        }
 
-        MembershipCreditMovement::create([
-            'membership_id' => $membership->id,
-            'credit_id' => $credit->id,
-            'servicio_tipo' => 'recoleccion',
-            'tipo' => 'consumo',
-            'cantidad' => -1,
-            'saldo_antes' => $saldoAntes,
-            'saldo_despues' => $saldoNuevo,
-            'referencia_tipo' => 'collection',
-            'referencia_id' => $booking->id,
-            'user_id' => auth()->id(),
-            'notas' => "Recolección — {$booking->pet?->nombre} (ruta #{$booking->slot_id})",
-        ]);
+        PackageCreditService::consume($credit, 1, 'collection_booking', $booking->id, "Recolección — {$booking->pet?->nombre} (ruta #{$booking->slot_id})");
+        $booking->update(['package_credit_id' => $credit->id]);
     }
 }

@@ -312,46 +312,41 @@ class PosTicketController extends Controller
     public function refund(Request $request, PosTicket $ticket): RedirectResponse
     {
         abort_if($ticket->estado !== 'pagado', 403, 'Solo se pueden reembolsar tickets pagados.');
+        abort_if($ticket->refundableAmount() <= 0.01, 403, 'Este ticket ya fue reembolsado.');
 
         $data = $request->validate([
-            'monto' => 'required|numeric|min:0.01',
             'payment_method_id' => 'required|exists:pos_payment_methods,id',
             'motivo' => 'required|string|max:255',
         ]);
-
-        if ($data['monto'] > $ticket->refundableAmount() + 0.01) {
-            return back()->withErrors(['monto' => 'El monto excede el saldo reembolsable del ticket.']);
-        }
 
         $shift = PosShift::where('estado', 'abierto')->first();
         if (! $shift) {
             return back()->withErrors(['error' => 'Debes abrir un turno para procesar reembolsos.']);
         }
 
-        DB::transaction(function () use ($ticket, $shift, $data) {
+        $monto = $ticket->refundableAmount();
+
+        DB::transaction(function () use ($ticket, $shift, $data, $monto) {
             PosTicketRefund::create([
                 'ticket_id' => $ticket->id,
                 'shift_id' => $shift->id,
                 'payment_method_id' => $data['payment_method_id'],
                 'user_id' => auth()->id(),
-                'monto' => $data['monto'],
+                'monto' => $monto,
                 'motivo' => $data['motivo'],
                 // ver nota en PosShiftController::addMovement() — useCurrent() es UTC,
                 // se fija explícito en la zona de la app para filtrar por fecha bien.
                 'created_at' => now(),
             ]);
 
-            $ticket->increment('refunded_amount', $data['monto']);
+            $ticket->increment('refunded_amount', $monto);
 
-            // Un reembolso total revierte la renovación de membresía que ese
-            // ticket haya pagado (periodo + créditos otorgados). Uno parcial no
-            // toca la membresía.
-            if ($ticket->refundableAmount() <= 0.01) {
-                $this->reverseMembershipRenewal($ticket);
-            }
+            // El ticket queda reembolsado por completo — revierte la renovación
+            // de membresía que haya pagado (periodo + créditos otorgados), si la hay.
+            $this->reverseMembershipRenewal($ticket);
         });
 
-        return back()->with('success', "Reembolso registrado en el ticket #{$ticket->folio}.");
+        return back()->with('success', "Ticket #{$ticket->folio} reembolsado.");
     }
 
     /**

@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Models\Appointment;
+use App\Models\CollectionBooking;
+use App\Models\HotelStay;
 use App\Models\PosTicketConfig;
+use App\Models\WalkBooking;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DomPdf;
 use Illuminate\Support\Facades\Storage;
@@ -33,9 +36,13 @@ class ResponsivaPdfService
      * exactamente las mismas condiciones documentadas que quedan en el
      * comprobante.
      */
-    public static function recepcionResumen(Appointment $appointment): array
+    public static function recepcionResumen(Appointment|HotelStay|WalkBooking|CollectionBooking $responsable): array
     {
-        $rec = $appointment->recepcion ?? [];
+        if (! ($responsable instanceof Appointment) || $responsable->modulo !== 'grooming') {
+            return ['hallazgos' => [], 'estado_manto' => null, 'accesorios' => null, 'notas_sesion' => null];
+        }
+
+        $rec = $responsable->recepcion ?? [];
 
         return [
             'hallazgos'    => collect(self::ANALISIS_LABELS)
@@ -43,7 +50,7 @@ class ResponsivaPdfService
                 ->values()
                 ->all(),
             'estado_manto' => self::ESTADO_MANTO_LABELS[$rec['estado_manto'] ?? ''] ?? null,
-            'accesorios'   => $appointment->accesorios,
+            'accesorios'   => $responsable->accesorios,
             'notas_sesion' => $rec['notas_sesion'] ?? null,
         ];
     }
@@ -57,9 +64,9 @@ class ResponsivaPdfService
      * evidencia documentada de las condiciones de la mascota al momento de
      * recibirla, junto con la firma de exención de responsabilidad.
      */
-    public static function build(Appointment $appointment): DomPdf
+    public static function build(Appointment|HotelStay|WalkBooking|CollectionBooking $responsable): DomPdf
     {
-        $appointment->loadMissing('pet:id,nombre', 'owner:id,nombre,apellidos');
+        $context = ResponsivaService::resolveContext($responsable);
         $tenant = app('current_tenant');
         $config = PosTicketConfig::first();
 
@@ -74,14 +81,16 @@ class ResponsivaPdfService
         }
 
         $firma = null;
-        if ($appointment->responsiva_firma_path) {
+        if ($responsable->responsiva_firma_path) {
             try {
                 $disk = Storage::disk(media_disk());
-                $firma = 'data:' . ($disk->mimeType($appointment->responsiva_firma_path) ?: 'image/png') . ';base64,' . base64_encode($disk->get($appointment->responsiva_firma_path));
+                $firma = 'data:' . ($disk->mimeType($responsable->responsiva_firma_path) ?: 'image/png') . ';base64,' . base64_encode($disk->get($responsable->responsiva_firma_path));
             } catch (\Throwable) {
                 $firma = null;
             }
         }
+
+        $fecha = $context['fecha'] ? \Carbon\Carbon::parse($context['fecha']) : null;
 
         return Pdf::loadView('pdf.responsiva', [
             'negocio' => [
@@ -91,15 +100,15 @@ class ResponsivaPdfService
                 'logo'      => $logo,
             ],
             'paciente' => [
-                'mascota' => $appointment->pet?->nombre,
-                'dueño'   => $appointment->owner ? trim("{$appointment->owner->nombre} {$appointment->owner->apellidos}") : null,
-                'fecha'   => $appointment->fecha->translatedFormat('d \\d\\e F \\d\\e Y'),
+                'mascota' => $context['pet']?->nombre,
+                'dueño'   => $context['owner'] ? trim("{$context['owner']->nombre} {$context['owner']->apellidos}") : null,
+                'fecha'   => $fecha?->translatedFormat('d \\d\\e F \\d\\e Y'),
             ],
-            'texto'    => $appointment->responsiva_texto,
+            'texto'    => $responsable->responsiva_texto,
             'firma'    => $firma,
-            'firmante' => $appointment->responsiva_firmante_nombre,
-            'firmado_at' => $appointment->responsiva_firmado_at?->translatedFormat('d/m/Y H:i'),
-            'recepcion' => self::recepcionResumen($appointment),
+            'firmante' => $responsable->responsiva_firmante_nombre,
+            'firmado_at' => $responsable->responsiva_firmado_at?->translatedFormat('d/m/Y H:i'),
+            'recepcion' => self::recepcionResumen($responsable),
         ])->setPaper('letter');
     }
 }

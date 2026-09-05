@@ -1,4 +1,5 @@
 import TenantLayout from '@/Layouts/TenantLayout';
+import ResponsivaStatus from '@/Components/ResponsivaStatus';
 import { Link, useForm, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import axios from 'axios';
@@ -232,6 +233,15 @@ function BookingRow({ booking }) {
             </div>
 
             {booking.notas && <div className="text-xs text-zinc-400">{booking.notas}</div>}
+
+            {booking.estado !== 'cancelado' && (
+                <ResponsivaStatus compact
+                    sendUrl={route('collection.bookings.responsiva.send', booking.id)}
+                    downloadUrl={route('collection.bookings.responsiva.download', booking.id)}
+                    enviadoAt={booking.responsiva_enviado_at}
+                    firmadoAt={booking.responsiva_firmado_at}
+                />
+            )}
 
             {cancelMode && (
                 <div className="bg-rose-50 border border-rose-200 rounded-lg p-2 flex items-center justify-between gap-2">

@@ -7,6 +7,13 @@ function fmt(n) {
     return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 }
 
+const reembolsoBadge = {
+    reembolsado: 'bg-rose-50 text-rose-600 ring-1 ring-rose-200',
+};
+const reembolsoLabel = {
+    reembolsado: 'reembolsado',
+};
+
 function Card({ title, children, className = '' }) {
     return (
         <div className={`bg-white border border-zinc-100 shadow-sm rounded-xl p-5 ${className}`}>
@@ -285,6 +292,11 @@ export default function ShiftDetail({ shift, efectivo, ventas, articulos, membre
                                                 #{t.folio}
                                             </a>
                                         ) : `#${t.folio}`}
+                                        {reembolsoBadge[t.estado_display] && (
+                                            <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium inline-flex items-center ${reembolsoBadge[t.estado_display]}`}>
+                                                {reembolsoLabel[t.estado_display]}
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="py-2 text-zinc-500">{t.cobrado_at ? formatDateTime(t.cobrado_at, tz) : '—'}</td>
                                     <td className="py-2 text-zinc-700">{t.cliente}</td>

@@ -433,12 +433,17 @@ export default function WalksIndex({ slots, walkers, filters, pending_bookings }
             {/* Header */}
             <div className="flex justify-between items-center mb-5">
                 <h2 className="text-xl font-bold text-zinc-800">Paseos</h2>
-                {tab === 'calendario' && (
-                    <button onClick={() => setShowCreate(true)}
-                        className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors">
-                        + Crear slot
-                    </button>
-                )}
+                <div className="flex items-center gap-2">
+                    <Link href={route('walks.config')} className="text-sm text-zinc-500 hover:text-zinc-700 px-2">
+                        Tarifas
+                    </Link>
+                    {tab === 'calendario' && (
+                        <button onClick={() => setShowCreate(true)}
+                            className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors">
+                            + Crear slot
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Tabs */}

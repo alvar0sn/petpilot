@@ -10,6 +10,7 @@ use App\Models\HotelStay;
 use App\Models\HotelStayPhoto;
 use App\Models\Membership;
 use App\Models\Owner;
+use App\Models\Package;
 use App\Models\Pet;
 use App\Models\PetFile;
 use App\Models\Raza;
@@ -88,6 +89,13 @@ class PetController extends Controller
             ->where('pet_id', $pet->id)
             ->where('activa', true)
             ->orderBy('fecha_inicio')
+            ->get();
+
+        $activePackages = Package::with('credits')
+            ->where('pet_id', $pet->id)
+            ->where('fecha_vencimiento', '>=', now()->toDateString())
+            ->whereHas('credits', fn($q) => $q->where('saldo_actual', '>', 0))
+            ->orderBy('fecha_vencimiento')
             ->get();
 
         $eventTypes = EventType::orderBy('nombre')->get(['id', 'nombre']);
@@ -175,6 +183,17 @@ class PetController extends Controller
             ]),
             'activeMembership' => $mapMembership($activeMemberships->first()),
             'activeMemberships' => $activeMemberships->map($mapMembership),
+            'activePackages' => $activePackages->map(fn(Package $p) => [
+                'id' => $p->id,
+                'fecha_vencimiento' => $p->fecha_vencimiento->toDateString(),
+                'dias_para_vencer' => $p->diasParaVencer(),
+                'credits' => $p->credits->map(fn($c) => [
+                    'id' => $c->id,
+                    'nombre' => $c->nombre_snapshot,
+                    'saldo_actual' => $c->saldo_actual,
+                    'saldo_inicial' => $c->saldo_inicial,
+                ]),
+            ]),
             'eventTypes' => $eventTypes,
             'checklistItems' => $checklistItems,
             'hotelStays' => $hotelStays->map(fn($s) => [
