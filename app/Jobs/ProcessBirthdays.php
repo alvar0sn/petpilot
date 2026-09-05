@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Pet;
 use App\Models\Tenant;
 use App\Services\GhlService;
+use App\Services\WhatsappGatewayService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -33,23 +34,30 @@ class ProcessBirthdays implements ShouldQueue
 
             foreach ($pets as $pet) {
                 $owner = $pet->owner;
-                if (! $owner?->ghl_contact_id) {
+                if (! $owner) {
                     continue;
                 }
 
                 $edad = $today->year - \Carbon\Carbon::parse($pet->fecha_nacimiento)->year;
 
-                $ghl->sendWebhook($tenant->id, 'cumpleanos', [
-                    'tipo' => 'cumpleanos',
-                    'ghl_contact_id' => $owner->ghl_contact_id,
-                    'owner_nombre' => $owner->nombre,
-                    'owner_apellidos' => $owner->apellidos,
-                    'owner_telefono' => $owner->telefono,
-                    'owner_email' => $owner->email,
-                    'negocio' => $tenant->nombre,
-                    'pet_nombre' => $pet->nombre,
-                    'edad_anos' => $edad,
-                ]);
+                if ($owner->ghl_contact_id) {
+                    $ghl->sendWebhook($tenant->id, 'cumpleanos', [
+                        'tipo' => 'cumpleanos',
+                        'ghl_contact_id' => $owner->ghl_contact_id,
+                        'owner_nombre' => $owner->nombre,
+                        'owner_apellidos' => $owner->apellidos,
+                        'owner_telefono' => $owner->telefono,
+                        'owner_email' => $owner->email,
+                        'negocio' => $tenant->nombre,
+                        'pet_nombre' => $pet->nombre,
+                        'edad_anos' => $edad,
+                    ]);
+                }
+
+                WhatsappGatewayService::send($tenant, 'cumpleanos', $owner, [
+                    'pet_name' => $pet->nombre,
+                    'age_years' => (string) $edad,
+                ], "cumpleanos:{$pet->id}:{$today->year}");
             }
         }
     }

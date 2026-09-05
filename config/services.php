@@ -42,4 +42,11 @@ return [
         'inbound_secret' => env('WHATSAPP_GATEWAY_INBOUND_SECRET'),
     ],
 
+    // Cuenta de MercadoPago de la plataforma (no la del tenant) — cobra las
+    // recargas de créditos de WhatsApp, vetrkt le cobra al tenant.
+    'whatsapp_credits' => [
+        'mp_access_token' => env('WHATSAPP_CREDITS_MP_ACCESS_TOKEN'),
+        'mp_webhook_secret' => env('WHATSAPP_CREDITS_MP_WEBHOOK_SECRET'),
+    ],
+
 ];

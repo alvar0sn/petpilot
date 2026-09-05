@@ -20,6 +20,7 @@ use App\Models\PosTicketLine;
 use App\Models\User;
 use App\Services\GhlService;
 use App\Services\ResponsivaPdfService;
+use App\Services\WhatsappGatewayService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -599,6 +600,13 @@ class AppointmentController extends Controller
             'pet_nombre'     => $appointment->pet?->nombre,
             'responsiva_url' => $url,
         ]);
+
+        if ($appointment->owner) {
+            WhatsappGatewayService::send($tenant, 'responsiva', $appointment->owner, [
+                'pet_name' => $appointment->pet?->nombre ?? '',
+                'responsiva_url' => $url,
+            ], "responsiva:{$appointment->id}");
+        }
 
         return back()->with(['success' => "Responsiva enviada. Link: {$url}", 'responsiva_url' => $url]);
     }

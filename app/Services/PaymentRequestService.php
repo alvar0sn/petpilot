@@ -10,6 +10,7 @@ use App\Models\PosTicket;
 use App\Models\Tenant;
 use App\Models\TenantMercadoPagoConfig;
 use Illuminate\Support\Facades\DB;
+use App\Services\WhatsappGatewayService;
 
 class PaymentRequestService
 {
@@ -70,6 +71,13 @@ class PaymentRequestService
                 'monto' => number_format((float) $ticket->total, 2, '.', ''),
                 'link' => $link,
             ]);
+
+            if ($tenant) {
+                WhatsappGatewayService::send($tenant, 'solicitud_pago', $ticket->owner, [
+                    'total' => '$' . number_format((float) $ticket->total, 2),
+                    'payment_link' => $link,
+                ], "solicitud_pago:{$paymentRequest->id}");
+            }
         }
 
         return [

@@ -17,12 +17,24 @@ class Tenant extends Model
         'plan_precio',
         'notas_internas',
         'settings',
+        'whatsapp_free_credits',
+        'whatsapp_purchased_credits',
+        'whatsapp_free_credits_monthly',
+        'whatsapp_credits_reset_at',
     ];
 
     protected $casts = [
-        'estado'   => 'string',
-        'settings' => 'array',
+        'estado'                     => 'string',
+        'settings'                   => 'array',
+        'whatsapp_credits_reset_at'  => 'date',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Tenant $tenant) {
+            $tenant->whatsapp_credits_reset_at ??= now()->addMonthNoOverflow();
+        });
+    }
 
     public function getSetting(string $key, mixed $default = null): mixed
     {

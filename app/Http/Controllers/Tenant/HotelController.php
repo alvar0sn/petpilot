@@ -16,6 +16,7 @@ use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
 use App\Services\GhlService;
+use App\Services\WhatsappGatewayService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -773,6 +774,12 @@ class HotelController extends Controller
             'fecha_salida'   => $stay->fecha_salida,
             'mensaje'        => $mensaje,
         ]);
+
+        WhatsappGatewayService::send($tenant, $type, $owner, [
+            'pet_name' => $stay->pet?->nombre ?? '',
+            'checkin_date' => optional($stay->fecha_entrada)->locale('es')->isoFormat('D [de] MMMM YYYY') ?? '',
+            'checkout_date' => optional($stay->fecha_salida)->locale('es')->isoFormat('D [de] MMMM YYYY') ?? '',
+        ], "{$type}:{$stay->id}");
     }
 
     private function nextFolio(): int

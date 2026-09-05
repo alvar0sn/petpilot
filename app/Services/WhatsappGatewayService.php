@@ -27,6 +27,10 @@ class WhatsappGatewayService
             return;
         }
 
+        if (!WhatsappCreditService::hasCredits($tenant)) {
+            return;
+        }
+
         $variables = config("whatsapp_triggers.{$trigger}.variables");
         if (!$variables) {
             return;
@@ -40,6 +44,7 @@ class WhatsappGatewayService
         $context = array_merge([
             'business_name' => $tenant->nombre,
             'business_phone' => $tenant->getSetting('whatsapp.business_phone') ?? '',
+            'slug' => $tenant->slug,
         ], $context);
 
         $current = self::resolveCurrentTemplate($tenant, $trigger);
@@ -120,6 +125,83 @@ class WhatsappGatewayService
         return $own ?? $shared;
     }
 
+    /**
+     * Si el tenant ya tiene su propia WABA conectada en el gateway — el panel
+     * lo usa para bloquear la edición de mensajes mientras use el número
+     * pool compartido (esa plantilla nunca se usa, solo la del operador).
+     * Retorna un default seguro (nada conectado) si el gateway no responde.
+     */
+    public static function fetchAccountStatus(Tenant $tenant): array
+    {
+        try {
+            $response = Http::withToken(config('services.whatsapp_gateway.token'))
+                ->timeout(10)
+                ->get(self::accountStatusUrl(), ['external_tenant_id' => (string) $tenant->id]);
+
+            $data = $response->successful() ? $response->json() : null;
+
+            return is_array($data) ? array_merge(self::defaultAccountStatus(), $data) : self::defaultAccountStatus();
+        } catch (Throwable $e) {
+            return self::defaultAccountStatus();
+        }
+    }
+
+    private static function defaultAccountStatus(): array
+    {
+        return [
+            'has_own_account' => false,
+            'own_connected' => false,
+            'display_phone_number' => null,
+            'has_active_account' => false,
+            'using_pool' => false,
+        ];
+    }
+
+    /**
+     * Números de la cuenta de YCloud del gateway que un super-admin conectó
+     * a mano y todavía no están asignados a ningún tenant — para el selector
+     * de "conectar número" en el super-admin. Vacío si el gateway no responde.
+     */
+    public static function fetchAvailableNumbers(): array
+    {
+        try {
+            $response = Http::withToken(config('services.whatsapp_gateway.token'))
+                ->timeout(10)
+                ->get(self::baseUrl().'/available-numbers');
+
+            return $response->successful() ? $response->json('data', []) : [];
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Liga un número ya conectado en YCloud (pero sin tenant asignado) a
+     * este tenant como su WABA propia.
+     *
+     * @return array{ok: bool, error?: string}
+     */
+    public static function connectOwnNumber(Tenant $tenant, string $phoneNumberId, string $wabaId): array
+    {
+        try {
+            $response = Http::withToken(config('services.whatsapp_gateway.token'))
+                ->timeout(10)
+                ->post(self::baseUrl().'/connect-number', [
+                    'external_tenant_id' => (string) $tenant->id,
+                    'phone_number_id' => $phoneNumberId,
+                    'waba_id' => $wabaId,
+                ]);
+
+            if ($response->successful()) {
+                return ['ok' => true];
+            }
+
+            return ['ok' => false, 'error' => $response->json('error', 'No se pudo conectar el número.')];
+        } catch (Throwable $e) {
+            return ['ok' => false, 'error' => 'Error de conexión con el gateway.'];
+        }
+    }
+
     private static function sendUrl(): string
     {
         return self::baseUrl().'/send';
@@ -128,6 +210,11 @@ class WhatsappGatewayService
     private static function templatesUrl(): string
     {
         return self::baseUrl().'/templates';
+    }
+
+    private static function accountStatusUrl(): string
+    {
+        return self::baseUrl().'/account-status';
     }
 
     private static function baseUrl(): string

@@ -27,6 +27,7 @@ class WhatsappTriggerCatalogController extends Controller
             'variables' => array_merge($definition['variables'], [
                 'business_name' => 'Nombre del negocio',
                 'business_phone' => 'Teléfono del negocio',
+                'slug' => 'Slug del negocio',
             ]),
         ]);
 

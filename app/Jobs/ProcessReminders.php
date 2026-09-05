@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Event;
 use App\Models\Tenant;
 use App\Services\GhlService;
+use App\Services\WhatsappGatewayService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -35,23 +36,32 @@ class ProcessReminders implements ShouldQueue
 
             foreach ($events as $event) {
                 $owner = $event->pet?->owner;
-                if (! $owner?->ghl_contact_id) {
+                if (! $owner) {
                     continue;
                 }
 
-                $ghl->sendWebhook($tenant->id, 'recordatorios', [
-                    'tipo' => 'recordatorio',
-                    'tipo_servicio' => $event->eventType?->nombre,
-                    'ghl_contact_id' => $owner->ghl_contact_id,
-                    'owner_nombre' => $owner->nombre,
-                    'owner_apellidos' => $owner->apellidos,
-                    'owner_telefono' => $owner->telefono,
-                    'owner_email' => $owner->email,
-                    'negocio' => $tenant->nombre,
-                    'pet_nombre' => $event->pet->nombre,
-                    'pet_raza' => $event->pet->raza,
-                    'fecha_servicio' => $event->proximo_recordatorio,
-                ]);
+                if ($owner->ghl_contact_id) {
+                    $ghl->sendWebhook($tenant->id, 'recordatorios', [
+                        'tipo' => 'recordatorio',
+                        'tipo_servicio' => $event->eventType?->nombre,
+                        'ghl_contact_id' => $owner->ghl_contact_id,
+                        'owner_nombre' => $owner->nombre,
+                        'owner_apellidos' => $owner->apellidos,
+                        'owner_telefono' => $owner->telefono,
+                        'owner_email' => $owner->email,
+                        'negocio' => $tenant->nombre,
+                        'pet_nombre' => $event->pet->nombre,
+                        'pet_raza' => $event->pet->raza,
+                        'fecha_servicio' => $event->proximo_recordatorio,
+                    ]);
+                }
+
+                WhatsappGatewayService::send($tenant, 'recordatorio', $owner, [
+                    'pet_name' => $event->pet->nombre,
+                    'pet_breed' => $event->pet->raza ?? '',
+                    'service_type' => $event->eventType?->nombre ?? '',
+                    'date' => optional($event->proximo_recordatorio)->locale('es')->isoFormat('D [de] MMMM YYYY') ?? '',
+                ], "recordatorio:{$event->id}");
 
                 $event->update(['recordatorio_enviado' => true]);
             }

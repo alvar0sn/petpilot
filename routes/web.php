@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WhatsappTriggerCatalogController;
+use App\Http\Controllers\WhatsappGatewayStatusController;
+use App\Http\Controllers\WhatsappCreditMercadoPagoController;
 use App\Http\Controllers\Tenant\EventController;
 use App\Http\Controllers\Tenant\OwnerController;
 use App\Http\Controllers\Tenant\PetController;
@@ -39,6 +41,7 @@ use App\Http\Controllers\SuperAdmin\AgencyUserController;
 use App\Http\Controllers\SuperAdmin\SuperAdminOwnersController;
 use App\Http\Controllers\SuperAdmin\SystemSettingsController;
 use App\Http\Controllers\SuperAdmin\TenantUserController;
+use App\Http\Controllers\SuperAdmin\WhatsappCreditController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -280,6 +283,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::get('whatsapp-messages/{trigger}/edit', [WhatsappMessageController::class, 'edit'])->name('whatsapp.edit');
         Route::post('whatsapp-messages', [WhatsappMessageController::class, 'update'])->name('whatsapp.update');
         Route::post('whatsapp-messages/{trigger}/toggle', [WhatsappMessageController::class, 'toggle'])->name('whatsapp.toggle');
+        Route::post('whatsapp-messages/creditos/recargar', [WhatsappMessageController::class, 'rechargeCredits'])->name('whatsapp.credits.recharge');
     });
 
     // Landing editor — always accessible
@@ -295,6 +299,14 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
     Route::put('tenants/{tenant}/ghl', [TenantController::class, 'updateGhl'])->name('tenants.ghl');
     Route::post('tenants/{tenant}/ghl/test', [TenantController::class, 'testWebhook'])->name('tenants.ghl.test');
     Route::patch('tenants/{tenant}/toggle', [TenantController::class, 'toggle'])->name('tenants.toggle');
+    Route::put('tenants/{tenant}/whatsapp', [TenantController::class, 'updateWhatsapp'])->name('tenants.whatsapp.update');
+    Route::get('tenants/{tenant}/whatsapp/available-numbers', [TenantController::class, 'whatsappAvailableNumbers'])->name('tenants.whatsapp.available-numbers');
+    Route::post('tenants/{tenant}/whatsapp/connect-number', [TenantController::class, 'whatsappConnectNumber'])->name('tenants.whatsapp.connect-number');
+
+    Route::get('whatsapp-credits', [WhatsappCreditController::class, 'index'])->name('whatsapp-credits.index');
+    Route::post('whatsapp-credits/settings', [WhatsappCreditController::class, 'updateSettings'])->name('whatsapp-credits.settings');
+    Route::put('whatsapp-credits/{tenant}/override', [WhatsappCreditController::class, 'updateOverride'])->name('whatsapp-credits.override');
+    Route::post('whatsapp-credits/{tenant}/adjust', [WhatsappCreditController::class, 'adjust'])->name('whatsapp-credits.adjust');
 
     Route::post('tenants/{tenant}/users', [TenantUserController::class, 'store'])->name('tenants.users.store');
     Route::put('tenants/{tenant}/users/{user}', [TenantUserController::class, 'update'])->name('tenants.users.update');
@@ -376,6 +388,8 @@ Route::get('/p/{token}', [PublicPaymentController::class, 'show'])->name('paymen
 
 // Mercado Pago inbound webhook (no auth, no CSRF — ver bootstrap/app.php)
 Route::post('/webhooks/mercadopago/{token}', [MercadoPagoWebhookController::class, 'handle'])->name('webhooks.mercadopago');
+Route::post('/webhooks/whatsapp-gateway/status', [WhatsappGatewayStatusController::class, 'receive'])->name('webhooks.whatsapp-gateway.status');
+Route::post('/webhooks/whatsapp-credits/mercadopago', [WhatsappCreditMercadoPagoController::class, 'handle'])->name('webhooks.whatsapp-credits.mercadopago');
 
 // Public studio landing — must be last to avoid catching other routes
 Route::get('/{slug}', [LandingController::class, 'show'])

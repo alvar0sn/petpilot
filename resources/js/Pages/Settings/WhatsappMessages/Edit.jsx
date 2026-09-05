@@ -23,6 +23,7 @@ const SAMPLE_BY_KEY = {
     payment_link: 'https://vetrkt.app/pago/abc123',
     business_name: 'Vetrkt Clínica',
     business_phone: '55 8765 4321',
+    slug: 'clinica-ejemplo',
 };
 
 function brace(n) {

@@ -53,7 +53,10 @@ class WhatsappMessageControllerTest extends TestCase
     {
         ['admin' => $admin, 'tenant' => $tenant] = $this->makeContext();
 
-        Http::fake(['*/templates*' => Http::response(['id' => 1], 201)]);
+        Http::fake([
+            '*/templates*' => Http::response(['id' => 1], 201),
+            '*/account-status*' => Http::response(['own_connected' => true]),
+        ]);
 
         $response = $this->actingAs($admin)->post(route('whatsapp.update'), [
             'trigger' => 'receipt',
@@ -74,7 +77,10 @@ class WhatsappMessageControllerTest extends TestCase
     {
         ['admin' => $admin] = $this->makeContext();
 
-        Http::fake(['*/templates*' => Http::response(['message' => 'error'], 500)]);
+        Http::fake([
+            '*/templates*' => Http::response(['message' => 'error'], 500),
+            '*/account-status*' => Http::response(['own_connected' => true]),
+        ]);
 
         $response = $this->actingAs($admin)->post(route('whatsapp.update'), [
             'trigger' => 'receipt',
@@ -89,7 +95,7 @@ class WhatsappMessageControllerTest extends TestCase
     {
         ['admin' => $admin] = $this->makeContext();
 
-        Http::fake();
+        Http::fake(['*/account-status*' => Http::response(['own_connected' => true])]);
 
         $this->actingAs($admin)->post(route('whatsapp.update'), [
             'trigger' => 'no-existe',
@@ -112,7 +118,10 @@ class WhatsappMessageControllerTest extends TestCase
     {
         ['admin' => $admin, 'tenant' => $tenant] = $this->makeContext();
 
-        Http::fake(['*/templates*' => Http::response(['id' => 1], 201)]);
+        Http::fake([
+            '*/templates*' => Http::response(['id' => 1], 201),
+            '*/account-status*' => Http::response(['own_connected' => true]),
+        ]);
 
         $this->actingAs($admin)->post(route('whatsapp.update'), [
             'trigger' => 'membership_expiring',
@@ -127,18 +136,21 @@ class WhatsappMessageControllerTest extends TestCase
     {
         ['admin' => $admin] = $this->makeContext();
 
-        Http::fake(['*/templates*' => Http::response([
-            'data' => [[
-                'template_name' => 'receipt',
-                'language' => 'es',
-                'category' => 'utility',
-                'body' => 'Gracias {{1}} por tu visita.',
-                'shared' => false,
-                'status' => 'approved',
-                'rejected_reason' => null,
-                'updated_at' => now()->toIso8601String(),
-            ]],
-        ])]);
+        Http::fake([
+            '*/templates*' => Http::response([
+                'data' => [[
+                    'template_name' => 'receipt',
+                    'language' => 'es',
+                    'category' => 'utility',
+                    'body' => 'Gracias {{1}} por tu visita.',
+                    'shared' => false,
+                    'status' => 'approved',
+                    'rejected_reason' => null,
+                    'updated_at' => now()->toIso8601String(),
+                ]],
+            ]),
+            '*/account-status*' => Http::response(['own_connected' => true]),
+        ]);
 
         $response = $this->actingAs($admin)->get(route('whatsapp.edit', 'receipt'));
 
@@ -161,7 +173,7 @@ class WhatsappMessageControllerTest extends TestCase
     {
         ['admin' => $admin] = $this->makeContext();
 
-        Http::fake();
+        Http::fake(['*/account-status*' => Http::response(['own_connected' => true])]);
 
         $response = $this->actingAs($admin)->post(route('whatsapp.update'), [
             'trigger' => 'receipt',
@@ -169,14 +181,14 @@ class WhatsappMessageControllerTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('body');
-        Http::assertNothingSent();
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/templates'));
     }
 
     public function test_rechaza_una_variable_pegada_al_principio(): void
     {
         ['admin' => $admin] = $this->makeContext();
 
-        Http::fake();
+        Http::fake(['*/account-status*' => Http::response(['own_connected' => true])]);
 
         $response = $this->actingAs($admin)->post(route('whatsapp.update'), [
             'trigger' => 'receipt',
@@ -184,14 +196,17 @@ class WhatsappMessageControllerTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('body');
-        Http::assertNothingSent();
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/templates'));
     }
 
     public function test_guardar_manda_el_orden_de_variables_usado_al_gateway(): void
     {
         ['admin' => $admin] = $this->makeContext();
 
-        Http::fake(['*/templates*' => Http::response(['id' => 1], 201)]);
+        Http::fake([
+            '*/templates*' => Http::response(['id' => 1], 201),
+            '*/account-status*' => Http::response(['own_connected' => true]),
+        ]);
 
         $this->actingAs($admin)->post(route('whatsapp.update'), [
             'trigger' => 'receipt',
@@ -201,5 +216,33 @@ class WhatsappMessageControllerTest extends TestCase
 
         Http::assertSent(fn ($request) => str_contains($request->url(), '/templates')
             && $request['variable_order'] === ['name', 'ticket_url']);
+    }
+
+    public function test_no_se_puede_editar_sin_whatsapp_propio_conectado(): void
+    {
+        ['admin' => $admin] = $this->makeContext();
+
+        Http::fake(['*/account-status*' => Http::response(['own_connected' => false])]);
+
+        $response = $this->actingAs($admin)->get(route('whatsapp.edit', 'receipt'));
+
+        $response->assertRedirect(route('whatsapp.index'));
+        $response->assertSessionHas('error');
+    }
+
+    public function test_no_se_puede_guardar_sin_whatsapp_propio_conectado(): void
+    {
+        ['admin' => $admin] = $this->makeContext();
+
+        Http::fake(['*/account-status*' => Http::response(['own_connected' => false])]);
+
+        $response = $this->actingAs($admin)->post(route('whatsapp.update'), [
+            'trigger' => 'receipt',
+            'body' => 'Hola {{1}}, gracias.',
+        ]);
+
+        $response->assertRedirect(route('whatsapp.index'));
+        $response->assertSessionHas('error');
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/templates'));
     }
 }

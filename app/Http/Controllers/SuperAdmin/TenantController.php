@@ -11,6 +11,7 @@ use App\Models\Pet;
 use App\Models\PosTicket;
 use App\Models\Tenant;
 use App\Services\TenantService;
+use App\Services\WhatsappGatewayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -128,6 +129,8 @@ class TenantController extends Controller
             'stats' => $stats,
             'ghlContactLogs' => $ghlContactLogs,
             'ghlWebhookLogs' => $ghlWebhookLogs,
+            'whatsappEnabled' => (bool) $tenant->getSetting('whatsapp.enabled'),
+            'whatsappAccountStatus' => WhatsappGatewayService::fetchAccountStatus($tenant),
         ]);
     }
 
@@ -331,6 +334,43 @@ class TenantController extends Controller
         } catch (\Exception $e) {
             return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
         }
+    }
+
+    public function updateWhatsapp(Request $request, Tenant $tenant): RedirectResponse
+    {
+        $validated = $request->validate([
+            'enabled' => 'required|boolean',
+        ]);
+
+        $tenant->setSetting('whatsapp.enabled', $validated['enabled']);
+
+        return back()->with('success', 'Configuración de WhatsApp actualizada.');
+    }
+
+    /**
+     * Números de la cuenta de YCloud del gateway que ya están conectados
+     * pero sin tenant asignado — para el selector manual de "conectar
+     * número" (sin pasar por Embedded Signup).
+     */
+    public function whatsappAvailableNumbers(): JsonResponse
+    {
+        return response()->json(['data' => WhatsappGatewayService::fetchAvailableNumbers()]);
+    }
+
+    public function whatsappConnectNumber(Request $request, Tenant $tenant): RedirectResponse
+    {
+        $validated = $request->validate([
+            'phone_number_id' => 'required|string',
+            'waba_id' => 'required|string',
+        ]);
+
+        $result = WhatsappGatewayService::connectOwnNumber($tenant, $validated['phone_number_id'], $validated['waba_id']);
+
+        if (!$result['ok']) {
+            return back()->with('error', $result['error'] ?? 'No se pudo conectar el número.');
+        }
+
+        return back()->with('success', 'Número de WhatsApp conectado a ' . $tenant->nombre . '.');
     }
 
     public function toggle(Tenant $tenant): RedirectResponse

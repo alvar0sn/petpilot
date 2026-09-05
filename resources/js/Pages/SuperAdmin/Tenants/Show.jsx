@@ -580,13 +580,109 @@ function GhlTab({ tenant, ghlContactLogs, ghlWebhookLogs, errors }) {
     );
 }
 
+function WhatsappTab({ tenant, whatsappEnabled, whatsappAccountStatus }) {
+    const [enabled, setEnabled] = useState(!!whatsappEnabled);
+    const [numbers, setNumbers] = useState(null);
+    const [loadingNumbers, setLoadingNumbers] = useState(false);
+    const [selected, setSelected] = useState('');
+
+    function toggleMaster() {
+        const next = !enabled;
+        setEnabled(next);
+        router.put(route('super-admin.tenants.whatsapp.update', tenant.id), { enabled: next }, { preserveScroll: true });
+    }
+
+    function loadNumbers() {
+        setLoadingNumbers(true);
+        fetch(route('super-admin.tenants.whatsapp.available-numbers', tenant.id))
+            .then(r => r.json())
+            .then(json => setNumbers(json.data ?? []))
+            .finally(() => setLoadingNumbers(false));
+    }
+
+    function connectNumber() {
+        if (!selected) return;
+        const number = numbers.find(n => n.phone_number_id === selected);
+        if (!number) return;
+
+        router.post(route('super-admin.tenants.whatsapp.connect-number', tenant.id), {
+            phone_number_id: number.phone_number_id,
+            waba_id: number.waba_id,
+        }, { preserveScroll: true });
+    }
+
+    return (
+        <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow p-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="font-semibold text-gray-900">Envíos de WhatsApp</h2>
+                        <p className="text-xs text-gray-400 mt-1">Interruptor general — apagado, este negocio no manda ningún WhatsApp automático.</p>
+                    </div>
+                    <button type="button" role="switch" aria-checked={enabled} onClick={toggleMaster}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enabled ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <span className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow p-6">
+                <h2 className="font-semibold text-gray-900 mb-1">Número de WhatsApp</h2>
+                <p className="text-xs text-gray-400 mb-4">
+                    Mientras no se conecte un número propio, este negocio usa el número compartido — sus plantillas editadas no se usan.
+                </p>
+
+                <div className="flex items-center gap-3 mb-4">
+                    <span className="text-sm text-gray-600">Estado:</span>
+                    {whatsappAccountStatus?.own_connected ? (
+                        <span className="text-xs font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 rounded-full px-2 py-0.5">
+                            Número propio conectado{whatsappAccountStatus.display_phone_number ? ` — ${whatsappAccountStatus.display_phone_number}` : ''}
+                        </span>
+                    ) : (
+                        <span className="text-xs font-medium bg-gray-100 text-gray-600 ring-1 ring-gray-200 rounded-full px-2 py-0.5">
+                            Usando número compartido
+                        </span>
+                    )}
+                </div>
+
+                {!whatsappAccountStatus?.own_connected && (
+                    <div className="border-t pt-4">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Ligar número ya conectado en YCloud</p>
+
+                        {numbers === null ? (
+                            <SecondaryButton onClick={loadNumbers} disabled={loadingNumbers}>
+                                {loadingNumbers ? 'Buscando…' : 'Buscar números disponibles'}
+                            </SecondaryButton>
+                        ) : numbers.length === 0 ? (
+                            <p className="text-xs text-gray-400">No hay números conectados en YCloud sin asignar.</p>
+                        ) : (
+                            <div className="flex items-center gap-3">
+                                <select className="border-gray-300 rounded-lg text-sm" value={selected} onChange={e => setSelected(e.target.value)}>
+                                    <option value="">Selecciona un número…</option>
+                                    {numbers.map(n => (
+                                        <option key={n.phone_number_id} value={n.phone_number_id}>
+                                            {n.display_phone_number ?? n.phone_number_id}
+                                        </option>
+                                    ))}
+                                </select>
+                                <PrimaryButton onClick={connectNumber} disabled={!selected}>Conectar</PrimaryButton>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 const TABS = [
     { key: 'datos', label: 'Datos del negocio' },
     { key: 'usuarios', label: 'Usuario dueño' },
     { key: 'ghl', label: 'GHL / Webhooks' },
+    { key: 'whatsapp', label: 'WhatsApp' },
 ];
 
-export default function TenantShow({ tenant, stats, ghlContactLogs, ghlWebhookLogs }) {
+export default function TenantShow({ tenant, stats, ghlContactLogs, ghlWebhookLogs, whatsappEnabled, whatsappAccountStatus }) {
     const { flash, errors } = usePage().props;
     const [tab, setTab] = useState('datos');
 
@@ -630,6 +726,7 @@ export default function TenantShow({ tenant, stats, ghlContactLogs, ghlWebhookLo
             {tab === 'datos' && <BusinessDataTab tenant={tenant} />}
             {tab === 'usuarios' && <OwnerUsersTab tenant={tenant} />}
             {tab === 'ghl' && <GhlTab tenant={tenant} ghlContactLogs={ghlContactLogs} ghlWebhookLogs={ghlWebhookLogs} errors={errors} />}
+            {tab === 'whatsapp' && <WhatsappTab tenant={tenant} whatsappEnabled={whatsappEnabled} whatsappAccountStatus={whatsappAccountStatus} />}
         </SuperAdminLayout>
     );
 }

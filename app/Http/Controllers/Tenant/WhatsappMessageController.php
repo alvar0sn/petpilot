@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Models\WhatsappCreditMovement;
+use App\Services\WhatsappCreditCheckout;
 use App\Services\WhatsappGatewayService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,20 +16,45 @@ class WhatsappMessageController extends Controller
     {
         $tenant = app('current_tenant');
         $triggers = $this->buildTriggerRows($tenant);
+        $accountStatus = WhatsappGatewayService::fetchAccountStatus($tenant);
 
         return Inertia::render('Settings/WhatsappMessages/Index', [
             'triggers' => $triggers->values(),
             'whatsappEnabled' => (bool) $tenant->getSetting('whatsapp.enabled'),
+            'accountStatus' => $accountStatus,
+            'credits' => [
+                'free' => $tenant->whatsapp_free_credits,
+                'purchased' => $tenant->whatsapp_purchased_credits,
+            ],
+            'creditMovements' => WhatsappCreditMovement::latest()->paginate(15),
         ]);
     }
 
-    public function edit(string $trigger): Response
+    public function rechargeCredits(WhatsappCreditCheckout $checkout)
+    {
+        $tenant = app('current_tenant');
+        $preference = $checkout->createPreference($tenant);
+
+        if (isset($preference['error'])) {
+            return back()->with('error', 'No se pudo iniciar la recarga — intenta de nuevo en un momento.');
+        }
+
+        return redirect()->away($preference['init_point']);
+    }
+
+    public function edit(string $trigger): Response|\Illuminate\Http\RedirectResponse
     {
         $catalog = config('whatsapp_triggers');
 
         abort_unless(isset($catalog[$trigger]), 404);
 
         $tenant = app('current_tenant');
+
+        if (!$this->hasOwnWhatsapp($tenant)) {
+            return redirect()->route('whatsapp.index')
+                ->with('error', 'Necesitas tu propio número de WhatsApp conectado para poder editar mensajes — mientras uses el número compartido, siempre se manda el mensaje genérico del catálogo.');
+        }
+
         $row = $this->buildTriggerRows($tenant)->get($trigger);
 
         return Inertia::render('Settings/WhatsappMessages/Edit', [
@@ -35,8 +62,26 @@ class WhatsappMessageController extends Controller
         ]);
     }
 
+    /**
+     * Sin WABA propia conectada, la plantilla que el dueño guarde aquí jamás
+     * se somete a Meta ni se usa (siempre se manda por la cuenta pool con la
+     * plantilla compartida del operador) — dejar editar le da una falsa
+     * sensación de que personalizó su mensaje.
+     */
+    private function hasOwnWhatsapp($tenant): bool
+    {
+        return (bool) (WhatsappGatewayService::fetchAccountStatus($tenant)['own_connected'] ?? false);
+    }
+
     public function update(Request $request)
     {
+        $tenant = app('current_tenant');
+
+        if (!$this->hasOwnWhatsapp($tenant)) {
+            return redirect()->route('whatsapp.index')
+                ->with('error', 'Necesitas tu propio número de WhatsApp conectado para poder editar mensajes.');
+        }
+
         $validated = $request->validate([
             'trigger' => ['required', 'string'],
             'body' => ['required', 'string', function ($attribute, $value, $fail) {
@@ -58,7 +103,6 @@ class WhatsappMessageController extends Controller
             ? array_values(array_unique($order))
             : null;
 
-        $tenant = app('current_tenant');
         $saved = WhatsappGatewayService::saveTemplate(
             $tenant,
             $validated['trigger'],

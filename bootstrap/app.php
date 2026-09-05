@@ -43,6 +43,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // sesión ni token CSRF — necesita quedar fuera de la validación estándar.
         $middleware->validateCsrfTokens(except: [
             'webhooks/mercadopago/*',
+            'webhooks/whatsapp-gateway/*',
+            'webhooks/whatsapp-credits/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
