@@ -10,8 +10,11 @@ use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
 use App\Models\PosTicketRefund;
+use App\Models\User;
+use App\Notifications\ShiftClosedNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -77,7 +80,31 @@ class PosShiftController extends Controller
             'estado' => 'cerrado',
         ]);
 
+        $this->notifyClosed($shift);
+
         return redirect()->route('pos.shift.show', $shift)->with('success', 'Turno cerrado.');
+    }
+
+    /**
+     * Manda el resumen de cierre por email a los admins del tenant — mismo
+     * resumen que ven en pantalla (buildSummary), para que el correo y la
+     * vista de detalle del turno siempre muestren exactamente los mismos
+     * números.
+     */
+    private function notifyClosed(PosShift $shift): void
+    {
+        $tenant = app('current_tenant');
+
+        $admins = User::where('tenant_id', $tenant->id)
+            ->where('role', 'tenant_admin')
+            ->where('activo', true)
+            ->get();
+
+        if ($admins->isEmpty()) {
+            return;
+        }
+
+        Notification::send($admins, new ShiftClosedNotification($tenant, $this->buildSummary($shift)));
     }
 
     public function addMovement(Request $request, PosShift $shift): RedirectResponse
@@ -107,7 +134,20 @@ class PosShiftController extends Controller
 
     public function show(PosShift $shift): Response
     {
-        $shift->load(['user:id,nombre,apellido', 'closedByUser:id,nombre,apellido', 'cashMovements.user:id,nombre,apellido']);
+        return Inertia::render('Pos/ShiftDetail', [
+            ...$this->buildSummary($shift),
+            'paymentMethods' => PosPaymentMethod::where('activo', true)->orderBy('orden')->get(['id', 'nombre']),
+        ]);
+    }
+
+    /**
+     * Resumen completo de un turno (efectivo, ventas, artículos, tickets,
+     * reembolsos) — usado tanto por la vista de detalle como por el email
+     * de cierre, para que ambos siempre muestren los mismos números.
+     */
+    private function buildSummary(PosShift $shift): array
+    {
+        $shift->loadMissing(['user:id,nombre,apellido', 'closedByUser:id,nombre,apellido', 'cashMovements.user:id,nombre,apellido']);
 
         $ticketsQuery = fn() => PosTicket::where('shift_close_id', $shift->id)->where('estado', 'pagado');
 
@@ -183,7 +223,7 @@ class PosShiftController extends Controller
                 'cobrado_at' => $t->cobrado_at,
             ]);
 
-        return Inertia::render('Pos/ShiftDetail', [
+        return [
             'shift' => [
                 'id' => $shift->id,
                 'estado' => $shift->estado,
@@ -228,8 +268,7 @@ class PosShiftController extends Controller
             'porCategoria' => $porCategoria,
             'reembolsos' => $refunds,
             'tickets' => $tickets,
-            'paymentMethods' => PosPaymentMethod::where('activo', true)->orderBy('orden')->get(['id', 'nombre']),
-        ]);
+        ];
     }
 
     public function mercadoPago(PosShift $shift): Response
