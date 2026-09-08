@@ -89,7 +89,8 @@ export default function PackagesCreate({ catalogItems }) {
                             <input className="w-full border-gray-300 rounded-lg text-sm py-1.5"
                                 placeholder="Buscar mascota..."
                                 value={selectedPet ? `${selectedPet.nombre} — ${selectedPet.owner}` : petSearch}
-                                onChange={e => { setSelectedPet(null); form.setData('pet_id', ''); searchPet(e.target.value); }} />
+                                onChange={e => { setSelectedPet(null); form.setData('pet_id', ''); searchPet(e.target.value); }}
+                                onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} />
                             {petResults.length > 0 && (
                                 <div className="absolute z-20 mt-1 w-full bg-white border border-zinc-200 rounded-xl shadow-lg max-h-40 overflow-y-auto">
                                     {petResults.map(p => (
@@ -128,7 +129,13 @@ export default function PackagesCreate({ catalogItems }) {
                                     value={itemDraft.catalog_item_id
                                         ? catalogItems.find(c => String(c.id) === itemDraft.catalog_item_id)?.nombre ?? ''
                                         : itemFilter}
-                                    onChange={e => { setItemDraft(d => ({ ...d, catalog_item_id: '' })); setItemFilter(e.target.value); }} />
+                                    onChange={e => { setItemDraft(d => ({ ...d, catalog_item_id: '' })); setItemFilter(e.target.value); }}
+                                    onKeyDown={e => {
+                                        if (e.key !== 'Enter') return;
+                                        e.preventDefault();
+                                        if (itemDraft.catalog_item_id) { addItem(); return; }
+                                        if (filteredCatalog.length === 1) { setItemDraft({ catalog_item_id: String(filteredCatalog[0].id), cantidad: '1' }); setItemFilter(''); }
+                                    }} />
                                 {itemFilter.length >= 2 && !itemDraft.catalog_item_id && (
                                     <div className="absolute z-20 mt-1 w-full bg-white border border-zinc-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                                         {filteredCatalog.slice(0, 20).map(c => (
@@ -146,7 +153,8 @@ export default function PackagesCreate({ catalogItems }) {
                                 )}
                             </div>
                             <input type="number" min="0.01" step="1" className="col-span-2 border-gray-300 rounded-lg text-sm"
-                                value={itemDraft.cantidad} onChange={e => setItemDraft(d => ({ ...d, cantidad: e.target.value }))} />
+                                value={itemDraft.cantidad} onChange={e => setItemDraft(d => ({ ...d, cantidad: e.target.value }))}
+                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem(); } }} />
                             <button type="button" onClick={addItem} disabled={!itemDraft.catalog_item_id}
                                 className="col-span-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-colors">
                                 Agregar
