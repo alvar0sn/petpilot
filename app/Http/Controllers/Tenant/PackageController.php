@@ -95,7 +95,7 @@ class PackageController extends Controller
             default => 0,
         };
         $total = max(0, round($subtotal - $descuentoMonto, 2));
-        $fechaVencimiento = now()->addDays($data['vigencia_dias'])->toDateString();
+        $fechaVencimiento = now()->addDays((int) $data['vigencia_dias'])->toDateString();
 
         $package = DB::transaction(function () use ($data, $pet, $subtotal, $descuentoTipo, $descuentoValor, $total, $fechaVencimiento) {
             $shift = PosShift::where('estado', 'abierto')->first();
