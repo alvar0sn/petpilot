@@ -19,6 +19,7 @@ class PackageCreditService
             ->where('pos_catalog_item_id', $posCatalogItemId)
             ->where('saldo_actual', '>', 0)
             ->where('fecha_vencimiento', '>=', now()->toDateString())
+            ->whereHas('package.ticket', fn($q) => $q->where('estado', 'pagado'))
             ->orderBy('fecha_vencimiento')
             ->first();
     }

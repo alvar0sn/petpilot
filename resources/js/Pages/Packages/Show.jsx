@@ -48,8 +48,12 @@ export default function PackagesShow({ package: pkg }) {
                         <h2 className="text-xl font-semibold text-zinc-900">{pkg.pet?.nombre}</h2>
                         <p className="text-sm text-zinc-500">{pkg.owner?.nombre} · {pkg.owner?.telefono}</p>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pkg.vencido ? 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200' : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'}`}>
-                        {pkg.vencido ? 'Vencido' : 'Vigente'}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        !pkg.pagado ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+                        : pkg.vencido ? 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200'
+                        : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                    }`}>
+                        {!pkg.pagado ? (pkg.ticket_estado === 'cancelado' ? 'Cancelado' : 'Pendiente de pago') : pkg.vencido ? 'Vencido' : 'Vigente'}
                     </span>
                 </div>
 
@@ -72,6 +76,7 @@ export default function PackagesShow({ package: pkg }) {
                             <Link href={route('pos.index', { ticket: pkg.ticket_id })} className="font-medium text-zinc-700 hover:underline">
                                 #{pkg.ticket_folio}
                             </Link>
+                            <span className="text-xs text-zinc-400 ml-1 capitalize">({pkg.ticket_estado})</span>
                         </div>
                     )}
                 </div>

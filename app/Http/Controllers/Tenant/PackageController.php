@@ -22,7 +22,7 @@ class PackageController extends Controller
 {
     public function index(Request $request): Response
     {
-        $packages = Package::with(['pet:id,nombre,owner_id', 'pet.owner:id,nombre,apellidos', 'credits'])
+        $packages = Package::with(['pet:id,nombre,owner_id', 'pet.owner:id,nombre,apellidos', 'credits', 'ticket:id,estado'])
             ->when($request->search, function ($q, $s) {
                 $sl = '%' . mb_strtolower($s) . '%';
                 $q->whereHas('pet', fn($q) => $q
@@ -43,6 +43,8 @@ class PackageController extends Controller
                 'total' => $p->total,
                 'fecha_vencimiento' => $p->fecha_vencimiento->toDateString(),
                 'vencido' => $p->isExpired(),
+                'pagado' => $p->isPagado(),
+                'ticket_estado' => $p->ticket?->displayEstado(),
                 'creditos_restantes' => $p->credits->sum('saldo_actual'),
                 'creditos_totales' => $p->credits->sum('saldo_inicial'),
             ]);
@@ -198,6 +200,8 @@ class PackageController extends Controller
                 'total' => $package->total,
                 'fecha_vencimiento' => $package->fecha_vencimiento->toDateString(),
                 'vencido' => $package->isExpired(),
+                'pagado' => $package->isPagado(),
+                'ticket_estado' => $package->ticket?->displayEstado(),
                 'created_at' => $package->created_at->toDateTimeString(),
                 'ticket_folio' => $package->ticket?->folio,
                 'ticket_id' => $package->pos_ticket_id,

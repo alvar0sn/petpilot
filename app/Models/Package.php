@@ -66,6 +66,11 @@ class Package extends Model
         return $this->fecha_vencimiento->isPast();
     }
 
+    public function isPagado(): bool
+    {
+        return $this->ticket?->isPaid() ?? false;
+    }
+
     public function diasParaVencer(): int
     {
         return (int) now()->diffInDays($this->fecha_vencimiento, false);
