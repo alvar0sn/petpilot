@@ -131,6 +131,7 @@ class AppointmentController extends Controller
             'items.*.nombre'   => 'required|string|max:255',
             'items.*.precio'   => 'required|numeric|min:0',
             'items.*.cantidad' => 'nullable|numeric|min:0.01',
+            'items.*.usar_paquete' => 'boolean',
         ]);
 
         $pet = Pet::findOrFail($data['pet_id']);
@@ -240,6 +241,7 @@ class AppointmentController extends Controller
                     'alergias'          => $appointment->pet->alergias,
                     'padecimientos'     => $appointment->pet->padecimientos,
                     'obs_comportamiento'=> $appointment->pet->obs_comportamiento,
+                    'paquete_creditos'  => PackageCreditService::availableForPet($appointment->pet_id),
                 ] : null,
                 'owner' => $appointment->pet?->owner ? [
                     'id' => $appointment->pet->owner->id,
@@ -355,6 +357,7 @@ class AppointmentController extends Controller
             'items.*.nombre'          => 'required|string|max:255',
             'items.*.precio'          => 'required|numeric|min:0',
             'items.*.cantidad'        => 'nullable|numeric|min:0.01',
+            'items.*.usar_paquete'    => 'boolean',
         ]);
 
         DB::transaction(function () use ($appointment, $data) {
@@ -506,9 +509,10 @@ class AppointmentController extends Controller
     {
         $cantidad = $item['cantidad'] ?? 1;
         $catalogItemId = $item['catalog_item_id'] ?? null;
+        $usarPaquete = $item['usar_paquete'] ?? true;
         $packageCreditId = null;
 
-        if ($catalogItemId) {
+        if ($catalogItemId && $usarPaquete) {
             $credit = PackageCreditService::findCredit($appointment->pet_id, $catalogItemId);
             if ($credit && $credit->saldo_actual >= $cantidad) {
                 PackageCreditService::consume(

@@ -79,9 +79,13 @@ export default function TrainingShow({ appointment, entrenadores, catalogItems }
             nombre:          i.nombre,
             precio:          String(i.precio),
             cantidad:        String(i.cantidad ?? 1),
+            usar_paquete:    !!i.cubierto_por_paquete,
         })),
     });
-    const [itemDraft, setItemDraft] = useState({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1' });
+    const [itemDraft, setItemDraft] = useState({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1', usar_paquete: true });
+    const paqueteCreditoDraft = itemDraft.catalog_item_id
+        ? appt.pet?.paquete_creditos?.find(c => String(c.catalog_item_id) === String(itemDraft.catalog_item_id))
+        : null;
     function pickCatalogItem(e) {
         const id = e.target.value;
         const found = catalogItems.find(c => String(c.id) === id);
@@ -91,12 +95,18 @@ export default function TrainingShow({ appointment, entrenadores, catalogItems }
             nombre:   found?.nombre ?? (id ? d.nombre : ''),
             precio:   found ? String(found.precio) : (id ? d.precio : ''),
             cantidad: '1',
+            usar_paquete: true,
         }));
     }
     function addCharge() {
         if (!itemDraft.nombre || itemDraft.precio === '') return;
-        chargesForm.setData('items', [...chargesForm.data.items, { ...itemDraft, cantidad: parseFloat(itemDraft.cantidad) || 1 }]);
-        setItemDraft({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1' });
+        const tieneCredito = !!paqueteCreditoDraft;
+        chargesForm.setData('items', [...chargesForm.data.items, {
+            ...itemDraft,
+            cantidad: parseFloat(itemDraft.cantidad) || 1,
+            usar_paquete: tieneCredito ? itemDraft.usar_paquete : false,
+        }]);
+        setItemDraft({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1', usar_paquete: true });
     }
     function removeCharge(idx) { chargesForm.setData('items', chargesForm.data.items.filter((_, i) => i !== idx)); }
     function saveCharges(e) { e.preventDefault(); chargesForm.put(route('training.items', appt.id)); }
@@ -308,7 +318,7 @@ export default function TrainingShow({ appointment, entrenadores, catalogItems }
                                 <div key={idx} className="flex items-center gap-2 px-3 py-2">
                                     <span className="flex-1 text-zinc-800">
                                         {item.nombre}
-                                        {appt.items?.[idx]?.cubierto_por_paquete && (
+                                        {item.usar_paquete && (
                                             <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200">paquete</span>
                                         )}
                                     </span>
@@ -365,6 +375,17 @@ export default function TrainingShow({ appointment, entrenadores, catalogItems }
                                     Agregar
                                 </button>
                             </div>
+
+                            {paqueteCreditoDraft && (
+                                <label className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white cursor-pointer">
+                                    <input type="checkbox" checked={itemDraft.usar_paquete}
+                                        onChange={e => setItemDraft(d => ({ ...d, usar_paquete: e.target.checked }))} className="rounded" />
+                                    <span className="text-xs font-medium text-indigo-700">
+                                        Usar crédito de paquete
+                                        <span className="ml-1 font-normal text-indigo-500">({paqueteCreditoDraft.saldo_actual} disponible{paqueteCreditoDraft.saldo_actual !== 1 ? 's' : ''} de {paqueteCreditoDraft.nombre})</span>
+                                    </span>
+                                </label>
+                            )}
 
                             <div className="flex justify-end pt-1">
                                 <button type="submit" disabled={chargesForm.processing}

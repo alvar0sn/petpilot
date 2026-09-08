@@ -61,7 +61,7 @@ class CollectionSlotController extends Controller
         return Inertia::render('Collection/Index', [
             'slots' => $slots,
             'recolectores' => $recolectores,
-            'rates' => CollectionRate::where('activa', true)->orderBy('cantidad')->get(['id', 'nombre', 'cantidad', 'precio']),
+            'rates' => CollectionRate::where('activa', true)->orderBy('cantidad')->get(['id', 'nombre', 'cantidad', 'precio', 'pos_item_id']),
             'filters' => ['week_start' => $weekStart->toDateString()] + $request->only('recolector_id', 'estado'),
         ]);
     }
@@ -125,7 +125,7 @@ class CollectionSlotController extends Controller
             'slot' => $collectionSlot,
             'recolectores' => $recolectores,
             'paradas' => $paradas,
-            'rates' => CollectionRate::where('activa', true)->orderBy('cantidad')->get(['id', 'nombre', 'cantidad', 'precio']),
+            'rates' => CollectionRate::where('activa', true)->orderBy('cantidad')->get(['id', 'nombre', 'cantidad', 'precio', 'pos_item_id']),
         ]);
     }
 

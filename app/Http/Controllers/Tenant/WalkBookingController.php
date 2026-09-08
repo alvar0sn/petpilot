@@ -26,6 +26,7 @@ class WalkBookingController extends Controller
             'rate_id' => 'nullable|exists:walk_rates,id',
             'cobro_membresia' => 'boolean',
             'membership_id' => 'nullable|exists:memberships,id',
+            'usar_paquete' => 'boolean',
             'notas' => 'nullable|string|max:500',
         ]);
 
@@ -38,7 +39,9 @@ class WalkBookingController extends Controller
             return back()->withErrors(['pet_id' => 'El slot está lleno.']);
         }
 
-        $booking = DB::transaction(function () use ($walkSlot, $data, $request) {
+        $usarPaquete = $data['usar_paquete'] ?? true;
+
+        $booking = DB::transaction(function () use ($walkSlot, $data, $request, $usarPaquete) {
             $booking = WalkBooking::create([
                 ...$data,
                 'slot_id' => $walkSlot->id,
@@ -48,7 +51,7 @@ class WalkBookingController extends Controller
                 'created_by' => auth()->id(),
             ]);
 
-            $this->processPayment($booking);
+            $this->processPayment($booking, $usarPaquete);
 
             return $booking;
         });
@@ -106,7 +109,7 @@ class WalkBookingController extends Controller
         return ResponsivaService::download($walkBooking);
     }
 
-    private function processPayment(WalkBooking $booking): void
+    private function processPayment(WalkBooking $booking, bool $usarPaquete = true): void
     {
         if ($booking->cobro_membresia && $booking->membership_id) {
             $membership = Membership::with('credits')->find($booking->membership_id);
@@ -136,7 +139,7 @@ class WalkBookingController extends Controller
         }
 
         // Sin membresía (o sin saldo) — ¿tiene crédito de paquete para esta tarifa exacta?
-        if (! $booking->rate_id) {
+        if (! $usarPaquete || ! $booking->rate_id) {
             return;
         }
 

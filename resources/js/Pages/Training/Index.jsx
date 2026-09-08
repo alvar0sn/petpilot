@@ -56,6 +56,7 @@ function NewClassModal({ entrenadores, catalogItems, defaultDate, onClose }) {
         const pets = owners.flatMap(o => (o.pets ?? []).map(p => ({
             id: p.id, nombre: p.nombre, owner: o.nombre_completo,
             membership_id: p.membership_id_entrenamiento ?? null, creditos_entrenamiento: p.creditos_entrenamiento ?? 0,
+            paquete_creditos: p.paquete_creditos ?? [],
         })));
         setPetResults(pets.slice(0, 8));
     }
@@ -71,18 +72,26 @@ function NewClassModal({ entrenadores, catalogItems, defaultDate, onClose }) {
         }));
     }
 
-    const [itemDraft, setItemDraft] = useState({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1' });
+    const [itemDraft, setItemDraft] = useState({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1', usar_paquete: true });
+    const paqueteCreditoDraft = itemDraft.catalog_item_id
+        ? selectedPet?.paquete_creditos?.find(c => String(c.catalog_item_id) === String(itemDraft.catalog_item_id))
+        : null;
 
     function addItem() {
         if (!itemDraft.nombre || itemDraft.precio === '') return;
-        form.setData('items', [...form.data.items, { ...itemDraft, cantidad: parseFloat(itemDraft.cantidad) || 1 }]);
-        setItemDraft({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1' });
+        const tieneCredito = !!paqueteCreditoDraft;
+        form.setData('items', [...form.data.items, {
+            ...itemDraft,
+            cantidad: parseFloat(itemDraft.cantidad) || 1,
+            usar_paquete: tieneCredito ? itemDraft.usar_paquete : false,
+        }]);
+        setItemDraft({ catalog_item_id: '', nombre: '', precio: '', cantidad: '1', usar_paquete: true });
     }
     function removeItem(idx) { form.setData('items', form.data.items.filter((_, i) => i !== idx)); }
     function pickCatalogItem(e) {
         const id = e.target.value;
         const found = catalogItems.find(c => String(c.id) === id);
-        setItemDraft(d => ({ ...d, catalog_item_id: id, nombre: found?.nombre ?? d.nombre, precio: found ? String(found.precio) : d.precio }));
+        setItemDraft(d => ({ ...d, catalog_item_id: id, nombre: found?.nombre ?? d.nombre, precio: found ? String(found.precio) : d.precio, usar_paquete: true }));
     }
     function submit(e) { e.preventDefault(); form.post(route('training.store'), { onSuccess: onClose }); }
 
@@ -156,6 +165,9 @@ function NewClassModal({ entrenadores, catalogItems, defaultDate, onClose }) {
                             {form.data.items.map((item, idx) => (
                                 <div key={idx} className="flex items-center gap-2 px-2 py-1.5">
                                     <span className="flex-1">{item.nombre}</span>
+                                    {item.usar_paquete && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200">paquete</span>
+                                    )}
                                     <span className="text-zinc-500">{item.cantidad}x ${Number(item.precio).toFixed(2)}</span>
                                     <button type="button" onClick={() => removeItem(idx)} className="text-rose-400 hover:text-rose-600 transition-colors">✕</button>
                                 </div>
@@ -172,6 +184,16 @@ function NewClassModal({ entrenadores, catalogItems, defaultDate, onClose }) {
                         <input type="number" step="0.01" min="0.01" className="col-span-2 border-gray-300 rounded-lg text-xs" placeholder="Cant." value={itemDraft.cantidad} onChange={e => setItemDraft(d => ({ ...d, cantidad: e.target.value }))} />
                         <button type="button" onClick={addItem} className="col-span-1 text-zinc-700 font-bold text-sm hover:text-zinc-900 transition-colors">+</button>
                     </div>
+                    {paqueteCreditoDraft && (
+                        <label className="flex items-center gap-2 mt-1.5 px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50 cursor-pointer">
+                            <input type="checkbox" checked={itemDraft.usar_paquete}
+                                onChange={e => setItemDraft(d => ({ ...d, usar_paquete: e.target.checked }))} className="rounded" />
+                            <span className="text-xs font-medium text-indigo-700">
+                                Usar crédito de paquete
+                                <span className="ml-1 font-normal text-indigo-500">({paqueteCreditoDraft.saldo_actual} disponible{paqueteCreditoDraft.saldo_actual !== 1 ? 's' : ''} de {paqueteCreditoDraft.nombre})</span>
+                            </span>
+                        </label>
+                    )}
                 </div>
 
                 <div>

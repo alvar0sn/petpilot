@@ -61,6 +61,7 @@ class CollectionBookingController extends Controller
             'tipo_viaje' => 'required|in:recoleccion,entrega,ida_y_vuelta',
             'cobro_membresia' => 'boolean',
             'membership_id' => 'nullable|exists:memberships,id',
+            'usar_paquete' => 'boolean',
             'notas' => 'nullable|string|max:500',
         ]);
         $data['cobro_membresia'] = $request->boolean('cobro_membresia');
@@ -98,6 +99,7 @@ class CollectionBookingController extends Controller
             'tipo_viaje' => 'required|in:recoleccion,entrega,ida_y_vuelta',
             'cobro_membresia' => 'boolean',
             'membership_id' => 'nullable|exists:memberships,id',
+            'usar_paquete' => 'boolean',
             'origen_tipo' => 'nullable|string|in:appointment,hotel_stay',
             'origen_id' => 'nullable|integer',
             'notas' => 'nullable|string|max:500',
@@ -154,6 +156,8 @@ class CollectionBookingController extends Controller
             $data['rate_id'] = $data['rate_id'] ?? $existing?->rate_id;
         }
 
+        $usarPaquete = $data['usar_paquete'] ?? true;
+
         $booking = CollectionBooking::create([
             ...$data,
             'tipo_viaje' => $tipoViaje,
@@ -162,7 +166,7 @@ class CollectionBookingController extends Controller
             'created_by' => auth()->id(),
         ]);
 
-        $this->processPayment($booking);
+        $this->processPayment($booking, $usarPaquete);
 
         return $booking;
     }
@@ -221,7 +225,7 @@ class CollectionBookingController extends Controller
         return ResponsivaService::download($collectionBooking);
     }
 
-    private function processPayment(CollectionBooking $booking): void
+    private function processPayment(CollectionBooking $booking, bool $usarPaquete = true): void
     {
         if ($booking->cobro_membresia && $booking->membership_id) {
             $membership = Membership::with('credits')->find($booking->membership_id);
@@ -251,7 +255,7 @@ class CollectionBookingController extends Controller
         }
 
         // Sin membresía (o sin saldo) — ¿tiene crédito de paquete para esta tarifa exacta?
-        if (! $booking->rate_id) {
+        if (! $usarPaquete || ! $booking->rate_id) {
             return;
         }
 

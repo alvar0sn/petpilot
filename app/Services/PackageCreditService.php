@@ -15,13 +15,35 @@ class PackageCreditService
 {
     public static function findCredit(int $petId, int $posCatalogItemId): ?PackageCredit
     {
-        return PackageCredit::where('pet_id', $petId)
+        return self::availableQuery($petId)
             ->where('pos_catalog_item_id', $posCatalogItemId)
-            ->where('saldo_actual', '>', 0)
-            ->where('fecha_vencimiento', '>=', now()->toDateString())
-            ->whereHas('package.ticket', fn($q) => $q->where('estado', 'pagado'))
             ->orderBy('fecha_vencimiento')
             ->first();
+    }
+
+    /**
+     * Créditos de paquete usables por esta mascota (paquete pagado, con
+     * saldo y sin caducar), uno por artículo de catálogo — para mostrarlos
+     * en la UI de agendado antes de cobrar, igual que se hace con membresías.
+     */
+    public static function availableForPet(int $petId): \Illuminate\Support\Collection
+    {
+        return self::availableQuery($petId)
+            ->with('catalogItem:id,nombre')
+            ->get()
+            ->map(fn(PackageCredit $c) => [
+                'catalog_item_id' => $c->pos_catalog_item_id,
+                'nombre' => $c->catalogItem?->nombre ?? $c->nombre_snapshot,
+                'saldo_actual' => (float) $c->saldo_actual,
+            ]);
+    }
+
+    private static function availableQuery(int $petId): \Illuminate\Database\Eloquent\Builder
+    {
+        return PackageCredit::where('pet_id', $petId)
+            ->where('saldo_actual', '>', 0)
+            ->where('fecha_vencimiento', '>=', now()->toDateString())
+            ->whereHas('package.ticket', fn($q) => $q->where('estado', 'pagado'));
     }
 
     public static function consume(PackageCredit $credit, float $cantidad, string $referenciaTipo, ?int $referenciaId, string $notas): void

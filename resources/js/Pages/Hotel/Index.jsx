@@ -65,6 +65,7 @@ function NewStayModal({ spaces, rates, onClose }) {
     const [petResults, setPetResults] = useState([]);
     const [selectedPet, setSelectedPet] = useState(null);
     const [memberships, setMemberships] = useState([]);
+    const [paqueteCreditos, setPaqueteCreditos] = useState([]);
     const [spaceWarning, setSpaceWarning] = useState(null);
     const [registrarAdelanto, setRegistrarAdelanto] = useState(false);
 
@@ -78,6 +79,7 @@ function NewStayModal({ spaces, rates, onClose }) {
         notas: '',
         cobro_membresia: false,
         membership_id: '',
+        usar_paquete: true,
         adelanto_rate_id: '',
         adelanto_monto: '',
         adelanto_notas: '',
@@ -103,6 +105,8 @@ function NewStayModal({ spaces, rates, onClose }) {
         try {
             const r = await axios.get(route('pets.show', pet.id), { headers: { 'X-Inertia': true, 'X-Inertia-Version': version } });
             setMemberships(r.data?.props?.activeMemberships ?? []);
+            const pkgs = r.data?.props?.activePackages ?? [];
+            setPaqueteCreditos(pkgs.flatMap(p => p.credits ?? []));
         } catch (e) {
             if (e.response?.status === 409 && e.response.headers['x-inertia-location']) {
                 window.location.href = e.response.headers['x-inertia-location'];
@@ -115,6 +119,9 @@ function NewStayModal({ spaces, rates, onClose }) {
     const hasCredits = credit && credit.saldo_actual > 0;
     const filteredRates = rates.filter(r => r.tipo === form.data.tipo);
     const selectedRate = filteredRates.find(r => String(r.id) === String(form.data.rate_id)) ?? null;
+    const paqueteCredito = !form.data.cobro_membresia && selectedRate?.pos_item_id
+        ? paqueteCreditos.find(c => c.pos_catalog_item_id === selectedRate.pos_item_id && c.saldo_actual > 0)
+        : null;
 
     const nochesEstimadas = form.data.fecha_entrada
         ? (form.data.fecha_salida
@@ -286,11 +293,21 @@ function NewStayModal({ spaces, rates, onClose }) {
                         {!form.data.cobro_membresia && (
                             <div>
                                 <label className="block text-xs font-medium text-zinc-600 mb-1">Tarifa</label>
-                                <select className="w-full border-gray-300 rounded-lg text-sm py-1.5" value={form.data.rate_id} onChange={e => form.setData('rate_id', e.target.value)}>
+                                <select className="w-full border-gray-300 rounded-lg text-sm py-1.5" value={form.data.rate_id} onChange={e => form.setData(d => ({ ...d, rate_id: e.target.value, usar_paquete: true }))}>
                                     <option value="">Sin tarifa (definir al check-out)</option>
                                     {filteredRates.map(r => <option key={r.id} value={r.id}>{r.nombre} — {fmt(r.precio)} / {r.cantidad} {r.unidad}</option>)}
                                 </select>
                             </div>
+                        )}
+
+                        {selectedPet && paqueteCredito && (
+                            <label className="flex items-start gap-2 border border-indigo-200 rounded-lg p-2.5 bg-indigo-50 cursor-pointer">
+                                <input type="checkbox" className="mt-0.5 rounded text-zinc-900" checked={form.data.usar_paquete} onChange={e => form.setData('usar_paquete', e.target.checked)} />
+                                <span className="text-xs text-indigo-700">
+                                    Usar crédito de paquete <span className="font-medium">{paqueteCredito.nombre}</span>
+                                    <span className="text-indigo-500 block">{paqueteCredito.saldo_actual} disponible(s)</span>
+                                </span>
+                            </label>
                         )}
 
                         <div>

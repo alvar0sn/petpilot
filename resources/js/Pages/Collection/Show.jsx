@@ -36,10 +36,11 @@ function AddPetModal({ slot, rates, onClose }) {
     const [petResults, setPetResults] = useState([]);
     const [selectedPet, setSelectedPet] = useState(null);
     const [memberships, setMemberships] = useState([]);
+    const [paqueteCreditos, setPaqueteCreditos] = useState([]);
     const [sameAddressNotice, setSameAddressNotice] = useState(null);
     const form = useForm({
         pet_id: '', owner_id: '', direccion: '', ubicacion_url: '', rate_id: '',
-        tipo_viaje: 'recoleccion', cobro_membresia: false, membership_id: '', notas: '',
+        tipo_viaje: 'recoleccion', cobro_membresia: false, membership_id: '', usar_paquete: true, notas: '',
     });
 
     async function searchPet(q) {
@@ -71,12 +72,15 @@ function AddPetModal({ slot, rates, onClose }) {
             rate_id: existing?.rate?.id ?? '',
             cobro_membresia: false,
             membership_id: '',
+            usar_paquete: true,
         });
 
         try {
             const r = await axios.get(route('pets.show', pet.id), { headers: { 'X-Inertia': true, 'X-Inertia-Version': version } });
             const mems = r.data?.props?.activeMemberships ?? [];
             setMemberships(mems);
+            const pkgs = r.data?.props?.activePackages ?? [];
+            setPaqueteCreditos(pkgs.flatMap(p => p.credits ?? []));
             const slotDate = String(slot.fecha).slice(0, 10);
             const validMem = mems.find(m => {
                 const toD = v => new Date(String(v).slice(0, 10) + 'T00:00:00');
@@ -102,6 +106,11 @@ function AddPetModal({ slot, rates, onClose }) {
     const membership = memberships.find(m => dateInRange(fecha, m.fecha_inicio, m.fecha_vencimiento)) ?? null;
     const credit = membership?.credits?.find(c => c.servicio_tipo === 'recoleccion');
     const hasCredits = credit && credit.saldo_actual > 0;
+
+    const selectedRate = rates?.find(r => String(r.id) === String(form.data.rate_id));
+    const paqueteCredito = selectedRate?.pos_item_id
+        ? paqueteCreditos.find(c => c.pos_catalog_item_id === selectedRate.pos_item_id && c.saldo_actual > 0)
+        : null;
 
     function submit() {
         form.post(route('collection.bookings.store', slot.id), { onSuccess: onClose });
@@ -153,7 +162,7 @@ function AddPetModal({ slot, rates, onClose }) {
                     <div>
                         <label className="block text-xs font-medium text-zinc-600 mb-1">Tarifa</label>
                         <select className="w-full border-gray-300 rounded-lg text-sm py-1.5"
-                            value={form.data.rate_id} onChange={e => form.setData('rate_id', e.target.value)}>
+                            value={form.data.rate_id} onChange={e => form.setData(d => ({ ...d, rate_id: e.target.value, usar_paquete: true }))}>
                             <option value="">Sin tarifa</option>
                             {rates.map(r => (
                                 <option key={r.id} value={r.id}>{r.nombre} — {fmt(r.precio)}</option>
@@ -177,6 +186,18 @@ function AddPetModal({ slot, rates, onClose }) {
                         <span className="text-xs text-zinc-700">
                             Cobrar con membresía <span className="font-medium">{membership.plan?.nombre}</span>
                             <span className="text-zinc-500 block">{credit.saldo_actual} crédito(s) disponibles</span>
+                        </span>
+                    </label>
+                )}
+
+                {selectedPet && !form.data.cobro_membresia && paqueteCredito && (
+                    <label className="flex items-start gap-2 border border-indigo-200 rounded-lg p-2.5 bg-indigo-50 cursor-pointer">
+                        <input type="checkbox" className="mt-0.5 rounded"
+                            checked={form.data.usar_paquete}
+                            onChange={e => form.setData('usar_paquete', e.target.checked)} />
+                        <span className="text-xs text-indigo-700">
+                            Usar crédito de paquete <span className="font-medium">{paqueteCredito.nombre}</span>
+                            <span className="text-indigo-500 block">{paqueteCredito.saldo_actual} disponible(s)</span>
                         </span>
                     </label>
                 )}
@@ -210,6 +231,7 @@ function BookingRow({ booking }) {
                     <span className="font-medium text-sm text-zinc-900">{booking.pet?.nombre}</span>
                     <span className="text-xs text-zinc-400">{tipoViajeLabel[booking.tipo_viaje]}</span>
                     {booking.cobro_membresia && <span className="text-xs bg-violet-50 text-violet-700 ring-1 ring-violet-200 px-2 py-0.5 rounded-full font-medium">membresía</span>}
+                    {booking.package_credit_id && <span className="text-xs bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 px-2 py-0.5 rounded-full font-medium">paquete</span>}
                     {booking.rate && <span className="text-xs text-zinc-500">{booking.rate.nombre}</span>}
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium inline-flex items-center ${bookingEstadoColor[booking.estado]}`}>{bookingEstadoLabel[booking.estado]}</span>
                 </div>

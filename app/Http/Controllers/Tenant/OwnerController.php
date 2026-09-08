@@ -21,6 +21,10 @@ class OwnerController extends Controller
                 'pets:id,owner_id,nombre,tipo,foto_url,estado',
                 'pets.memberships' => fn($q) => $q->where('activa', true)
                     ->with('credits:id,membership_id,servicio_tipo,saldo_actual'),
+                'pets.packageCredits' => fn($q) => $q->where('saldo_actual', '>', 0)
+                    ->where('fecha_vencimiento', '>=', now()->toDateString())
+                    ->whereHas('package.ticket', fn($q) => $q->where('estado', 'pagado'))
+                    ->with('catalogItem:id,nombre'),
             ])
             ->when($request->search, function ($q, $s) {
                 $sl = '%' . mb_strtolower($s) . '%';
@@ -58,6 +62,11 @@ class OwnerController extends Controller
                         'creditos_estetica'     => $creditEst?->saldo_actual ?? 0,
                         'membership_id_entrenamiento' => ($creditEntrenamiento && $creditEntrenamiento->saldo_actual > 0) ? $membership->id : null,
                         'creditos_entrenamiento'      => $creditEntrenamiento?->saldo_actual ?? 0,
+                        'paquete_creditos' => $p->packageCredits->map(fn($c) => [
+                            'catalog_item_id' => $c->pos_catalog_item_id,
+                            'nombre' => $c->catalogItem?->nombre ?? $c->nombre_snapshot,
+                            'saldo_actual' => (float) $c->saldo_actual,
+                        ]),
                     ];
                 }),
                 'created_at' => $o->created_at,

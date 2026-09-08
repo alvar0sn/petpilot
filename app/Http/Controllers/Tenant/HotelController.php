@@ -101,7 +101,7 @@ class HotelController extends Controller
                 'capacidad' => $s->capacidad,
                 'ocupacion' => $s->active_stays_count,
             ]),
-            'rates' => HotelRate::where('activa', true)->orderBy('nombre')->get(['id', 'nombre', 'tipo', 'unidad', 'cantidad', 'precio']),
+            'rates' => HotelRate::where('activa', true)->orderBy('nombre')->get(['id', 'nombre', 'tipo', 'unidad', 'cantidad', 'precio', 'pos_item_id']),
             'availability' => [
                 'fecha' => $fechaDisponibilidad,
                 'spaces' => $spaces->map(fn(HotelSpace $s) => [
@@ -193,7 +193,7 @@ class HotelController extends Controller
      */
     private function reconcilePackageCredits(HotelStay $stay, int $nochesObjetivo): void
     {
-        if (! $stay->rate_id) {
+        if (! $stay->usar_paquete || ! $stay->rate_id) {
             return;
         }
 
@@ -301,6 +301,7 @@ class HotelController extends Controller
             'objetos_recibidos' => 'nullable|string',
             'cobro_membresia' => 'boolean',
             'membership_id' => 'nullable|exists:memberships,id',
+            'usar_paquete' => 'boolean',
             'adelanto_rate_id' => 'nullable|exists:hotel_rates,id',
             'adelanto_monto' => 'nullable|numeric|min:0.01',
             'adelanto_notas' => 'nullable|string|max:255',
@@ -334,6 +335,7 @@ class HotelController extends Controller
                 'cobro_membresia' => $request->boolean('cobro_membresia'),
                 'membership_id' => $request->boolean('cobro_membresia') ? ($data['membership_id'] ?? null) : null,
                 'creditos_consumidos' => 0,
+                'usar_paquete' => $data['usar_paquete'] ?? true,
                 'created_by' => auth()->id(),
             ]);
 

@@ -186,7 +186,7 @@ class WalkSlotController extends Controller
             'slot' => $walkSlot,
             'walkers' => $walkers,
             'recurrence' => $recurrenceMeta,
-            'rates' => WalkRate::where('activa', true)->orderBy('nombre')->get(['id', 'nombre', 'tipo', 'precio']),
+            'rates' => WalkRate::where('activa', true)->orderBy('nombre')->get(['id', 'nombre', 'tipo', 'precio', 'pos_item_id']),
         ]);
     }
 

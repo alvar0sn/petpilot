@@ -95,6 +95,7 @@ class PetController extends Controller
             ->where('pet_id', $pet->id)
             ->where('fecha_vencimiento', '>=', now()->toDateString())
             ->whereHas('credits', fn($q) => $q->where('saldo_actual', '>', 0))
+            ->whereHas('ticket', fn($q) => $q->where('estado', 'pagado'))
             ->orderBy('fecha_vencimiento')
             ->get();
 
@@ -190,6 +191,7 @@ class PetController extends Controller
                 'credits' => $p->credits->map(fn($c) => [
                     'id' => $c->id,
                     'nombre' => $c->nombre_snapshot,
+                    'pos_catalog_item_id' => $c->pos_catalog_item_id,
                     'saldo_actual' => $c->saldo_actual,
                     'saldo_inicial' => $c->saldo_inicial,
                 ]),

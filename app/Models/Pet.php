@@ -76,6 +76,11 @@ class Pet extends Model
         return $this->hasMany(Membership::class);
     }
 
+    public function packageCredits(): HasMany
+    {
+        return $this->hasMany(PackageCredit::class);
+    }
+
     public function activeMembership(): HasOne
     {
         return $this->hasOne(Membership::class)->where('activa', true)->latestOfMany('fecha_inicio');
