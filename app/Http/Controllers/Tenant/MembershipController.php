@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Membership;
 use App\Models\MembershipCredit;
 use App\Models\MembershipCreditMovement;
+use App\Models\MembershipPayment;
 use App\Models\MembershipPlan;
 use App\Models\MembershipPlanCredit;
 use App\Models\MembershipRenewal;
@@ -15,6 +16,7 @@ use App\Models\PosCategory;
 use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
+use App\Services\AdvanceTicketService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +27,7 @@ class MembershipController extends Controller
 {
     public function index(Request $request): Response
     {
-        $memberships = Membership::with(['pet.owner:id,nombre,apellidos,telefono', 'plan:id,nombre,precio', 'credits'])
+        $memberships = Membership::with(['pet.owner:id,nombre,apellidos,telefono', 'plan:id,nombre,precio', 'credits', 'renewals'])
             ->where('activa', true)
             ->when($request->search, function ($q, $s) {
                 $sl = '%' . mb_strtolower($s) . '%';
@@ -54,6 +56,8 @@ class MembershipController extends Controller
                 'fecha_vencimiento' => $m->fecha_vencimiento,
                 'dias_para_vencer' => $m->diasParaVencer(),
                 'congelada' => $m->congelada,
+                'tiene_adeudo' => $m->tieneAdeudo(),
+                'saldo_pendiente' => $m->saldoPendienteRenewal(),
                 'credits' => $m->credits->map(fn($c) => [
                     'servicio_tipo' => $c->servicio_tipo,
                     'saldo_actual' => $c->saldo_actual,
@@ -77,15 +81,20 @@ class MembershipController extends Controller
             'pet_id' => 'required|exists:pets,id',
             'plan_id' => 'required|exists:membership_plans,id',
             'fecha_inicio' => 'required|date',
+            'pago_parcial' => 'boolean',
+            'monto_inicial' => 'required_if:pago_parcial,true|nullable|numeric|min:0.01',
         ]);
 
         $plan = MembershipPlan::with('planCredits')->findOrFail($data['plan_id']);
         $pet = Pet::with('owner:id,nombre')->findOrFail($data['pet_id']);
 
+        $pagoParcial = $request->boolean('pago_parcial') && (float) ($data['monto_inicial'] ?? 0) < (float) $plan->precio - 0.01;
+        $montoInicial = $pagoParcial ? round(min((float) $plan->precio, (float) $data['monto_inicial']), 2) : (float) $plan->precio;
+
         $ticket = null;
         $esRenovacion = false;
 
-        DB::transaction(function () use ($plan, $pet, $data, &$ticket, &$esRenovacion) {
+        DB::transaction(function () use ($plan, $pet, $data, $pagoParcial, $montoInicial, &$ticket, &$esRenovacion) {
             $fechaInicioInput = \Carbon\Carbon::parse($data['fecha_inicio']);
 
             // Si ya existe una membresía de este plan para esta mascota (activa o
@@ -110,6 +119,10 @@ class MembershipController extends Controller
             $shift = PosShift::where('estado', 'abierto')->first();
 
             if ($plan->pos_item_id) {
+                $nombreSnapshot = $pagoParcial
+                    ? "Anticipo — Membresía: {$plan->nombre}"
+                    : "Membresía: {$plan->nombre}";
+
                 $ticket = PosTicket::create([
                     'folio' => $this->nextFolio(),
                     'owner_id' => $pet->owner_id,
@@ -117,17 +130,17 @@ class MembershipController extends Controller
                     'shift_open_id' => $shift?->id,
                     'user_open_id' => auth()->id(),
                     'user_last_edit_id' => auth()->id(),
-                    'subtotal' => $plan->precio,
-                    'total' => $plan->precio,
+                    'subtotal' => $montoInicial,
+                    'total' => $montoInicial,
                 ]);
                 PosTicketLine::create([
                     'ticket_id' => $ticket->id,
-                    'item_id' => $plan->pos_item_id,
-                    'nombre_snapshot' => "Membresía: {$plan->nombre}",
-                    'precio_snapshot' => $plan->precio,
+                    'item_id' => $pagoParcial ? null : $plan->pos_item_id,
+                    'nombre_snapshot' => $nombreSnapshot,
+                    'precio_snapshot' => $montoInicial,
                     'costo_snapshot' => 0,
                     'cantidad' => 1,
-                    'subtotal' => $plan->precio,
+                    'subtotal' => $montoInicial,
                 ]);
             }
 
@@ -168,6 +181,17 @@ class MembershipController extends Controller
                 'monto' => $plan->precio,
             ]);
 
+            if ($ticket) {
+                MembershipPayment::create([
+                    'membership_id' => $membership->id,
+                    'renewal_id' => $renewal->id,
+                    'pos_ticket_id' => $ticket->id,
+                    'monto' => $montoInicial,
+                    'tipo' => 'inicial',
+                    'user_id' => auth()->id(),
+                ]);
+            }
+
             // Los créditos se reinician al valor del plan en cada renovación (no
             // se acumulan periodos sin usar).
             foreach ($plan->planCredits as $pc) {
@@ -199,11 +223,53 @@ class MembershipController extends Controller
         $accion = $esRenovacion ? 'renovada' : 'asignada';
 
         if ($ticket) {
+            $mensajeCobro = $pagoParcial ? 'Completa el cobro del anticipo en el POS.' : 'Completa el cobro en el POS.';
             return redirect()->route('pos.index', ['ticket' => $ticket->id])
-                ->with('success', "Membresía {$accion} a {$pet->nombre}. Completa el cobro en el POS.");
+                ->with('success', "Membresía {$accion} a {$pet->nombre}. {$mensajeCobro}");
         }
 
         return back()->with('success', "Membresía {$accion} a {$pet->nombre}.");
+    }
+
+    public function storePayment(Request $request, Membership $membership): RedirectResponse
+    {
+        $saldoPendiente = $membership->saldoPendienteRenewal();
+        abort_if($saldoPendiente <= 0.009, 422, 'Esta membresía ya está pagada por completo.');
+
+        $data = $request->validate([
+            'monto' => 'required|numeric|min:0.01',
+            'notas' => 'nullable|string|max:255',
+        ]);
+
+        if ($data['monto'] > $saldoPendiente + 0.01) {
+            return back()->withErrors(['monto' => 'El abono no puede exceder el saldo pendiente (' . number_format($saldoPendiente, 2) . ').'])->withInput();
+        }
+
+        $renewal = $membership->currentRenewal();
+        $membership->loadMissing('pet:id,nombre,owner_id');
+
+        $ticket = DB::transaction(function () use ($membership, $renewal, $data) {
+            $ticket = app(AdvanceTicketService::class)->create(
+                $membership->pet?->owner_id,
+                $data['monto'],
+                "Abono — Membresía: {$membership->pet?->nombre}"
+            );
+
+            MembershipPayment::create([
+                'membership_id' => $membership->id,
+                'renewal_id' => $renewal->id,
+                'pos_ticket_id' => $ticket->id,
+                'monto' => $data['monto'],
+                'tipo' => 'abono',
+                'notas' => $data['notas'] ?? null,
+                'user_id' => auth()->id(),
+            ]);
+
+            return $ticket;
+        });
+
+        return redirect()->route('pos.index', ['ticket' => $ticket->id])
+            ->with('success', 'Abono registrado. Completa el cobro en POS.');
     }
 
     public function show(Membership $membership): Response
@@ -214,7 +280,10 @@ class MembershipController extends Controller
             'credits',
             'creditMovements' => fn($q) => $q->latest()->limit(50),
             'renewals' => fn($q) => $q->with('ticket:id,folio,token')->latest('fecha_fin'),
+            'payments' => fn($q) => $q->with('ticket:id,folio,estado')->latest(),
         ]);
+
+        $membership->append(['tiene_adeudo', 'saldo_pendiente', 'monto_pagado']);
 
         return Inertia::render('Memberships/Show', [
             'membership' => $membership,

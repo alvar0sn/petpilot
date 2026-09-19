@@ -95,7 +95,7 @@ class PetController extends Controller
             ->where('pet_id', $pet->id)
             ->where('fecha_vencimiento', '>=', now()->toDateString())
             ->whereHas('credits', fn($q) => $q->where('saldo_actual', '>', 0))
-            ->whereHas('ticket', fn($q) => $q->where('estado', 'pagado'))
+            ->whereHas('payments', fn($q) => $q->whereHas('ticket', fn($q2) => $q2->where('estado', 'pagado')->whereColumn('refunded_amount', '<', 'total')))
             ->orderBy('fecha_vencimiento')
             ->get();
 
@@ -167,6 +167,9 @@ class PetController extends Controller
             'fecha_vencimiento' => $m->fecha_vencimiento,
             'activa' => $m->activa,
             'congelada' => $m->congelada,
+            'creditos_usables' => $m->creditsUsable(),
+            'tiene_adeudo' => $m->tieneAdeudo(),
+            'saldo_pendiente' => $m->saldoPendienteRenewal(),
             'credits' => $m->credits->map(fn($c) => [
                 'servicio_tipo' => $c->servicio_tipo,
                 'saldo_actual' => $c->saldo_actual,
@@ -188,12 +191,16 @@ class PetController extends Controller
                 'id' => $p->id,
                 'fecha_vencimiento' => $p->fecha_vencimiento->toDateString(),
                 'dias_para_vencer' => $p->diasParaVencer(),
+                'tiene_adeudo' => $p->tieneAdeudo(),
+                'saldo_pendiente' => $p->saldoPendiente(),
                 'credits' => $p->credits->map(fn($c) => [
                     'id' => $c->id,
                     'nombre' => $c->nombre_snapshot,
                     'pos_catalog_item_id' => $c->pos_catalog_item_id,
                     'saldo_actual' => $c->saldo_actual,
                     'saldo_inicial' => $c->saldo_inicial,
+                    'tiene_adeudo' => $p->tieneAdeudo(),
+                    'saldo_pendiente' => $p->saldoPendiente(),
                 ]),
             ]),
             'eventTypes' => $eventTypes,

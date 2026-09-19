@@ -116,9 +116,9 @@ class TrainingController extends Controller
             }
 
             if ($usaMembresia) {
-                $membership = Membership::with('credits')->findOrFail($data['membership_id']);
+                $membership = Membership::with(['credits', 'renewals'])->findOrFail($data['membership_id']);
                 $credit = $membership->getCredit('entrenamiento');
-                if ($credit && $credit->saldo_actual > 0) {
+                if ($credit && $credit->saldo_actual > 0 && $membership->creditsUsable()) {
                     $saldoAntes = $credit->saldo_actual;
                     $credit->update(['saldo_actual' => $saldoAntes - 1]);
                     MembershipCreditMovement::create([

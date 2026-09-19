@@ -61,14 +61,45 @@ class Package extends Model
         return $this->hasMany(PackageCredit::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(PackagePayment::class)->orderBy('created_at');
+    }
+
     public function isExpired(): bool
     {
         return $this->fecha_vencimiento->isPast();
     }
 
+    /**
+     * Solo cuenta abonos cuyo ticket ya se cobró en POS — un ticket "abierto"
+     * en pos_ticket_id todavía no es dinero recibido. Si ese ticket luego se
+     * reembolsa (total o parcial), PosTicket::refund() no cambia su `estado`
+     * (sigue "pagado"), así que hay que restar `refunded_amount` aquí para
+     * no seguir contando como recibido lo que ya se devolvió.
+     */
+    public function montoPagado(): float
+    {
+        return (float) $this->payments()
+            ->whereHas('ticket', fn($q) => $q->where('estado', 'pagado'))
+            ->with('ticket:id,total,refunded_amount')
+            ->get()
+            ->sum(fn(PackagePayment $p) => max(0, (float) $p->ticket->total - (float) $p->ticket->refunded_amount));
+    }
+
+    public function saldoPendiente(): float
+    {
+        return max(0, round((float) $this->total - $this->montoPagado(), 2));
+    }
+
+    public function tieneAdeudo(): bool
+    {
+        return $this->saldoPendiente() > 0.009;
+    }
+
     public function isPagado(): bool
     {
-        return $this->ticket?->isPaid() ?? false;
+        return !$this->tieneAdeudo();
     }
 
     public function diasParaVencer(): int

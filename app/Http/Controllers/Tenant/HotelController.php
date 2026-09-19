@@ -147,7 +147,7 @@ class HotelController extends Controller
             return;
         }
 
-        $membership = Membership::with('credits')->find($stay->membership_id);
+        $membership = Membership::with(['credits', 'renewals'])->find($stay->membership_id);
         $credit = $membership?->getCredit($stay->tipo);
 
         if (!$credit) {
@@ -155,7 +155,10 @@ class HotelController extends Controller
         }
 
         $actuales = $stay->creditos_consumidos ?? 0;
-        $deseados = min($nochesObjetivo, $credit->saldo_actual + $actuales);
+        // Si la membresía tiene adeudo, no se pueden reservar noches nuevas
+        // con ella (pero sí liberar las ya reservadas, p.ej. al cancelar).
+        $tope = $membership->creditsUsable() ? $nochesObjetivo : min($nochesObjetivo, $actuales);
+        $deseados = min($tope, $credit->saldo_actual + $actuales);
         $delta = $deseados - $actuales;
 
         if ($delta === 0) {

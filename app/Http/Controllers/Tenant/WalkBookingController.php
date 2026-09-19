@@ -112,10 +112,10 @@ class WalkBookingController extends Controller
     private function processPayment(WalkBooking $booking, bool $usarPaquete = true): void
     {
         if ($booking->cobro_membresia && $booking->membership_id) {
-            $membership = Membership::with('credits')->find($booking->membership_id);
+            $membership = Membership::with(['credits', 'renewals'])->find($booking->membership_id);
             $credit = $membership?->getCredit('paseo');
 
-            if ($credit && $credit->saldo_actual > 0) {
+            if ($credit && $credit->saldo_actual > 0 && $membership->creditsUsable()) {
                 $saldoAntes = $credit->saldo_actual;
                 $saldoNuevo = $saldoAntes - 1;
                 $credit->update(['saldo_actual' => $saldoNuevo]);

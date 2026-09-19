@@ -36,6 +36,10 @@ function formatWeekRange(weekDays) {
 }
 function today() { return new Date().toLocaleDateString('sv-SE'); }
 
+function fmtMxn(n) {
+    return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+}
+
 function NewClassModal({ entrenadores, catalogItems, defaultDate, onClose }) {
     const { version } = usePage();
     const form = useForm({
@@ -56,6 +60,7 @@ function NewClassModal({ entrenadores, catalogItems, defaultDate, onClose }) {
         const pets = owners.flatMap(o => (o.pets ?? []).map(p => ({
             id: p.id, nombre: p.nombre, owner: o.nombre_completo,
             membership_id: p.membership_id_entrenamiento ?? null, creditos_entrenamiento: p.creditos_entrenamiento ?? 0,
+            membresia_tiene_adeudo: p.membresia_tiene_adeudo ?? false, membresia_saldo_pendiente: p.membresia_saldo_pendiente ?? 0,
             paquete_creditos: p.paquete_creditos ?? [],
         })));
         setPetResults(pets.slice(0, 8));
@@ -133,6 +138,9 @@ function NewClassModal({ entrenadores, catalogItems, defaultDate, onClose }) {
                                     <span className="ml-1.5 text-xs font-normal text-zinc-500">
                                         ({selectedPet.creditos_entrenamiento} clase{selectedPet.creditos_entrenamiento !== 1 ? 's' : ''} disponible{selectedPet.creditos_entrenamiento !== 1 ? 's' : ''})
                                     </span>
+                                    {selectedPet.membresia_tiene_adeudo && (
+                                        <span className="block text-xs font-normal text-orange-600">⚠️ Adeudo de {fmtMxn(selectedPet.membresia_saldo_pendiente)} en esta membresía</span>
+                                    )}
                                 </span>
                             </label>
                         </div>
@@ -191,6 +199,9 @@ function NewClassModal({ entrenadores, catalogItems, defaultDate, onClose }) {
                             <span className="text-xs font-medium text-indigo-700">
                                 Usar crédito de paquete
                                 <span className="ml-1 font-normal text-indigo-500">({paqueteCreditoDraft.saldo_actual} disponible{paqueteCreditoDraft.saldo_actual !== 1 ? 's' : ''} de {paqueteCreditoDraft.nombre})</span>
+                                {paqueteCreditoDraft.tiene_adeudo && (
+                                    <span className="block font-normal text-orange-600">⚠️ Adeudo de {fmtMxn(paqueteCreditoDraft.saldo_pendiente)} en este paquete</span>
+                                )}
                             </span>
                         </label>
                     )}

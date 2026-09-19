@@ -37,6 +37,7 @@ export default function PackagesIndex({ packages, filters }) {
                     <thead className="bg-zinc-50 text-xs font-semibold text-zinc-400 uppercase tracking-wide">
                         <tr>
                             <th className="px-4 py-3 text-left">Mascota / Dueño</th>
+                            <th className="px-4 py-3 text-left">Ticket</th>
                             <th className="px-4 py-3 text-left">Pago</th>
                             <th className="px-4 py-3 text-left">Créditos restantes</th>
                             <th className="px-4 py-3 text-right">Total</th>
@@ -55,9 +56,16 @@ export default function PackagesIndex({ packages, filters }) {
                                     )}
                                     <div className="text-xs text-zinc-400">{p.owner}</div>
                                 </td>
+                                <td className="px-4 py-3 text-zinc-500 font-mono text-xs">
+                                    #{p.id}{p.ticket_folio ? ` · Tk #${p.ticket_folio}` : ''}
+                                </td>
                                 <td className="px-4 py-3">
                                     {p.pagado ? (
                                         <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">Pagado</span>
+                                    ) : p.tiene_adeudo && p.saldo_pendiente < p.total ? (
+                                        <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-orange-50 text-orange-700 ring-1 ring-orange-200">
+                                            Adeudo {fmt(p.saldo_pendiente)}
+                                        </span>
                                     ) : (
                                         <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700 ring-1 ring-amber-200">
                                             {p.ticket_estado === 'cancelado' ? 'Cancelado' : 'Pendiente de pago'}
@@ -74,7 +82,7 @@ export default function PackagesIndex({ packages, filters }) {
                             </tr>
                         ))}
                         {packages.data.length === 0 && (
-                            <tr><td colSpan={5} className="px-4 py-10 text-center text-zinc-400">Sin paquetes registrados.</td></tr>
+                            <tr><td colSpan={6} className="px-4 py-10 text-center text-zinc-400">Sin paquetes registrados.</td></tr>
                         )}
                     </tbody>
                 </table>

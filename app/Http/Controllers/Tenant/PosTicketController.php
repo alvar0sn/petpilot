@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Membership;
 use App\Models\MembershipCredit;
 use App\Models\MembershipCreditMovement;
+use App\Models\MembershipPayment;
 use App\Models\MembershipRenewal;
 use App\Models\Owner;
 use App\Models\PosCatalogItem;
@@ -371,6 +372,19 @@ class PosTicketController extends Controller
         if (! $masReciente || $masReciente->id !== $renewal->id) {
             // Ya hay una renovación posterior sin reembolsar — revertir esta
             // automáticamente descuadraría las fechas. Requiere ajuste manual.
+            return;
+        }
+
+        // Si esta renovación se pagó con anticipo + abono(s), pos_ticket_id solo
+        // apunta al ticket inicial — reembolsarlo no debe revertir la renovación
+        // completa si ya hay otro abono cobrado sobre la misma renovación (se
+        // descuadraría el dinero ya recibido por otro ticket). Requiere ajuste manual.
+        $otroAbonoVigente = MembershipPayment::where('renewal_id', $renewal->id)
+            ->where('pos_ticket_id', '!=', $ticket->id)
+            ->whereHas('ticket', fn($q) => $q->where('estado', 'pagado')->whereColumn('refunded_amount', '<', 'total'))
+            ->exists();
+
+        if ($otroAbonoVigente) {
             return;
         }
 

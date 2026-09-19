@@ -23,6 +23,10 @@ const estadoLabel = {
 };
 const franjaLabel = { manana: 'Mañana', tarde: 'Tarde' };
 
+function fmtMxn(n) {
+    return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+}
+
 function addDays(dateStr, n) {
     const d = new Date(dateStr + 'T12:00:00');
     d.setDate(d.getDate() + n);
@@ -59,6 +63,7 @@ function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, def
             id: p.id, nombre: p.nombre, owner: o.nombre_completo,
             owner_direccion: o.direccion ?? '',
             membership_id: p.membership_id ?? null, creditos_estetica: p.creditos_estetica ?? 0,
+            membresia_tiene_adeudo: p.membresia_tiene_adeudo ?? false, membresia_saldo_pendiente: p.membresia_saldo_pendiente ?? 0,
             paquete_creditos: p.paquete_creditos ?? [],
         })));
         setPetResults(pets.slice(0, 8));
@@ -138,6 +143,9 @@ function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, def
                                     <span className="ml-1.5 text-xs font-normal text-zinc-500">
                                         ({selectedPet.creditos_estetica} crédito{selectedPet.creditos_estetica !== 1 ? 's' : ''} de estética disponible{selectedPet.creditos_estetica !== 1 ? 's' : ''})
                                     </span>
+                                    {selectedPet.membresia_tiene_adeudo && (
+                                        <span className="block text-xs font-normal text-orange-600">⚠️ Adeudo de {fmtMxn(selectedPet.membresia_saldo_pendiente)} en esta membresía</span>
+                                    )}
                                 </span>
                             </label>
                         </div>
@@ -228,6 +236,9 @@ function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, def
                             <span className="text-xs font-medium text-indigo-700">
                                 Usar crédito de paquete
                                 <span className="ml-1 font-normal text-indigo-500">({paqueteCreditoDraft.saldo_actual} disponible{paqueteCreditoDraft.saldo_actual !== 1 ? 's' : ''} de {paqueteCreditoDraft.nombre})</span>
+                                {paqueteCreditoDraft.tiene_adeudo && (
+                                    <span className="block font-normal text-orange-600">⚠️ Adeudo de {fmtMxn(paqueteCreditoDraft.saldo_pendiente)} en este paquete</span>
+                                )}
                             </span>
                         </label>
                     )}

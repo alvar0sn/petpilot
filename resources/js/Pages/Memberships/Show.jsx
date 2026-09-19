@@ -6,6 +6,40 @@ import { formatDate, useTenantTimezone } from '@/lib/datetime';
 const servicioLabel = { guarderia: 'Guardería', hotel: 'Hotel', estetica: 'Estética', paseo: 'Paseo', entrenamiento: 'Entrenamiento' };
 const servicioColor = { guarderia: 'bg-blue-100 text-blue-700', hotel: 'bg-purple-100 text-purple-700', estetica: 'bg-pink-100 text-pink-700', paseo: 'bg-green-100 text-green-700', entrenamiento: 'bg-amber-100 text-amber-700' };
 const movTipoColor = { consumo: 'text-red-600', recarga: 'text-green-600', ajuste: 'text-zinc-600', vencimiento: 'text-zinc-400' };
+const pagoTipoLabel = { inicial: 'Anticipo', abono: 'Abono' };
+
+function fmt(n) {
+    return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+}
+
+function AbonoForm({ membership, onDone }) {
+    const form = useForm({ monto: membership.saldo_pendiente ? String(membership.saldo_pendiente) : '', notas: '' });
+
+    function submit(e) {
+        e.preventDefault();
+        form.post(route('memberships.payments.store', membership.id), { onSuccess: onDone });
+    }
+
+    return (
+        <form onSubmit={submit} className="border border-zinc-200 rounded-lg p-3 space-y-2 bg-zinc-50">
+            <div>
+                <label className="block text-xs font-medium text-zinc-600 mb-1">Monto del abono *</label>
+                <input type="number" step="0.01" min="0.01" max={membership.saldo_pendiente || undefined}
+                    className="w-full border-gray-300 rounded-lg text-sm font-mono"
+                    value={form.data.monto} onChange={e => form.setData('monto', e.target.value)} />
+                {form.errors.monto && <p className="text-rose-500 text-xs mt-0.5">{form.errors.monto}</p>}
+            </div>
+            <div>
+                <label className="block text-xs font-medium text-zinc-600 mb-1">Notas (opcional)</label>
+                <input className="w-full border-gray-300 rounded-lg text-sm" value={form.data.notas} onChange={e => form.setData('notas', e.target.value)} />
+            </div>
+            <button type="submit" disabled={form.processing}
+                className="w-full bg-zinc-900 text-white py-1.5 rounded-lg text-xs font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
+                Registrar abono
+            </button>
+        </form>
+    );
+}
 
 function CreditCard({ credit, membershipId }) {
     const [showAdjust, setShowAdjust] = useState(false);
@@ -57,6 +91,7 @@ export default function MembershipShow({ membership }) {
     const freezeForm = useForm({});
     const unfreezeForm = useForm({});
     const [showEditDates, setShowEditDates] = useState(false);
+    const [showAbono, setShowAbono] = useState(false);
     const datesForm = useForm({
         fecha_inicio: membership.fecha_inicio?.slice(0, 10) ?? '',
         fecha_vencimiento: membership.fecha_vencimiento?.slice(0, 10) ?? '',
@@ -139,7 +174,44 @@ export default function MembershipShow({ membership }) {
                                         Congelada desde {formatDate(membership.congelada_desde, tz)}
                                     </span>
                                 )}
+                                {membership.tiene_adeudo && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-orange-50 text-orange-700 ring-1 ring-orange-200 inline-flex items-center">
+                                        Adeudo: {fmt(membership.saldo_pendiente)}
+                                    </span>
+                                )}
                             </div>
+
+                            {membership.tiene_adeudo && (
+                                <div className="pt-1">
+                                    <button onClick={() => setShowAbono(v => !v)} className="text-xs text-zinc-700 underline-offset-2 hover:underline">
+                                        {showAbono ? 'Cancelar' : 'Registrar abono'}
+                                    </button>
+                                    {showAbono && (
+                                        <div className="mt-2">
+                                            <AbonoForm membership={membership} onDone={() => setShowAbono(false)} />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {membership.payments?.length > 1 && (
+                                <div className="pt-2 border-t border-zinc-100">
+                                    <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">Historial de pagos</p>
+                                    <div className="space-y-1 text-xs text-zinc-600">
+                                        {membership.payments.map(p => (
+                                            <div key={p.id} className="flex justify-between">
+                                                <span>
+                                                    {pagoTipoLabel[p.tipo] ?? p.tipo}
+                                                    {p.ticket && (
+                                                        <> — #{p.ticket.folio} <span className="capitalize">({p.ticket.estado})</span></>
+                                                    )}
+                                                </span>
+                                                <span className="whitespace-nowrap ml-2">{fmt(p.monto)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <button onClick={() => setShowEditDates(v => !v)} className="text-xs text-zinc-700 underline-offset-2 hover:underline">
                                 {showEditDates ? 'Cancelar' : 'Editar fechas'}

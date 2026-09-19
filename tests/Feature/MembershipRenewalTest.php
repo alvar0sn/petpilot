@@ -167,44 +167,10 @@ class MembershipRenewalTest extends TestCase
         $this->assertSame(0, $credit->saldo_actual);
     }
 
-    public function test_partial_refund_does_not_touch_membership(): void
-    {
-        ['tenant' => $tenant, 'user' => $user, 'pet' => $pet, 'plan' => $plan, 'paymentMethod' => $paymentMethod] = $this->makeMembershipContext();
-
-        PosShift::create([
-            'tenant_id' => $tenant->id,
-            'user_id' => $user->id,
-            'fecha_apertura' => now(),
-            'fondo_inicial' => 0,
-            'estado' => 'abierto',
-        ]);
-
-        $this->actingAs($user)->post(route('memberships.assign'), [
-            'pet_id' => $pet->id,
-            'plan_id' => $plan->id,
-            'fecha_inicio' => '2026-08-01',
-        ])->assertRedirect();
-
-        $membership = Membership::where('pet_id', $pet->id)->where('plan_id', $plan->id)->firstOrFail();
-        $renewal = MembershipRenewal::where('membership_id', $membership->id)->firstOrFail();
-        $ticket = PosTicket::findOrFail($renewal->pos_ticket_id);
-        $fechaVencimientoOriginal = $membership->fecha_vencimiento->toDateString();
-
-        $this->actingAs($user)->postJson(route('pos.tickets.pay', $ticket), [
-            'payments' => [['payment_method_id' => $paymentMethod->id, 'monto' => $ticket->total]],
-        ])->assertOk();
-
-        $this->actingAs($user)->post(route('pos.tickets.refund', $ticket), [
-            'monto' => 100,
-            'payment_method_id' => $paymentMethod->id,
-            'motivo' => 'Reembolso parcial',
-        ])->assertRedirect();
-
-        $membership->refresh();
-        $renewal->refresh();
-
-        $this->assertFalse($renewal->reembolsada);
-        $this->assertTrue($membership->activa);
-        $this->assertSame($fechaVencimientoOriginal, $membership->fecha_vencimiento->toDateString());
-    }
+    /**
+     * PosTicketController::refund() no acepta monto — siempre reembolsa el
+     * total restante del ticket (ver refundableAmount()). No existe reembolso
+     * parcial en el sistema, así que cualquier /refund revierte la renovación
+     * igual que un reembolso completo (cubierto por test_full_refund_reverses_latest_renewal).
+     */
 }

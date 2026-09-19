@@ -27,7 +27,10 @@ function AssignModal({ plans, onClose }) {
     const [petSearch, setPetSearch] = useState('');
     const [petResults, setPetResults] = useState([]);
     const [selectedPet, setSelectedPet] = useState(null);
-    const form = useForm({ pet_id: '', plan_id: plans[0]?.id ?? '', fecha_inicio: dateKeyInTimezone(new Date(), tz) });
+    const form = useForm({
+        pet_id: '', plan_id: plans[0]?.id ?? '', fecha_inicio: dateKeyInTimezone(new Date(), tz),
+        pago_parcial: false, monto_inicial: '',
+    });
 
     async function searchPet(q) {
         setPetSearch(q);
@@ -83,6 +86,29 @@ function AssignModal({ plans, onClose }) {
                     <label className="block text-xs font-medium text-zinc-600 mb-1">Fecha de inicio</label>
                     <input type="date" className="w-full border-gray-300 rounded-lg text-sm" value={form.data.fecha_inicio} onChange={e => form.setData('fecha_inicio', e.target.value)} />
                 </div>
+
+                {plan && (
+                    <>
+                        <label className="flex items-start gap-2 border border-zinc-200 rounded-lg p-2.5 bg-zinc-50 cursor-pointer">
+                            <input type="checkbox" className="mt-0.5 rounded"
+                                checked={form.data.pago_parcial}
+                                onChange={e => form.setData(d => ({ ...d, pago_parcial: e.target.checked, monto_inicial: e.target.checked ? d.monto_inicial : '' }))} />
+                            <span className="text-xs text-zinc-700">
+                                Solo se pagará un anticipo ahora
+                                <span className="text-zinc-500 block">Los créditos se habilitan en cuanto se cobre el primer abono.</span>
+                            </span>
+                        </label>
+
+                        {form.data.pago_parcial && (
+                            <div>
+                                <label className="block text-xs font-medium text-zinc-600 mb-1">Monto del anticipo *</label>
+                                <input type="number" min="0.01" max={plan.precio} step="0.01" className="w-full border-gray-300 rounded-lg text-sm"
+                                    value={form.data.monto_inicial} onChange={e => form.setData('monto_inicial', e.target.value)} />
+                                {form.errors.monto_inicial && <p className="text-rose-500 text-xs mt-0.5">{form.errors.monto_inicial}</p>}
+                            </div>
+                        )}
+                    </>
+                )}
 
                 <div className="flex gap-2">
                     <button onClick={onClose} className="flex-1 bg-white border border-zinc-200 text-zinc-600 py-2 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors">Cancelar</button>
@@ -181,6 +207,11 @@ export default function MembershipsIndex({ memberships, plans, filters }) {
                                         </Link>
                                         {m.congelada && (
                                             <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-medium bg-sky-50 text-sky-700 ring-1 ring-sky-200">Congelada</span>
+                                        )}
+                                        {m.tiene_adeudo && (
+                                            <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-medium bg-orange-50 text-orange-700 ring-1 ring-orange-200">
+                                                Adeudo {fmt(m.saldo_pendiente)}
+                                            </span>
                                         )}
                                         <div className="text-xs text-zinc-400">{m.owner}</div>
                                     </td>

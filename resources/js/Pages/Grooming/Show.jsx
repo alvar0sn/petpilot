@@ -619,6 +619,9 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                                     <span className="text-xs font-medium text-indigo-700">
                                         Usar crédito de paquete
                                         <span className="ml-1 font-normal text-indigo-500">({paqueteCreditoDraft.saldo_actual} disponible{paqueteCreditoDraft.saldo_actual !== 1 ? 's' : ''} de {paqueteCreditoDraft.nombre})</span>
+                                        {paqueteCreditoDraft.tiene_adeudo && (
+                                            <span className="block font-normal text-orange-600">⚠️ Adeudo de {fmt(paqueteCreditoDraft.saldo_pendiente)} en este paquete</span>
+                                        )}
                                     </span>
                                 </label>
                             )}

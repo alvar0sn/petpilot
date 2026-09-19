@@ -144,6 +144,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::get('paquetes/nuevo', [PackageController::class, 'create'])->name('packages.create');
         Route::post('paquetes', [PackageController::class, 'store'])->name('packages.store');
         Route::get('paquetes/{package}', [PackageController::class, 'show'])->name('packages.show');
+        Route::post('paquetes/{package}/payments', [PackageController::class, 'storePayment'])->name('packages.payments.store');
     });
 
     // Membresías
@@ -156,6 +157,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('memberships/{membership}/deactivate', [MembershipController::class, 'deactivate'])->name('memberships.deactivate');
         Route::post('memberships/{membership}/freeze', [MembershipController::class, 'freeze'])->name('memberships.freeze');
         Route::post('memberships/{membership}/unfreeze', [MembershipController::class, 'unfreeze'])->name('memberships.unfreeze');
+        Route::post('memberships/{membership}/payments', [MembershipController::class, 'storePayment'])->name('memberships.payments.store');
         Route::get('membership-plans', [MembershipController::class, 'plans'])->name('memberships.plans');
         Route::post('membership-plans', [MembershipController::class, 'storePlan'])->name('memberships.plans.store');
         Route::put('membership-plans/{plan}', [MembershipController::class, 'updatePlan'])->name('memberships.plans.update');

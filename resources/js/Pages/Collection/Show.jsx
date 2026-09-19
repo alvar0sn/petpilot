@@ -105,7 +105,7 @@ function AddPetModal({ slot, rates, onClose }) {
     const fecha = String(slot.fecha).slice(0, 10);
     const membership = memberships.find(m => dateInRange(fecha, m.fecha_inicio, m.fecha_vencimiento)) ?? null;
     const credit = membership?.credits?.find(c => c.servicio_tipo === 'recoleccion');
-    const hasCredits = credit && credit.saldo_actual > 0;
+    const hasCredits = credit && credit.saldo_actual > 0 && membership?.creditos_usables !== false;
 
     const selectedRate = rates?.find(r => String(r.id) === String(form.data.rate_id));
     const paqueteCredito = selectedRate?.pos_item_id
@@ -182,22 +182,28 @@ function AddPetModal({ slot, rates, onClose }) {
                     <label className="flex items-start gap-2 border border-zinc-200 rounded-lg p-2.5 bg-zinc-50 cursor-pointer">
                         <input type="checkbox" className="mt-0.5 rounded"
                             checked={form.data.cobro_membresia}
-                            onChange={e => { form.setData('cobro_membresia', e.target.checked); form.setData('membership_id', e.target.checked ? membership.id : ''); }} />
+                            onChange={e => form.setData(d => ({ ...d, cobro_membresia: e.target.checked, membership_id: e.target.checked ? membership.id : '', usar_paquete: e.target.checked ? false : d.usar_paquete }))} />
                         <span className="text-xs text-zinc-700">
                             Cobrar con membresía <span className="font-medium">{membership.plan?.nombre}</span>
                             <span className="text-zinc-500 block">{credit.saldo_actual} crédito(s) disponibles</span>
+                            {membership.tiene_adeudo && (
+                                <span className="text-orange-600 font-medium block">⚠️ Adeudo de {fmt(membership.saldo_pendiente)} en esta membresía</span>
+                            )}
                         </span>
                     </label>
                 )}
 
-                {selectedPet && !form.data.cobro_membresia && paqueteCredito && (
+                {selectedPet && paqueteCredito && (
                     <label className="flex items-start gap-2 border border-indigo-200 rounded-lg p-2.5 bg-indigo-50 cursor-pointer">
                         <input type="checkbox" className="mt-0.5 rounded"
                             checked={form.data.usar_paquete}
-                            onChange={e => form.setData('usar_paquete', e.target.checked)} />
+                            onChange={e => form.setData(d => ({ ...d, usar_paquete: e.target.checked, cobro_membresia: e.target.checked ? false : d.cobro_membresia, membership_id: e.target.checked ? '' : d.membership_id }))} />
                         <span className="text-xs text-indigo-700">
                             Usar crédito de paquete <span className="font-medium">{paqueteCredito.nombre}</span>
                             <span className="text-indigo-500 block">{paqueteCredito.saldo_actual} disponible(s)</span>
+                            {paqueteCredito.tiene_adeudo && (
+                                <span className="text-orange-600 font-medium block">⚠️ Adeudo de {fmt(paqueteCredito.saldo_pendiente)} en este paquete</span>
+                            )}
                         </span>
                     </label>
                 )}

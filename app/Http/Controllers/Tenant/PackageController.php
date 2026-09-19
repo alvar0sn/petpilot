@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Package;
 use App\Models\PackageCredit;
 use App\Models\PackageItem;
+use App\Models\PackagePayment;
 use App\Models\Pet;
 use App\Models\PosCatalogItem;
 use App\Models\PosConfig;
 use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
+use App\Services\AdvanceTicketService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +24,7 @@ class PackageController extends Controller
 {
     public function index(Request $request): Response
     {
-        $packages = Package::with(['pet:id,nombre,owner_id', 'pet.owner:id,nombre,apellidos', 'credits', 'ticket:id,estado'])
+        $packages = Package::with(['pet:id,nombre,owner_id', 'pet.owner:id,nombre,apellidos', 'credits', 'ticket:id,folio,estado', 'payments.ticket:id,estado'])
             ->when($request->search, function ($q, $s) {
                 $sl = '%' . mb_strtolower($s) . '%';
                 $q->whereHas('pet', fn($q) => $q
@@ -44,6 +46,9 @@ class PackageController extends Controller
                 'fecha_vencimiento' => $p->fecha_vencimiento->toDateString(),
                 'vencido' => $p->isExpired(),
                 'pagado' => $p->isPagado(),
+                'tiene_adeudo' => $p->tieneAdeudo(),
+                'saldo_pendiente' => $p->saldoPendiente(),
+                'ticket_folio' => $p->ticket?->folio,
                 'ticket_estado' => $p->ticket?->displayEstado(),
                 'creditos_restantes' => $p->credits->sum('saldo_actual'),
                 'creditos_totales' => $p->credits->sum('saldo_inicial'),
@@ -83,6 +88,8 @@ class PackageController extends Controller
             'items.*.nombre' => 'required|string|max:255',
             'items.*.precio' => 'required|numeric|min:0',
             'items.*.cantidad' => 'required|numeric|min:0.01',
+            'pago_parcial' => 'boolean',
+            'monto_inicial' => 'required_if:pago_parcial,true|nullable|numeric|min:0.01',
         ]);
 
         $pet = Pet::findOrFail($data['pet_id']);
@@ -99,21 +106,10 @@ class PackageController extends Controller
         $total = max(0, round($subtotal - $descuentoMonto, 2));
         $fechaVencimiento = now()->addDays((int) $data['vigencia_dias'])->toDateString();
 
-        $package = DB::transaction(function () use ($data, $pet, $subtotal, $descuentoTipo, $descuentoValor, $total, $fechaVencimiento) {
-            $shift = PosShift::where('estado', 'abierto')->first();
+        $pagoParcial = $request->boolean('pago_parcial') && (float) ($data['monto_inicial'] ?? 0) < $total - 0.01;
+        $montoInicial = $pagoParcial ? round(min($total, (float) $data['monto_inicial']), 2) : $total;
 
-            $ticket = PosTicket::create([
-                'folio' => $this->nextFolio(),
-                'owner_id' => $pet->owner_id,
-                'estado' => 'abierto',
-                'shift_open_id' => $shift?->id,
-                'user_open_id' => auth()->id(),
-                'user_last_edit_id' => auth()->id(),
-                'subtotal' => $subtotal,
-                'discount_amount' => round($subtotal - $total, 2),
-                'total' => $total,
-            ]);
-
+        $package = DB::transaction(function () use ($data, $pet, $subtotal, $descuentoTipo, $descuentoValor, $total, $fechaVencimiento, $pagoParcial, $montoInicial) {
             $package = Package::create([
                 'pet_id' => $pet->id,
                 'owner_id' => $pet->owner_id,
@@ -122,7 +118,6 @@ class PackageController extends Controller
                 'descuento_valor' => $descuentoValor,
                 'total' => $total,
                 'fecha_vencimiento' => $fechaVencimiento,
-                'pos_ticket_id' => $ticket->id,
                 'created_by' => auth()->id(),
             ]);
 
@@ -136,16 +131,6 @@ class PackageController extends Controller
                     'pos_catalog_item_id' => $item['pos_catalog_item_id'],
                     'nombre_snapshot' => $item['nombre'],
                     'precio_snapshot' => $item['precio'],
-                    'cantidad' => $item['cantidad'],
-                    'subtotal' => $itemSubtotal,
-                ]);
-
-                PosTicketLine::create([
-                    'ticket_id' => $ticket->id,
-                    'item_id' => $item['pos_catalog_item_id'],
-                    'nombre_snapshot' => $item['nombre'],
-                    'precio_snapshot' => $item['precio'],
-                    'costo_snapshot' => 0,
                     'cantidad' => $item['cantidad'],
                     'subtotal' => $itemSubtotal,
                 ]);
@@ -168,11 +153,95 @@ class PackageController extends Controller
                 ]);
             }
 
+            if ($pagoParcial) {
+                // Anticipo: un solo ticket por el monto que se va a cobrar ahora —
+                // el desglose por artículo ya quedó en PackageItem, no hace falta
+                // repetirlo en el ticket (igual que el patrón de adelanto en Hotel).
+                $ticket = app(AdvanceTicketService::class)->create(
+                    $pet->owner_id,
+                    $montoInicial,
+                    "Anticipo — Paquete: {$pet->nombre}"
+                );
+            } else {
+                $shift = PosShift::where('estado', 'abierto')->first();
+
+                $ticket = PosTicket::create([
+                    'folio' => $this->nextFolio(),
+                    'owner_id' => $pet->owner_id,
+                    'estado' => 'abierto',
+                    'shift_open_id' => $shift?->id,
+                    'user_open_id' => auth()->id(),
+                    'user_last_edit_id' => auth()->id(),
+                    'subtotal' => $subtotal,
+                    'discount_amount' => round($subtotal - $total, 2),
+                    'total' => $total,
+                ]);
+
+                foreach ($data['items'] as $item) {
+                    PosTicketLine::create([
+                        'ticket_id' => $ticket->id,
+                        'item_id' => $item['pos_catalog_item_id'],
+                        'nombre_snapshot' => $item['nombre'],
+                        'precio_snapshot' => $item['precio'],
+                        'costo_snapshot' => 0,
+                        'cantidad' => $item['cantidad'],
+                        'subtotal' => $item['precio'] * $item['cantidad'],
+                    ]);
+                }
+            }
+
+            $package->update(['pos_ticket_id' => $ticket->id]);
+
+            PackagePayment::create([
+                'package_id' => $package->id,
+                'pos_ticket_id' => $ticket->id,
+                'monto' => $montoInicial,
+                'tipo' => 'inicial',
+                'user_id' => auth()->id(),
+            ]);
+
             return $package;
         });
 
         return redirect()->route('pos.index', ['ticket' => $package->pos_ticket_id])
-            ->with('success', 'Paquete creado. Completa el cobro en POS.');
+            ->with('success', $pagoParcial ? 'Paquete creado. Completa el cobro del anticipo en POS.' : 'Paquete creado. Completa el cobro en POS.');
+    }
+
+    public function storePayment(Request $request, Package $package): RedirectResponse
+    {
+        $saldoPendiente = $package->saldoPendiente();
+        abort_if($saldoPendiente <= 0.009, 422, 'Este paquete ya está pagado por completo.');
+
+        $data = $request->validate([
+            'monto' => 'required|numeric|min:0.01',
+            'notas' => 'nullable|string|max:255',
+        ]);
+
+        if ($data['monto'] > $saldoPendiente + 0.01) {
+            return back()->withErrors(['monto' => 'El abono no puede exceder el saldo pendiente (' . number_format($saldoPendiente, 2) . ').'])->withInput();
+        }
+
+        $ticket = DB::transaction(function () use ($package, $data) {
+            $ticket = app(AdvanceTicketService::class)->create(
+                $package->owner_id,
+                $data['monto'],
+                "Abono — Paquete: {$package->pet?->nombre}"
+            );
+
+            PackagePayment::create([
+                'package_id' => $package->id,
+                'pos_ticket_id' => $ticket->id,
+                'monto' => $data['monto'],
+                'tipo' => 'abono',
+                'notas' => $data['notas'] ?? null,
+                'user_id' => auth()->id(),
+            ]);
+
+            return $ticket;
+        });
+
+        return redirect()->route('pos.index', ['ticket' => $ticket->id])
+            ->with('success', 'Abono registrado. Completa el cobro en POS.');
     }
 
     public function show(Package $package): Response
@@ -183,6 +252,7 @@ class PackageController extends Controller
             'ticket:id,folio,estado',
             'items.catalogItem:id,nombre',
             'credits.movements' => fn($q) => $q->latest('created_at'),
+            'payments.ticket:id,folio,estado',
         ]);
 
         return Inertia::render('Packages/Show', [
@@ -201,10 +271,23 @@ class PackageController extends Controller
                 'fecha_vencimiento' => $package->fecha_vencimiento->toDateString(),
                 'vencido' => $package->isExpired(),
                 'pagado' => $package->isPagado(),
+                'tiene_adeudo' => $package->tieneAdeudo(),
+                'monto_pagado' => $package->montoPagado(),
+                'saldo_pendiente' => $package->saldoPendiente(),
                 'ticket_estado' => $package->ticket?->displayEstado(),
                 'created_at' => $package->created_at->toDateTimeString(),
                 'ticket_folio' => $package->ticket?->folio,
                 'ticket_id' => $package->pos_ticket_id,
+                'payments' => $package->payments->map(fn($p) => [
+                    'id' => $p->id,
+                    'monto' => $p->monto,
+                    'tipo' => $p->tipo,
+                    'notas' => $p->notas,
+                    'ticket_folio' => $p->ticket?->folio,
+                    'ticket_id' => $p->pos_ticket_id,
+                    'ticket_estado' => $p->ticket?->displayEstado(),
+                    'created_at' => $p->created_at->toDateTimeString(),
+                ]),
                 'items' => $package->items->map(fn($i) => [
                     'id' => $i->id,
                     'nombre' => $i->nombre_snapshot,

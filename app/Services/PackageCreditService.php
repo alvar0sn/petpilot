@@ -29,21 +29,32 @@ class PackageCreditService
     public static function availableForPet(int $petId): \Illuminate\Support\Collection
     {
         return self::availableQuery($petId)
-            ->with('catalogItem:id,nombre')
+            ->with('catalogItem:id,nombre', 'package:id,total')
             ->get()
             ->map(fn(PackageCredit $c) => [
                 'catalog_item_id' => $c->pos_catalog_item_id,
                 'nombre' => $c->catalogItem?->nombre ?? $c->nombre_snapshot,
                 'saldo_actual' => (float) $c->saldo_actual,
+                'tiene_adeudo' => (bool) $c->package?->tieneAdeudo(),
+                'saldo_pendiente' => (float) ($c->package?->saldoPendiente() ?? 0),
             ]);
     }
 
+    /**
+     * Un paquete da acceso a sus créditos en cuanto recibe al menos un abono
+     * cobrado y no reembolsado por completo (no hace falta que esté liquidado
+     * al 100%) — ver Package::montoPagado(). `refunded_amount < total` excluye
+     * tickets que se pagaron pero luego se reembolsaron íntegramente.
+     */
     private static function availableQuery(int $petId): \Illuminate\Database\Eloquent\Builder
     {
         return PackageCredit::where('pet_id', $petId)
             ->where('saldo_actual', '>', 0)
             ->where('fecha_vencimiento', '>=', now()->toDateString())
-            ->whereHas('package.ticket', fn($q) => $q->where('estado', 'pagado'));
+            ->whereHas('package', fn($q) => $q->whereHas(
+                'payments',
+                fn($q2) => $q2->whereHas('ticket', fn($q3) => $q3->where('estado', 'pagado')->whereColumn('refunded_amount', '<', 'total'))
+            ));
     }
 
     public static function consume(PackageCredit $credit, float $cantidad, string $referenciaTipo, ?int $referenciaId, string $notas): void

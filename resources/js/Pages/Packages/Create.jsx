@@ -14,6 +14,7 @@ export default function PackagesCreate({ catalogItems }) {
     const [selectedPet, setSelectedPet] = useState(null);
     const [itemFilter, setItemFilter] = useState('');
     const [itemDraft, setItemDraft] = useState({ catalog_item_id: '', cantidad: '1' });
+    const [showAddItem, setShowAddItem] = useState(false);
 
     const form = useForm({
         pet_id: '',
@@ -21,6 +22,8 @@ export default function PackagesCreate({ catalogItems }) {
         descuento_tipo: '',
         descuento_valor: '',
         items: [],
+        pago_parcial: false,
+        monto_inicial: '',
     });
 
     async function searchPet(q) {
@@ -53,6 +56,13 @@ export default function PackagesCreate({ catalogItems }) {
         }]);
         setItemDraft({ catalog_item_id: '', cantidad: '1' });
         setItemFilter('');
+        setShowAddItem(false);
+    }
+
+    function cancelAddItem() {
+        setItemDraft({ catalog_item_id: '', cantidad: '1' });
+        setItemFilter('');
+        setShowAddItem(false);
     }
 
     function removeItem(idx) {
@@ -122,44 +132,59 @@ export default function PackagesCreate({ catalogItems }) {
                             </div>
                         )}
 
-                        <div className="grid grid-cols-12 gap-2 items-start">
-                            <div className="col-span-8 relative">
-                                <input className="w-full border-gray-300 rounded-lg text-sm"
-                                    placeholder="Buscar artículo del catálogo..."
-                                    value={itemDraft.catalog_item_id
-                                        ? catalogItems.find(c => String(c.id) === itemDraft.catalog_item_id)?.nombre ?? ''
-                                        : itemFilter}
-                                    onChange={e => { setItemDraft(d => ({ ...d, catalog_item_id: '' })); setItemFilter(e.target.value); }}
+                        {showAddItem ? (
+                            <div className="grid grid-cols-12 gap-2 items-start">
+                                <div className="col-span-7 relative">
+                                    <input className="w-full border-gray-300 rounded-lg text-sm" autoFocus
+                                        placeholder="Buscar artículo del catálogo..."
+                                        value={itemDraft.catalog_item_id
+                                            ? catalogItems.find(c => String(c.id) === itemDraft.catalog_item_id)?.nombre ?? ''
+                                            : itemFilter}
+                                        onChange={e => { setItemDraft(d => ({ ...d, catalog_item_id: '' })); setItemFilter(e.target.value); }}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Escape') { e.preventDefault(); cancelAddItem(); return; }
+                                            if (e.key !== 'Enter') return;
+                                            e.preventDefault();
+                                            if (itemDraft.catalog_item_id) { addItem(); return; }
+                                            if (filteredCatalog.length === 1) { setItemDraft({ catalog_item_id: String(filteredCatalog[0].id), cantidad: '1' }); setItemFilter(''); }
+                                        }} />
+                                    {itemFilter.length >= 2 && !itemDraft.catalog_item_id && (
+                                        <div className="absolute z-20 mt-1 w-full bg-white border border-zinc-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                                            {filteredCatalog.slice(0, 20).map(c => (
+                                                <button key={c.id} type="button"
+                                                    onClick={() => { setItemDraft({ catalog_item_id: String(c.id), cantidad: '1' }); setItemFilter(''); }}
+                                                    className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 transition-colors flex justify-between">
+                                                    <span>{c.nombre} <span className="text-zinc-400 text-xs">{c.categoria}</span></span>
+                                                    <span className="text-zinc-500">{fmt(c.precio)}</span>
+                                                </button>
+                                            ))}
+                                            {filteredCatalog.length === 0 && (
+                                                <div className="px-3 py-2 text-sm text-zinc-400">Sin resultados.</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <input type="number" min="1" step="1" className="col-span-2 border-gray-300 rounded-lg text-sm"
+                                    value={itemDraft.cantidad} onChange={e => setItemDraft(d => ({ ...d, cantidad: e.target.value }))}
                                     onKeyDown={e => {
-                                        if (e.key !== 'Enter') return;
-                                        e.preventDefault();
-                                        if (itemDraft.catalog_item_id) { addItem(); return; }
-                                        if (filteredCatalog.length === 1) { setItemDraft({ catalog_item_id: String(filteredCatalog[0].id), cantidad: '1' }); setItemFilter(''); }
+                                        if (e.key === 'Escape') { e.preventDefault(); cancelAddItem(); }
+                                        if (e.key === 'Enter') { e.preventDefault(); addItem(); }
                                     }} />
-                                {itemFilter.length >= 2 && !itemDraft.catalog_item_id && (
-                                    <div className="absolute z-20 mt-1 w-full bg-white border border-zinc-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                                        {filteredCatalog.slice(0, 20).map(c => (
-                                            <button key={c.id} type="button"
-                                                onClick={() => { setItemDraft({ catalog_item_id: String(c.id), cantidad: '1' }); setItemFilter(''); }}
-                                                className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 transition-colors flex justify-between">
-                                                <span>{c.nombre} <span className="text-zinc-400 text-xs">{c.categoria}</span></span>
-                                                <span className="text-zinc-500">{fmt(c.precio)}</span>
-                                            </button>
-                                        ))}
-                                        {filteredCatalog.length === 0 && (
-                                            <div className="px-3 py-2 text-sm text-zinc-400">Sin resultados.</div>
-                                        )}
-                                    </div>
-                                )}
+                                <button type="button" onClick={addItem} disabled={!itemDraft.catalog_item_id}
+                                    className="col-span-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-colors">
+                                    Agregar
+                                </button>
+                                <button type="button" onClick={cancelAddItem}
+                                    className="col-span-1 text-zinc-400 hover:text-zinc-600 transition-colors text-sm">
+                                    ✕
+                                </button>
                             </div>
-                            <input type="number" min="0.01" step="1" className="col-span-2 border-gray-300 rounded-lg text-sm"
-                                value={itemDraft.cantidad} onChange={e => setItemDraft(d => ({ ...d, cantidad: e.target.value }))}
-                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem(); } }} />
-                            <button type="button" onClick={addItem} disabled={!itemDraft.catalog_item_id}
-                                className="col-span-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-colors">
-                                Agregar
+                        ) : (
+                            <button type="button" onClick={() => setShowAddItem(true)}
+                                className="w-full border border-dashed border-zinc-300 text-zinc-500 hover:border-indigo-400 hover:text-indigo-600 rounded-lg py-2 text-sm font-medium transition-colors">
+                                + Agregar artículo
                             </button>
-                        </div>
+                        )}
                         {form.errors.items && <p className="text-rose-500 text-xs">{form.errors.items}</p>}
                     </div>
 
@@ -209,9 +234,30 @@ export default function PackagesCreate({ catalogItems }) {
                             <span>Total a cobrar</span>
                             <span className="font-mono">{fmt(total)}</span>
                         </div>
+
+                        <label className="flex items-start gap-2 border border-zinc-200 rounded-lg p-2.5 bg-zinc-50 cursor-pointer mt-2">
+                            <input type="checkbox" className="mt-0.5 rounded"
+                                checked={form.data.pago_parcial}
+                                onChange={e => form.setData(d => ({ ...d, pago_parcial: e.target.checked, monto_inicial: e.target.checked ? d.monto_inicial : '' }))} />
+                            <span className="text-xs text-zinc-700">
+                                Solo se pagará un anticipo ahora
+                                <span className="text-zinc-500 block">Los créditos se habilitan en cuanto se cobre el primer abono, aunque no cubra el total.</span>
+                            </span>
+                        </label>
+
+                        {form.data.pago_parcial && (
+                            <div>
+                                <label className="block text-xs font-medium text-zinc-600 mb-1">Monto del anticipo *</label>
+                                <input type="number" min="0.01" max={total || undefined} step="0.01" className="w-full border-gray-300 rounded-lg text-sm"
+                                    value={form.data.monto_inicial} onChange={e => form.setData('monto_inicial', e.target.value)} />
+                                {form.errors.monto_inicial && <p className="text-rose-500 text-xs mt-0.5">{form.errors.monto_inicial}</p>}
+                                <p className="text-xs text-zinc-400 mt-1">Saldo pendiente después del anticipo: {fmt(Math.max(0, total - Number(form.data.monto_inicial || 0)))}</p>
+                            </div>
+                        )}
+
                         <button type="submit" disabled={form.processing || !form.data.pet_id || form.data.items.length === 0}
                             className="w-full mt-2 bg-zinc-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
-                            {form.processing ? 'Creando...' : 'Crear paquete y cobrar'}
+                            {form.processing ? 'Creando...' : form.data.pago_parcial ? 'Crear paquete y cobrar anticipo' : 'Crear paquete y cobrar'}
                         </button>
                     </div>
                 </div>

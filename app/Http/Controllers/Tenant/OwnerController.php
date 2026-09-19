@@ -23,8 +23,11 @@ class OwnerController extends Controller
                     ->with('credits:id,membership_id,servicio_tipo,saldo_actual'),
                 'pets.packageCredits' => fn($q) => $q->where('saldo_actual', '>', 0)
                     ->where('fecha_vencimiento', '>=', now()->toDateString())
-                    ->whereHas('package.ticket', fn($q) => $q->where('estado', 'pagado'))
-                    ->with('catalogItem:id,nombre'),
+                    ->whereHas('package', fn($q) => $q->whereHas(
+                        'payments',
+                        fn($q2) => $q2->whereHas('ticket', fn($q3) => $q3->where('estado', 'pagado')->whereColumn('refunded_amount', '<', 'total'))
+                    ))
+                    ->with('catalogItem:id,nombre', 'package:id,total'),
             ])
             ->when($request->search, function ($q, $s) {
                 $sl = '%' . mb_strtolower($s) . '%';
@@ -54,18 +57,23 @@ class OwnerController extends Controller
                     $membership = $p->memberships->first();
                     $creditEst = $membership?->getCredit('estetica');
                     $creditEntrenamiento = $membership?->getCredit('entrenamiento');
+                    $membresiaUsable = (bool) $membership?->creditsUsable();
                     return [
                         'id'                    => $p->id,
                         'nombre'                => $p->nombre,
                         'tipo'                  => $p->tipo,
-                        'membership_id'         => ($creditEst && $creditEst->saldo_actual > 0) ? $membership->id : null,
+                        'membership_id'         => ($creditEst && $creditEst->saldo_actual > 0 && $membresiaUsable) ? $membership->id : null,
                         'creditos_estetica'     => $creditEst?->saldo_actual ?? 0,
-                        'membership_id_entrenamiento' => ($creditEntrenamiento && $creditEntrenamiento->saldo_actual > 0) ? $membership->id : null,
+                        'membership_id_entrenamiento' => ($creditEntrenamiento && $creditEntrenamiento->saldo_actual > 0 && $membresiaUsable) ? $membership->id : null,
                         'creditos_entrenamiento'      => $creditEntrenamiento?->saldo_actual ?? 0,
+                        'membresia_tiene_adeudo' => (bool) $membership?->tieneAdeudo(),
+                        'membresia_saldo_pendiente' => (float) ($membership?->saldoPendienteRenewal() ?? 0),
                         'paquete_creditos' => $p->packageCredits->map(fn($c) => [
                             'catalog_item_id' => $c->pos_catalog_item_id,
                             'nombre' => $c->catalogItem?->nombre ?? $c->nombre_snapshot,
                             'saldo_actual' => (float) $c->saldo_actual,
+                            'tiene_adeudo' => (bool) $c->package?->tieneAdeudo(),
+                            'saldo_pendiente' => (float) ($c->package?->saldoPendiente() ?? 0),
                         ]),
                     ];
                 }),

@@ -25,6 +25,21 @@ function ErrorBanner({ message, onDismiss }) {
     );
 }
 
+function PaidModal({ info, onClose }) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 text-center space-y-3">
+                <div className="text-4xl">✅</div>
+                <p className="font-semibold text-green-700 text-lg">Ticket #{info.folio} cobrado</p>
+                {info.waSent && <p className="text-xs text-green-600">📱 Ticket enviado por WhatsApp</p>}
+                <button onClick={onClose} className="w-full bg-zinc-900 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-zinc-700 transition-colors">
+                    Nueva venta
+                </button>
+            </div>
+        </div>
+    );
+}
+
 function CashMovementModal({ shiftId, onClose }) {
     const form = useForm({ tipo: 'deposito', monto: '', comentario: '' });
 
@@ -501,11 +516,10 @@ function MobileCart({ ticket, paymentMethods, discounts, onRefresh, onClear, onB
 
 // ─── Desktop ticket panel ─────────────────────────────────────────────────────
 
-function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) {
+function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear, onPaid }) {
     const [payMode, setPayMode] = useState(false);
     const [payments, setPayments] = useState([{ payment_method_id: paymentMethods[0]?.id ?? '', monto: '' }]);
     const [processing, setProcessing] = useState(false);
-    const [paidState, setPaidState] = useState(null);
     const [searchingOwner, setSearchingOwner] = useState(false);
     const [error, setError] = useState(null);
 
@@ -558,8 +572,7 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
         setProcessing(true);
         try {
             const r = await axios.post(route('pos.tickets.pay', ticket.id), { payments });
-            setPaidState({ folio: r.data.folio, waSent: r.data.wa_sent });
-            router.reload({ only: ['openTickets'] });
+            onPaid({ folio: r.data.folio, waSent: r.data.wa_sent });
         } catch (e) { console.error('pay:', e); }
         finally { setProcessing(false); }
     }
@@ -642,18 +655,7 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
                 </div>
             </div>
 
-            {paidState ? (
-                <div className="px-4 pb-4 space-y-3 text-center">
-                    <div className="py-4">
-                        <div className="text-2xl mb-1">✅</div>
-                        <p className="font-semibold text-green-700 text-sm">Ticket #{paidState.folio} cobrado</p>
-                        {paidState.waSent && <p className="text-xs text-green-600 mt-1">📱 Ticket enviado por WhatsApp</p>}
-                    </div>
-                    <button onClick={() => router.visit(route('pos.index'))} className="w-full border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50">
-                        Nueva venta
-                    </button>
-                </div>
-            ) : !payMode ? (
+            {!payMode ? (
                 <div className="px-4 pb-4 space-y-2">
                     <button onClick={() => { setPayMode(true); setPayments([{ payment_method_id: paymentMethods[0]?.id ?? '', monto: String(ticket.total) }]); }}
                         disabled={!ticket.lines?.length || processing}
@@ -664,7 +666,7 @@ function TicketPanel({ ticket, paymentMethods, discounts, onRefresh, onClear }) 
                 </div>
             ) : null}
 
-            {payMode && !paidState && (
+            {payMode && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5 space-y-3">
                         <div className="text-center mb-1">
@@ -710,10 +712,18 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
     const [mobileView, setMobileView] = useState('catalog'); // 'catalog' | 'cart'
     const [catalogError, setCatalogError] = useState(null);
     const [showCashMovement, setShowCashMovement] = useState(false);
+    const [paidInfo, setPaidInfo] = useState(null);
 
     // Ref mirrors currentTicket state so callbacks always see the latest value
     const ticketRef = useRef(null);
     function updateTicket(t) { ticketRef.current = t; setCurrentTicket(t); }
+
+    function handlePaid(info) {
+        setPaidInfo(info);
+        updateTicket(null);
+        setMobileView('catalog');
+        router.reload({ only: ['openTickets'] });
+    }
 
     useEffect(() => {
         if (openTicketId) loadTicket(openTicketId);
@@ -884,7 +894,7 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
                 <div className="w-80 shrink-0 p-4 bg-gray-50 border-l overflow-hidden">
                     {currentTicket ? (
                         <TicketPanel key={currentTicket.id} ticket={currentTicket} paymentMethods={paymentMethods} discounts={discounts}
-                            onRefresh={updateTicket} onClear={() => { updateTicket(null); router.reload({ only: ['openTickets'] }); }} />
+                            onRefresh={updateTicket} onClear={() => { updateTicket(null); router.reload({ only: ['openTickets'] }); }} onPaid={handlePaid} />
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
                             <p className="text-sm">Crea un nuevo ticket o selecciona uno abierto</p>
@@ -895,6 +905,10 @@ export default function PosIndex({ activeShift, catalog, paymentMethods, discoun
 
             {showCashMovement && (
                 <CashMovementModal shiftId={activeShift.id} onClose={() => setShowCashMovement(false)} />
+            )}
+
+            {paidInfo && (
+                <PaidModal info={paidInfo} onClose={() => setPaidInfo(null)} />
             )}
         </TenantLayout>
     );

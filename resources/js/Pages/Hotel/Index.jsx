@@ -116,7 +116,7 @@ function NewStayModal({ spaces, rates, onClose }) {
 
     const membership = memberships.find(m => dateInRange(form.data.fecha_entrada, m.fecha_inicio, m.fecha_vencimiento)) ?? null;
     const credit = membership?.credits?.find(c => c.servicio_tipo === form.data.tipo);
-    const hasCredits = credit && credit.saldo_actual > 0;
+    const hasCredits = credit && credit.saldo_actual > 0 && membership?.creditos_usables !== false;
     const filteredRates = rates.filter(r => r.tipo === form.data.tipo);
     const selectedRate = filteredRates.find(r => String(r.id) === String(form.data.rate_id)) ?? null;
     const paqueteCredito = !form.data.cobro_membresia && selectedRate?.pos_item_id
@@ -283,6 +283,9 @@ function NewStayModal({ spaces, rates, onClose }) {
                                 <span className="text-xs text-zinc-700">
                                     Usar crédito de membresía <span className="font-medium">{membership.plan?.nombre}</span>
                                     <span className="text-zinc-500 block">{credit.saldo_actual} crédito(s) de {tipoLabel[form.data.tipo].toLowerCase()} disponibles</span>
+                                    {membership.tiene_adeudo && (
+                                        <span className="text-orange-600 font-medium block">⚠️ Adeudo de {fmt(membership.saldo_pendiente)} en esta membresía</span>
+                                    )}
                                 </span>
                             </label>
                         )}
@@ -306,6 +309,9 @@ function NewStayModal({ spaces, rates, onClose }) {
                                 <span className="text-xs text-indigo-700">
                                     Usar crédito de paquete <span className="font-medium">{paqueteCredito.nombre}</span>
                                     <span className="text-indigo-500 block">{paqueteCredito.saldo_actual} disponible(s)</span>
+                                    {paqueteCredito.tiene_adeudo && (
+                                        <span className="text-orange-600 font-medium block">⚠️ Adeudo de {fmt(paqueteCredito.saldo_pendiente)} en este paquete</span>
+                                    )}
                                 </span>
                             </label>
                         )}
