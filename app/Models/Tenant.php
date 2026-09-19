@@ -76,11 +76,6 @@ class Tenant extends Model
         return $this->hasMany(Pet::class);
     }
 
-    public function sucursales(): HasMany
-    {
-        return $this->hasMany(Sucursal::class);
-    }
-
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);

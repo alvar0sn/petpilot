@@ -10,7 +10,6 @@ use App\Models\PosCatalogItem;
 use App\Models\PosPaymentMethod;
 use App\Models\PosTicketConfig;
 use App\Models\Raza;
-use App\Models\Sucursal;
 use App\Models\TenantMercadoPagoConfig;
 use App\Models\User;
 use App\Services\MercadoPagoService;
@@ -19,7 +18,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -92,15 +90,9 @@ class SettingsController extends Controller
             ],
             'teamMembers' => User::where('tenant_id', app('current_tenant')->id)
                 ->whereIn('role', ['tenant_admin', 'colaborador'])
-                ->with('sucursales:id')
                 ->orderBy('nombre')
-                ->get(['id', 'nombre', 'apellido', 'email', 'role', 'activo', 'permisos_modulos'])
-                ->map(fn (User $u) => [
-                    ...Arr::except($u->toArray(), 'sucursales'),
-                    'sucursal_ids' => $u->sucursales->pluck('id'),
-                ]),
+                ->get(['id', 'nombre', 'apellido', 'email', 'role', 'activo', 'permisos_modulos']),
             'razas' => Raza::orderBy('tipo')->orderBy('nombre')->get(['id', 'nombre', 'tipo']),
-            'sucursales' => Sucursal::orderBy('nombre')->get(['id', 'nombre', 'direccion', 'telefono', 'estado', 'es_principal']),
         ]);
     }
 
@@ -135,62 +127,6 @@ class SettingsController extends Controller
         return back()->with('success', 'Raza eliminada.');
     }
 
-    public function storeSucursal(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'nombre'    => 'required|string|max:255',
-            'direccion' => 'nullable|string|max:255',
-            'telefono'  => 'nullable|string|max:50',
-        ]);
-
-        app('current_tenant')->sucursales()->create([
-            ...$data,
-            'estado' => 'activa',
-            'es_principal' => false,
-        ]);
-
-        return back()->with('success', 'Sucursal creada.');
-    }
-
-    public function updateSucursal(Request $request, Sucursal $sucursal): RedirectResponse
-    {
-        abort_unless($sucursal->tenant_id === app('current_tenant')->id, 404);
-
-        $data = $request->validate([
-            'nombre'       => 'required|string|max:255',
-            'direccion'    => 'nullable|string|max:255',
-            'telefono'     => 'nullable|string|max:50',
-            'estado'       => 'required|in:activa,inactiva',
-            'es_principal' => 'boolean',
-        ]);
-
-        if (($data['estado'] ?? 'activa') === 'inactiva' && $sucursal->es_principal) {
-            abort(422, 'Designa otra sucursal como principal antes de desactivar esta.');
-        }
-
-        if ($data['es_principal'] ?? false) {
-            Sucursal::where('tenant_id', app('current_tenant')->id)
-                ->where('id', '!=', $sucursal->id)
-                ->update(['es_principal' => false]);
-        } elseif ($sucursal->es_principal) {
-            abort(422, 'Debe haber una sucursal principal: designa otra antes de quitarle este estado.');
-        }
-
-        $sucursal->update($data);
-
-        return back()->with('success', 'Sucursal actualizada.');
-    }
-
-    public function destroySucursal(Sucursal $sucursal): RedirectResponse
-    {
-        abort_unless($sucursal->tenant_id === app('current_tenant')->id, 404);
-        abort_if($sucursal->es_principal, 422, 'No puedes eliminar la sucursal principal.');
-
-        $sucursal->delete();
-
-        return back()->with('success', 'Sucursal eliminada.');
-    }
-
     public function storeTeamMember(Request $request): RedirectResponse
     {
         $data = $request->validate([
@@ -201,11 +137,9 @@ class SettingsController extends Controller
             'password'          => ['required', Password::min(8)],
             'permisos_modulos'  => 'nullable|array',
             'permisos_modulos.*'=> 'in:crm,pos,memberships,hotel,paseos,recoleccion,grooming,veterinaria,entrenamiento,paquetes',
-            'sucursal_ids'      => 'nullable|array',
-            'sucursal_ids.*'    => Rule::exists('sucursales', 'id')->where('tenant_id', app('current_tenant')->id),
         ]);
 
-        $user = app('current_tenant')->users()->create([
+        app('current_tenant')->users()->create([
             'nombre'           => $data['nombre'],
             'apellido'         => $data['apellido'] ?? null,
             'email'            => $data['email'],
@@ -214,8 +148,6 @@ class SettingsController extends Controller
             'activo'           => true,
             'permisos_modulos' => $data['role'] === 'colaborador' ? ($data['permisos_modulos'] ?? null) : null,
         ]);
-
-        $user->sucursales()->sync($data['sucursal_ids'] ?? []);
 
         return back()->with('success', 'Usuario creado.');
     }
@@ -232,8 +164,6 @@ class SettingsController extends Controller
             'activo'            => 'boolean',
             'permisos_modulos'  => 'nullable|array',
             'permisos_modulos.*'=> 'in:crm,pos,memberships,hotel,paseos,recoleccion,grooming,veterinaria,entrenamiento,paquetes',
-            'sucursal_ids'      => 'nullable|array',
-            'sucursal_ids.*'    => Rule::exists('sucursales', 'id')->where('tenant_id', app('current_tenant')->id),
         ]);
 
         if (! ($data['activo'] ?? true) || $data['role'] !== 'tenant_admin') {
@@ -241,11 +171,9 @@ class SettingsController extends Controller
         }
 
         $user->update([
-            ...Arr::except($data, 'sucursal_ids'),
+            ...$data,
             'permisos_modulos' => $data['role'] === 'colaborador' ? ($data['permisos_modulos'] ?? null) : null,
         ]);
-
-        $user->sucursales()->sync($data['sucursal_ids'] ?? []);
 
         return back()->with('success', 'Usuario actualizado.');
     }
