@@ -45,6 +45,9 @@ use App\Http\Controllers\SuperAdmin\SuperAdminOwnersController;
 use App\Http\Controllers\SuperAdmin\SystemSettingsController;
 use App\Http\Controllers\SuperAdmin\TenantUserController;
 use App\Http\Controllers\SuperAdmin\WhatsappCreditController;
+use App\Http\Controllers\SuperAdmin\LegalController;
+use App\Http\Controllers\LegalDocumentController;
+use App\Http\Controllers\LegalAcceptanceController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -56,6 +59,15 @@ Route::get('/', function () {
 // al crear plantillas compartidas — protegido con X-Gateway-Secret, no con sesión.
 Route::get('/api/whatsapp-triggers', [WhatsappTriggerCatalogController::class, 'index']);
 
+// Documentos legales públicos — accesibles sin sesión iniciada.
+Route::get('/legal/terminos', [LegalDocumentController::class, 'terminos'])->name('legal.terminos');
+Route::get('/legal/tratamiento-datos', [LegalDocumentController::class, 'tratamientoDatos'])->name('legal.tratamiento-datos');
+
+// Excluida por nombre de EnsureLegalAcceptance para no generar un loop de redirects.
+Route::middleware('auth')->group(function () {
+    Route::get('/legal/aceptar', [LegalAcceptanceController::class, 'show'])->name('legal.accept');
+    Route::post('/legal/aceptar', [LegalAcceptanceController::class, 'store'])->name('legal.accept.store');
+});
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 Route::post('/dashboard/recordatorios/enviar', [DashboardController::class, 'sendRecordatorio'])->middleware(['auth', 'verified', 'tenant'])->name('dashboard.recordatorios.send');
@@ -355,6 +367,9 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
 
     Route::get('backlog', [BacklogController::class, 'index'])->name('backlog.index');
     Route::post('backlog', [BacklogController::class, 'store'])->name('backlog.store');
+
+    Route::get('legal', [LegalController::class, 'index'])->name('legal.index');
+    Route::post('legal', [LegalController::class, 'store'])->name('legal.store');
 
     Route::get('owners', [SuperAdminOwnersController::class, 'index'])->name('owners.index');
     Route::post('owners/sync-bulk', [SuperAdminOwnersController::class, 'syncBulk'])->name('owners.sync-bulk');

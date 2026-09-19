@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\ResolveTenant::class,
             \App\Http\Middleware\HandleImpersonation::class,
+            \App\Http\Middleware\EnsureLegalAcceptance::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);
 
