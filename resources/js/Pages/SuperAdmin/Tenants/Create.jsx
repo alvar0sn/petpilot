@@ -5,12 +5,12 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import { useForm } from '@inertiajs/react';
 
-export default function TenantCreate() {
+export default function TenantCreate({ plans }) {
     const { data, setData, post, processing, errors } = useForm({
         nombre: '',
         slug: '',
         estado: 'trial',
-        plan_precio: '',
+        plan_id: '',
         admin_nombre: '',
         admin_apellido: '',
         admin_email: '',
@@ -73,10 +73,15 @@ export default function TenantCreate() {
                             </select>
                         </div>
                         <div>
-                            <InputLabel value="Plan / precio" />
-                            <TextInput className="mt-1 w-full" value={data.plan_precio}
-                                onChange={e => setData('plan_precio', e.target.value)}
-                                placeholder="ej. $1,500 MXN/mes" />
+                            <InputLabel value="Plan" />
+                            <select className="mt-1 w-full border-gray-300 rounded-md text-sm"
+                                value={data.plan_id} onChange={e => setData('plan_id', e.target.value)}>
+                                <option value="">Sin asignar</option>
+                                {(plans ?? []).map(p => (
+                                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                                ))}
+                            </select>
+                            <InputError message={errors.plan_id} className="mt-1" />
                         </div>
                     </div>
 

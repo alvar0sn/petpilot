@@ -19,7 +19,7 @@ class TenantService
                 'nombre' => $data['nombre'],
                 'slug' => $data['slug'],
                 'estado' => $data['estado'] ?? 'trial',
-                'plan_precio' => $data['plan_precio'] ?? null,
+                'plan_id' => $data['plan_id'] ?? null,
                 'notas_internas' => $data['notas_internas'] ?? null,
             ]);
 

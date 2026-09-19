@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -14,7 +15,8 @@ class Tenant extends Model
         'timezone',
         'dominio_custom',
         'estado',
-        'plan_precio',
+        'plan_id',
+        'fecha_facturacion',
         'notas_internas',
         'settings',
         'whatsapp_free_credits',
@@ -27,6 +29,7 @@ class Tenant extends Model
         'estado'                     => 'string',
         'settings'                   => 'array',
         'whatsapp_credits_reset_at'  => 'date',
+        'fecha_facturacion'          => 'date',
     ];
 
     protected static function booted(): void
@@ -71,6 +74,16 @@ class Tenant extends Model
     public function pets(): HasMany
     {
         return $this->hasMany(Pet::class);
+    }
+
+    public function sucursales(): HasMany
+    {
+        return $this->hasMany(Sucursal::class);
+    }
+
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class);
     }
 
     public function isActive(): bool

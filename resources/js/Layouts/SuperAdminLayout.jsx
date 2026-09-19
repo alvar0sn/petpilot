@@ -4,9 +4,11 @@ import { useState } from 'react';
 
 const NAV_LINKS = [
     { label: 'Tenants',         routeName: 'super-admin.index' },
+    { label: 'Planes',          routeName: 'super-admin.plans.index' },
     { label: 'Clientes',        routeName: 'super-admin.owners.index' },
     { label: 'Logs',            routeName: 'super-admin.logs' },
     { label: 'Backlog',         routeName: 'super-admin.backlog.index' },
+    { label: 'Legal',           routeName: 'super-admin.legal.index' },
     { label: 'Equipo',          routeName: 'super-admin.agency-users.index' },
     { label: 'Infraestructura', routeName: 'super-admin.system-settings.index' },
     { label: 'Créditos WhatsApp', routeName: 'super-admin.whatsapp-credits.index' },

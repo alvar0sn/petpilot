@@ -33,6 +33,7 @@ use App\Http\Controllers\SuperAdmin\BacklogController;
 use App\Http\Controllers\SuperAdmin\CsvImportController;
 use App\Http\Controllers\SuperAdmin\ImpersonationController;
 use App\Http\Controllers\SuperAdmin\LogController;
+use App\Http\Controllers\SuperAdmin\PlanController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\MercadoPagoWebhookController;
 use App\Http\Controllers\PublicPaymentController;
@@ -320,6 +321,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
     Route::get('/', [TenantController::class, 'index'])->name('index');
 
     Route::resource('tenants', TenantController::class)->except(['edit']);
+    Route::put('tenants/{tenant}/plan', [TenantController::class, 'updatePlan'])->name('tenants.plan.update');
     Route::put('tenants/{tenant}/ghl', [TenantController::class, 'updateGhl'])->name('tenants.ghl');
     Route::post('tenants/{tenant}/ghl/test', [TenantController::class, 'testWebhook'])->name('tenants.ghl.test');
     Route::patch('tenants/{tenant}/toggle', [TenantController::class, 'toggle'])->name('tenants.toggle');
@@ -345,6 +347,11 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('super-admin')->name('su
     Route::post('tenants/{tenant}/import/confirm', [CsvImportController::class, 'confirm'])->name('import.confirm');
 
     Route::get('logs', [LogController::class, 'index'])->name('logs');
+
+    Route::get('plans', [PlanController::class, 'index'])->name('plans.index');
+    Route::post('plans', [PlanController::class, 'store'])->name('plans.store');
+    Route::put('plans/{plan}', [PlanController::class, 'update'])->name('plans.update');
+    Route::delete('plans/{plan}', [PlanController::class, 'destroy'])->name('plans.destroy');
 
     Route::get('backlog', [BacklogController::class, 'index'])->name('backlog.index');
     Route::post('backlog', [BacklogController::class, 'store'])->name('backlog.store');

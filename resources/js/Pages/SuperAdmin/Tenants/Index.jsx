@@ -59,6 +59,8 @@ export default function TenantsIndex({ tenants, filters }) {
                             <th className="px-4 py-3 text-left">Negocio</th>
                             <th className="px-4 py-3 text-left">Slug</th>
                             <th className="px-4 py-3 text-left">Estado</th>
+                            <th className="px-4 py-3 text-left">Plan</th>
+                            <th className="px-4 py-3 text-left">Próx. facturación</th>
                             <th className="px-4 py-3 text-right">Owners</th>
                             <th className="px-4 py-3 text-right">Mascotas</th>
                             <th className="px-4 py-3 text-right">Tickets mes</th>
@@ -80,6 +82,8 @@ export default function TenantsIndex({ tenants, filters }) {
                                         {t.estado}
                                     </span>
                                 </td>
+                                <td className="px-4 py-3 text-gray-700">{t.plan?.nombre ?? <span className="text-gray-400">Sin asignar</span>}</td>
+                                <td className="px-4 py-3 text-gray-500">{t.fecha_facturacion ?? '—'}</td>
                                 <td className="px-4 py-3 text-right text-gray-700">{t.owners_count}</td>
                                 <td className="px-4 py-3 text-right text-gray-700">{t.pets_count}</td>
                                 <td className="px-4 py-3 text-right text-gray-700">{t.tickets_mes}</td>
@@ -110,7 +114,7 @@ export default function TenantsIndex({ tenants, filters }) {
                         ))}
                         {tenants.length === 0 && (
                             <tr>
-                                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
                                     No hay tenants aún.{' '}
                                     <Link href={route('super-admin.tenants.create')} className="text-indigo-600 hover:underline">
                                         Crear el primero

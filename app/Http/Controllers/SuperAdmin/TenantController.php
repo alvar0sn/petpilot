@@ -8,6 +8,7 @@ use App\Models\GhlWebhookLog;
 use App\Models\HotelStay;
 use App\Models\Owner;
 use App\Models\Pet;
+use App\Models\Plan;
 use App\Models\PosTicket;
 use App\Models\Tenant;
 use App\Services\TenantService;
@@ -28,6 +29,7 @@ class TenantController extends Controller
         $search = $request->input('search', '');
 
         $tenants = Tenant::withCount(['owners', 'pets'])
+            ->with('plan:id,nombre,precio,moneda')
             ->when($search, fn($q) => $q->where(function ($q) use ($search) {
                 $q->where('nombre', 'like', "%{$search}%")
                   ->orWhere('slug', 'like', "%{$search}%");
@@ -51,7 +53,8 @@ class TenantController extends Controller
                     'nombre'           => $tenant->nombre,
                     'slug'             => $tenant->slug,
                     'estado'           => $tenant->estado,
-                    'plan_precio'      => $tenant->plan_precio,
+                    'plan'             => $tenant->plan,
+                    'fecha_facturacion'=> $tenant->fecha_facturacion,
                     'created_at'       => $tenant->created_at,
                     'owners_count'     => $tenant->owners_count,
                     'pets_count'       => $tenant->pets_count,
@@ -68,7 +71,9 @@ class TenantController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('SuperAdmin/Tenants/Create');
+        return Inertia::render('SuperAdmin/Tenants/Create', [
+            'plans' => Plan::where('activo', true)->orderBy('orden')->orderBy('nombre')->get(['id', 'nombre', 'precio', 'moneda']),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -77,7 +82,7 @@ class TenantController extends Controller
             'nombre' => 'required|string|max:255',
             'slug' => 'required|string|max:63|unique:tenants,slug|regex:/^[a-z0-9-]+$/',
             'estado' => 'required|in:activo,inactivo,trial',
-            'plan_precio' => 'nullable|string|max:255',
+            'plan_id' => 'nullable|exists:plans,id',
             'admin_nombre' => 'required|string|max:255',
             'admin_apellido' => 'nullable|string|max:255',
             'admin_email' => 'required|email|unique:users,email',
@@ -94,7 +99,7 @@ class TenantController extends Controller
 
     public function show(Tenant $tenant): Response
     {
-        $tenant->load(['ghlConfig', 'users' => function ($query) {
+        $tenant->load(['ghlConfig', 'plan', 'users' => function ($query) {
             $query->orderByRaw("CASE role WHEN 'tenant_admin' THEN 0 ELSE 1 END")->orderBy('nombre');
         }]);
 
@@ -126,6 +131,7 @@ class TenantController extends Controller
 
         return Inertia::render('SuperAdmin/Tenants/Show', [
             'tenant' => $tenant,
+            'plans' => Plan::orderBy('orden')->orderBy('nombre')->get(['id', 'nombre', 'precio', 'moneda', 'activo']),
             'stats' => $stats,
             'ghlContactLogs' => $ghlContactLogs,
             'ghlWebhookLogs' => $ghlWebhookLogs,
@@ -141,13 +147,24 @@ class TenantController extends Controller
             'slug' => 'required|string|max:63|unique:tenants,slug,' . $tenant->id . '|regex:/^[a-z0-9-]+$/',
             'timezone' => 'required|timezone:all',
             'estado' => 'required|in:activo,inactivo,trial',
-            'plan_precio' => 'nullable|string|max:255',
             'notas_internas' => 'nullable|string',
         ]);
 
-        $tenant->update($request->only('nombre', 'slug', 'timezone', 'estado', 'plan_precio', 'notas_internas'));
+        $tenant->update($request->only('nombre', 'slug', 'timezone', 'estado', 'notas_internas'));
 
         return back()->with('success', 'Tenant actualizado.');
+    }
+
+    public function updatePlan(Request $request, Tenant $tenant): RedirectResponse
+    {
+        $data = $request->validate([
+            'plan_id' => 'nullable|exists:plans,id',
+            'fecha_facturacion' => 'nullable|date',
+        ]);
+
+        $tenant->update($data);
+
+        return back()->with('success', 'Plan y fecha de facturación actualizados.');
     }
 
     public function updateGhl(Request $request, Tenant $tenant): RedirectResponse

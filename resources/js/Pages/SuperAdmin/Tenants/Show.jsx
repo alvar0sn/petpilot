@@ -66,7 +66,6 @@ function BusinessDataTab({ tenant }) {
         slug: tenant.slug ?? '',
         timezone: tenant.timezone ?? 'America/Mexico_City',
         estado: tenant.estado ?? 'activo',
-        plan_precio: tenant.plan_precio ?? '',
         notas_internas: tenant.notas_internas ?? '',
     });
 
@@ -123,12 +122,6 @@ function BusinessDataTab({ tenant }) {
             </div>
 
             <div>
-                <InputLabel value="Plan / Precio" />
-                <TextInput className="mt-1 w-full" value={data.plan_precio} onChange={e => setData('plan_precio', e.target.value)} placeholder="Ej: $1,500/mes" />
-                <InputError message={errors.plan_precio} className="mt-1" />
-            </div>
-
-            <div>
                 <InputLabel value="Notas internas" />
                 <textarea
                     className="mt-1 w-full border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -137,6 +130,66 @@ function BusinessDataTab({ tenant }) {
                     onChange={e => setData('notas_internas', e.target.value)}
                 />
                 <InputError message={errors.notas_internas} className="mt-1" />
+            </div>
+
+            <div className="flex justify-end">
+                <PrimaryButton disabled={processing}>Guardar cambios</PrimaryButton>
+            </div>
+        </form>
+    );
+}
+
+function formatPrecio(precio, moneda) {
+    const n = Number(precio);
+    if (!n) return 'Gratis';
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: moneda || 'MXN' }).format(n);
+}
+
+function PlanTab({ tenant, plans }) {
+    const { data, setData, put, processing, errors } = useForm({
+        plan_id: tenant.plan_id ?? '',
+        fecha_facturacion: tenant.fecha_facturacion ?? '',
+    });
+
+    function submit(e) {
+        e.preventDefault();
+        put(route('super-admin.tenants.plan.update', tenant.id));
+    }
+
+    return (
+        <form onSubmit={submit} className="bg-white rounded-xl shadow p-6 space-y-4 max-w-2xl">
+            <h2 className="font-semibold text-gray-900">Plan y facturación</h2>
+
+            {tenant.plan && (
+                <p className="text-sm text-gray-500">
+                    Plan actual: <span className="font-medium text-gray-800">{tenant.plan.nombre}</span> — {formatPrecio(tenant.plan.precio, tenant.plan.moneda)}
+                </p>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <InputLabel value="Plan" />
+                    <select
+                        className="mt-1 w-full border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        value={data.plan_id}
+                        onChange={e => setData('plan_id', e.target.value)}
+                    >
+                        <option value="">Sin asignar</option>
+                        {plans.map(p => (
+                            <option key={p.id} value={p.id}>
+                                {p.nombre} — {formatPrecio(p.precio, p.moneda)}{!p.activo ? ' (no disponible)' : ''}
+                            </option>
+                        ))}
+                    </select>
+                    <InputError message={errors.plan_id} className="mt-1" />
+                </div>
+                <div>
+                    <InputLabel value="Próxima fecha de facturación" />
+                    <TextInput type="date" className="mt-1 w-full" value={data.fecha_facturacion ?? ''}
+                        onChange={e => setData('fecha_facturacion', e.target.value)} />
+                    <InputError message={errors.fecha_facturacion} className="mt-1" />
+                    <p className="mt-1 text-xs text-gray-400">Fecha en la que el tenant debe pagar este plan. Se muestra en su Configuración → Pagos.</p>
+                </div>
             </div>
 
             <div className="flex justify-end">
@@ -677,12 +730,13 @@ function WhatsappTab({ tenant, whatsappEnabled, whatsappAccountStatus }) {
 
 const TABS = [
     { key: 'datos', label: 'Datos del negocio' },
+    { key: 'plan', label: 'Plan y facturación' },
     { key: 'usuarios', label: 'Usuario dueño' },
     { key: 'ghl', label: 'GHL / Webhooks' },
     { key: 'whatsapp', label: 'WhatsApp' },
 ];
 
-export default function TenantShow({ tenant, stats, ghlContactLogs, ghlWebhookLogs, whatsappEnabled, whatsappAccountStatus }) {
+export default function TenantShow({ tenant, plans, stats, ghlContactLogs, ghlWebhookLogs, whatsappEnabled, whatsappAccountStatus }) {
     const { flash, errors } = usePage().props;
     const [tab, setTab] = useState('datos');
 
@@ -724,6 +778,7 @@ export default function TenantShow({ tenant, stats, ghlContactLogs, ghlWebhookLo
             </div>
 
             {tab === 'datos' && <BusinessDataTab tenant={tenant} />}
+            {tab === 'plan' && <PlanTab tenant={tenant} plans={plans ?? []} />}
             {tab === 'usuarios' && <OwnerUsersTab tenant={tenant} />}
             {tab === 'ghl' && <GhlTab tenant={tenant} ghlContactLogs={ghlContactLogs} ghlWebhookLogs={ghlWebhookLogs} errors={errors} />}
             {tab === 'whatsapp' && <WhatsappTab tenant={tenant} whatsappEnabled={whatsappEnabled} whatsappAccountStatus={whatsappAccountStatus} />}

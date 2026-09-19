@@ -413,6 +413,47 @@ function RecordatoriosConfigTab({ recordatoriosConfig }) {
     );
 }
 
+function formatMoneda(precio, moneda) {
+    const n = Number(precio || 0);
+    return n.toLocaleString('es-MX', { style: 'currency', currency: moneda || 'MXN' });
+}
+
+function PlanInfoCard({ planInfo }) {
+    const info = planInfo ?? {};
+    const esGratis = !info.precio || Number(info.precio) === 0;
+
+    return (
+        <div className="max-w-lg bg-white border border-zinc-100 shadow-sm rounded-xl p-5 space-y-3">
+            <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-zinc-700">Mi plan</h3>
+                {info.nombre && (
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${esGratis ? 'bg-zinc-100 text-zinc-600' : 'bg-emerald-50 text-emerald-700'}`}>
+                        {info.nombre}
+                    </span>
+                )}
+            </div>
+
+            {!info.nombre ? (
+                <p className="text-sm text-zinc-400">Aún no tienes un plan asignado. Contacta a soporte para más información.</p>
+            ) : (
+                <div className="text-sm text-zinc-600 space-y-1.5">
+                    <p>
+                        Costo: <span className="font-medium text-zinc-900">{esGratis ? 'Gratis' : `${formatMoneda(info.precio, info.moneda)} / mes`}</span>
+                    </p>
+                    <p>
+                        Próxima fecha de facturación:{' '}
+                        <span className="font-medium text-zinc-900">
+                            {info.fecha_facturacion
+                                ? new Date(info.fecha_facturacion + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
+                                : 'Sin definir'}
+                        </span>
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function MercadoPagoConfigTab({ mercadoPagoConfig }) {
     const cfg = mercadoPagoConfig ?? { activo: false, public_key: '', access_token_preview: null, has_webhook_secret: false };
     const form = useForm({
@@ -964,8 +1005,31 @@ function RazasSection({ razas }) {
     );
 }
 
-function TeamTab({ teamMembers, currentUserId }) {
-    const newForm = useForm({ nombre: '', apellido: '', email: '', role: 'colaborador', password: '', permisos_modulos: [] });
+function SucursalCheckboxes({ sucursales, sucursalIds, onChange }) {
+    const toggle = (id) => {
+        const next = sucursalIds.includes(id) ? sucursalIds.filter(v => v !== id) : [...sucursalIds, id];
+        onChange(next);
+    };
+    if (!sucursales || sucursales.length <= 1) return null;
+    return (
+        <div>
+            <label className="block text-xs font-medium text-zinc-600 mb-2">Sucursales asignadas</label>
+            <div className="grid grid-cols-2 gap-1.5">
+                {sucursales.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" className="rounded border-zinc-300"
+                            checked={sucursalIds.includes(s.id)}
+                            onChange={() => toggle(s.id)} />
+                        <span className="text-sm text-zinc-600">{s.nombre}</span>
+                    </label>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function TeamTab({ teamMembers, currentUserId, sucursales }) {
+    const newForm = useForm({ nombre: '', apellido: '', email: '', role: 'colaborador', password: '', permisos_modulos: [], sucursal_ids: [] });
     const [editUser, setEditUser] = useState(null);
     const editForm = useForm({});
     const [pwdUser, setPwdUser] = useState(null);
@@ -973,7 +1037,7 @@ function TeamTab({ teamMembers, currentUserId }) {
 
     function openEdit(u) {
         setEditUser(u);
-        editForm.setData({ nombre: u.nombre, apellido: u.apellido ?? '', email: u.email, role: u.role, activo: u.activo, permisos_modulos: u.permisos_modulos ?? [] });
+        editForm.setData({ nombre: u.nombre, apellido: u.apellido ?? '', email: u.email, role: u.role, activo: u.activo, permisos_modulos: u.permisos_modulos ?? [], sucursal_ids: u.sucursal_ids ?? [] });
     }
 
     function roleLabel(role) {
@@ -1054,6 +1118,12 @@ function TeamTab({ teamMembers, currentUserId }) {
                         </div>
                     )}
                     <div className="sm:col-span-2">
+                        <SucursalCheckboxes
+                            sucursales={sucursales}
+                            sucursalIds={newForm.data.sucursal_ids}
+                            onChange={v => newForm.setData('sucursal_ids', v)} />
+                    </div>
+                    <div className="sm:col-span-2">
                         <button type="submit" disabled={newForm.processing}
                             className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
                             {newForm.processing ? 'Creando…' : 'Crear usuario'}
@@ -1107,6 +1177,10 @@ function TeamTab({ teamMembers, currentUserId }) {
                                     permisos={editForm.data.permisos_modulos ?? []}
                                     onChange={v => editForm.setData('permisos_modulos', v)} />
                             )}
+                            <SucursalCheckboxes
+                                sucursales={sucursales}
+                                sucursalIds={editForm.data.sucursal_ids ?? []}
+                                onChange={v => editForm.setData('sucursal_ids', v)} />
                             <div className="flex gap-2 pt-1">
                                 <button type="button" onClick={() => setEditUser(null)}
                                     className="flex-1 border border-zinc-200 text-zinc-600 py-2 rounded-lg text-sm hover:bg-zinc-50 transition-colors">Cancelar</button>
@@ -1139,6 +1213,119 @@ function TeamTab({ teamMembers, currentUserId }) {
                                 <button type="submit" disabled={pwdForm.processing}
                                     className="flex-1 bg-zinc-900 text-white py-2 rounded-lg text-sm hover:bg-zinc-700 disabled:opacity-50 transition-colors">
                                     {pwdForm.processing ? 'Guardando…' : 'Guardar'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function SucursalesTab({ sucursales }) {
+    const newForm = useForm({ nombre: '', direccion: '', telefono: '' });
+    const [editSucursal, setEditSucursal] = useState(null);
+    const editForm = useForm({});
+
+    function openEdit(s) {
+        setEditSucursal(s);
+        editForm.setData({ nombre: s.nombre, direccion: s.direccion ?? '', telefono: s.telefono ?? '', estado: s.estado, es_principal: s.es_principal });
+    }
+
+    return (
+        <div className="space-y-6">
+            <div className="bg-white border border-zinc-100 shadow-sm rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-zinc-100">
+                    <h3 className="font-semibold text-zinc-700">Sucursales</h3>
+                </div>
+                <div className="divide-y divide-zinc-50">
+                    {sucursales.map(s => (
+                        <div key={s.id} className="px-4 py-3 flex items-center gap-3">
+                            <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-zinc-800 truncate">
+                                    {s.nombre}
+                                    {s.es_principal && <span className="ml-1.5 text-xs text-zinc-400">(principal)</span>}
+                                </div>
+                                {(s.direccion || s.telefono) && (
+                                    <div className="text-xs text-zinc-500 truncate">{[s.direccion, s.telefono].filter(Boolean).join(' · ')}</div>
+                                )}
+                            </div>
+                            {s.estado === 'inactiva' && <span className="text-xs bg-zinc-100 text-zinc-500 px-2 py-0.5 rounded-full ring-1 ring-zinc-200 shrink-0">inactiva</span>}
+                            <button onClick={() => openEdit(s)} className="text-xs text-zinc-500 hover:text-zinc-700 transition-colors shrink-0">editar</button>
+                        </div>
+                    ))}
+                    {sucursales.length === 0 && <p className="px-4 py-3 text-sm text-zinc-400">Sin sucursales.</p>}
+                </div>
+            </div>
+
+            <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5 max-w-md">
+                <h3 className="font-semibold text-zinc-700 mb-4">Agregar sucursal</h3>
+                <form onSubmit={e => { e.preventDefault(); newForm.post(route('settings.sucursales.store'), { onSuccess: () => newForm.reset() }); }}
+                    className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Nombre *</label>
+                        <input className="w-full border-gray-300 rounded-lg text-sm" value={newForm.data.nombre} onChange={e => newForm.setData('nombre', e.target.value)} />
+                        {newForm.errors.nombre && <p className="text-rose-500 text-xs mt-0.5">{newForm.errors.nombre}</p>}
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Dirección</label>
+                        <input className="w-full border-gray-300 rounded-lg text-sm" value={newForm.data.direccion} onChange={e => newForm.setData('direccion', e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-zinc-600 mb-1">Teléfono</label>
+                        <input className="w-full border-gray-300 rounded-lg text-sm" value={newForm.data.telefono} onChange={e => newForm.setData('telefono', e.target.value)} />
+                    </div>
+                    <button type="submit" disabled={newForm.processing}
+                        className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 disabled:opacity-50 transition-colors">
+                        {newForm.processing ? 'Creando…' : 'Crear sucursal'}
+                    </button>
+                </form>
+            </div>
+
+            {editSucursal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div className="bg-white border border-zinc-200 rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+                        <h3 className="font-semibold text-zinc-800">Editar sucursal</h3>
+                        <form onSubmit={e => { e.preventDefault(); editForm.put(route('settings.sucursales.update', editSucursal.id), { onSuccess: () => setEditSucursal(null) }); }}
+                            className="space-y-3">
+                            <div>
+                                <label className="block text-xs font-medium text-zinc-600 mb-1">Nombre *</label>
+                                <input className="w-full border-gray-300 rounded-lg text-sm" value={editForm.data.nombre ?? ''} onChange={e => editForm.setData('nombre', e.target.value)} />
+                                {editForm.errors.nombre && <p className="text-rose-500 text-xs mt-0.5">{editForm.errors.nombre}</p>}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-zinc-600 mb-1">Dirección</label>
+                                <input className="w-full border-gray-300 rounded-lg text-sm" value={editForm.data.direccion ?? ''} onChange={e => editForm.setData('direccion', e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-zinc-600 mb-1">Teléfono</label>
+                                <input className="w-full border-gray-300 rounded-lg text-sm" value={editForm.data.telefono ?? ''} onChange={e => editForm.setData('telefono', e.target.value)} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-zinc-600 mb-1">Estado</label>
+                                    <select className="w-full border-gray-300 rounded-lg text-sm" value={editForm.data.estado ?? 'activa'} onChange={e => editForm.setData('estado', e.target.value)}>
+                                        <option value="activa">Activa</option>
+                                        <option value="inactiva">Inactiva</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-zinc-600 mb-1">&nbsp;</label>
+                                    <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                                        <input type="checkbox" className="rounded border-zinc-300"
+                                            checked={editForm.data.es_principal ?? false}
+                                            onChange={e => editForm.setData('es_principal', e.target.checked)} />
+                                        <span className="text-sm text-zinc-600">Es principal</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 pt-1">
+                                <button type="button" onClick={() => setEditSucursal(null)}
+                                    className="flex-1 border border-zinc-200 text-zinc-600 py-2 rounded-lg text-sm hover:bg-zinc-50 transition-colors">Cancelar</button>
+                                <button type="submit" disabled={editForm.processing}
+                                    className="flex-1 bg-zinc-900 text-white py-2 rounded-lg text-sm hover:bg-zinc-700 disabled:opacity-50 transition-colors">
+                                    {editForm.processing ? 'Guardando…' : 'Guardar'}
                                 </button>
                             </div>
                         </form>
@@ -1198,7 +1385,7 @@ function LinksTab({ slug }) {
     );
 }
 
-export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, generalConfig, walkConfig, recordatoriosConfig, responsivaConfig, responsivaConfigs, mercadoPagoConfig, teamMembers, razas }) {
+export default function SettingsIndex({ categories, items, paymentMethods, stations, checklistItems, ticketConfig, generalConfig, walkConfig, recordatoriosConfig, responsivaConfig, responsivaConfigs, planInfo, mercadoPagoConfig, teamMembers, razas, sucursales }) {
     const { auth, tenant } = usePage().props;
     const [tab, setTab] = useState('general');
 
@@ -1213,6 +1400,7 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
         { id: 'recordatorios', label: 'Recordatorios' },
         { id: 'responsivas', label: 'Responsivas' },
         { id: 'team', label: 'Equipo' },
+        { id: 'sucursales', label: 'Sucursales' },
         { id: 'links', label: 'Links' },
     ];
 
@@ -1231,6 +1419,7 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
             {tab === 'grooming' && <GroomingTab stations={stations ?? []} checklistItems={checklistItems ?? []} responsivaConfig={responsivaConfig ?? { texto: '', texto_default: '' }} />}
             {tab === 'payments' && (
                 <div className="space-y-6">
+                    <PlanInfoCard planInfo={planInfo} />
                     <PaymentMethodsTab paymentMethods={paymentMethods} />
                     <MercadoPagoConfigTab mercadoPagoConfig={mercadoPagoConfig ?? { activo: false, public_key: '', access_token_preview: null, has_webhook_secret: false }} />
                 </div>
@@ -1241,7 +1430,8 @@ export default function SettingsIndex({ categories, items, paymentMethods, stati
             {tab === 'walks' && <WalksConfigTab walkConfig={walkConfig ?? { horas_anticipacion: 2, dias_adelante: 14 }} />}
             {tab === 'responsivas' && <ResponsivasTab responsivaConfigs={responsivaConfigs ?? {}} />}
             {tab === 'recordatorios' && <RecordatoriosConfigTab recordatoriosConfig={recordatoriosConfig ?? { activo: true, dias_antes: 0 }} />}
-            {tab === 'team' && <TeamTab teamMembers={teamMembers ?? []} currentUserId={auth.user?.id} />}
+            {tab === 'team' && <TeamTab teamMembers={teamMembers ?? []} currentUserId={auth.user?.id} sucursales={sucursales ?? []} />}
+            {tab === 'sucursales' && <SucursalesTab sucursales={sucursales ?? []} />}
             {tab === 'links' && <LinksTab slug={tenant?.slug} />}
         </TenantLayout>
     );
