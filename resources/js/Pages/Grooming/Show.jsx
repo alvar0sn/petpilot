@@ -603,16 +603,22 @@ export default function GroomingShow({ appointment, stations, eventTypes, groome
                                     onChange={e => setItemDraft(d => ({ ...d, nombre: e.target.value }))} />
                             )}
 
-                            {/* Precio + cantidad +/- + agregar */}
+                            {/* Precio (editable solo si no viene del catálogo) + cantidad +/- + agregar */}
                             <div className="flex items-center gap-2">
-                                <div className="relative flex-1">
-                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
-                                    <input type="number" step="0.01" min="0"
-                                        className="w-full border-gray-300 rounded-lg text-sm py-2 pl-6"
-                                        placeholder="0.00"
-                                        value={itemDraft.precio}
-                                        onChange={e => setItemDraft(d => ({ ...d, precio: e.target.value }))} />
-                                </div>
+                                {itemDraft.catalog_item_id ? (
+                                    <div className="flex-1 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-lg py-2 px-3">
+                                        {fmt(itemDraft.precio || 0)}
+                                    </div>
+                                ) : (
+                                    <div className="relative flex-1">
+                                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                                        <input type="number" step="0.01" min="0"
+                                            className="w-full border-gray-300 rounded-lg text-sm py-2 pl-6"
+                                            placeholder="0.00"
+                                            value={itemDraft.precio}
+                                            onChange={e => setItemDraft(d => ({ ...d, precio: e.target.value }))} />
+                                    </div>
+                                )}
                                 <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white shrink-0">
                                     <button type="button"
                                         onClick={() => setItemDraft(d => ({ ...d, cantidad: String(Math.max(1, Number(d.cantidad) - 1)) }))}
