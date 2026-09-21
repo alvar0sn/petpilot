@@ -47,6 +47,11 @@ const estadoLabel = {
     cancelada:  'Cancelada',
     no_show:    'No se presentó',
 };
+const recoleccionEstadoLabel = {
+    programado: 'programada',
+    en_ruta:    'en ruta',
+    completado: 'completada',
+};
 
 export default function TrainingShow({ appointment, entrenadores, catalogItems }) {
     const appt = appointment;
@@ -128,7 +133,7 @@ export default function TrainingShow({ appointment, entrenadores, catalogItems }
 
             {/* Header */}
             <div className="bg-white border border-zinc-100 shadow-sm rounded-xl p-5 mb-4">
-                <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
                     <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                             <h1 className="text-xl font-semibold text-zinc-900">
@@ -156,7 +161,7 @@ export default function TrainingShow({ appointment, entrenadores, catalogItems }
                             </p>
                         )}
                     </div>
-                    <div className="flex flex-wrap gap-2 shrink-0">
+                    <div className="flex flex-wrap gap-2 sm:shrink-0 sm:justify-end">
                         {canEdit && !editing && (
                             <button onClick={() => setEditing(true)} className="bg-white border border-zinc-200 text-zinc-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors">
                                 Editar clase
@@ -277,7 +282,21 @@ export default function TrainingShow({ appointment, entrenadores, catalogItems }
                         {appt.estado === 'completada' && (
                             <p className="text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg">Evento registrado en historial de la mascota.</p>
                         )}
-                        {appt.pet && appt.owner && (
+                        {appt.servicio_domicilio && (
+                            <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                                <p className="text-xs font-medium text-blue-700 mb-0.5">🛵 Servicio a domicilio</p>
+                                {appt.direccion_entrega && <p className="text-zinc-700 text-xs">{appt.direccion_entrega}</p>}
+                            </div>
+                        )}
+                        {!appt.servicio_domicilio && appt.recoleccion && (
+                            <div className="bg-cyan-50 border border-cyan-100 rounded-lg px-3 py-2">
+                                <p className="text-xs font-medium text-cyan-700">
+                                    🚚 Recolección {recoleccionEstadoLabel[appt.recoleccion.estado] ?? appt.recoleccion.estado}
+                                    {appt.recoleccion.rate && ` · ${appt.recoleccion.rate.nombre}`}
+                                </p>
+                            </div>
+                        )}
+                        {!appt.servicio_domicilio && !appt.recoleccion && appt.pet && appt.owner && (
                             <div className="bg-cyan-50 border border-cyan-100 rounded-lg px-3 py-2 space-y-1.5">
                                 <p className="text-xs font-medium text-cyan-700">🚚 Recolección</p>
                                 <button type="button"

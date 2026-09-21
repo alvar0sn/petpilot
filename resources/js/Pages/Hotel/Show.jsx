@@ -11,6 +11,12 @@ function fmt(n) {
     return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 }
 
+const recoleccionEstadoLabel = {
+    programado: 'programada',
+    en_ruta:    'en ruta',
+    completado: 'completada',
+};
+
 function CollapseToggle({ title, open, onToggle }) {
     return (
         <button type="button" onClick={onToggle}
@@ -620,7 +626,7 @@ function PhotoGallery({ stay }) {
     );
 }
 
-export default function HotelShow({ stay, spaces, checkoutRates }) {
+export default function HotelShow({ stay, spaces, checkoutRates, recoleccion }) {
     const tz = useTenantTimezone();
     const [showCheckin, setShowCheckin] = useState(false);
     const [showCheckout, setShowCheckout] = useState(false);
@@ -709,7 +715,7 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
                             Cancelar reserva
                         </button>
                     )}
-                    {stay.estado !== 'cancelado' && stay.pet?.owner && (
+                    {stay.estado !== 'cancelado' && !recoleccion && stay.pet?.owner && (
                         <button onClick={() => router.post(route('collection.quick-request'), {
                                 pet_id: stay.pet.id,
                                 owner_id: stay.pet.owner.id,
@@ -721,6 +727,12 @@ export default function HotelShow({ stay, spaces, checkoutRates }) {
                             className="bg-cyan-50 border border-cyan-200 text-cyan-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-cyan-100 transition-colors">
                             🚚 Solicitar recolección
                         </button>
+                    )}
+                    {recoleccion && (
+                        <span className="bg-cyan-50 border border-cyan-200 text-cyan-700 px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center">
+                            🚚 Recolección {recoleccionEstadoLabel[recoleccion.estado] ?? recoleccion.estado}
+                            {recoleccion.rate && ` · ${recoleccion.rate.nombre}`}
+                        </span>
                     )}
                 </div>
 
