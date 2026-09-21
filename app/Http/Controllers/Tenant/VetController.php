@@ -110,7 +110,7 @@ class VetController extends Controller
             'items.*.precio'  => 'required|numeric|min:0',
             'items.*.cantidad' => 'nullable|numeric|min:0.01',
             'recoleccion'                 => 'boolean',
-            'recoleccion_rate_id'         => 'required_if:recoleccion,true|exists:collection_rates,id',
+            'recoleccion_rate_id'         => 'nullable|required_if:recoleccion,true|exists:collection_rates,id',
             'recoleccion_tipo_viaje'      => 'nullable|in:recoleccion,entrega,ida_y_vuelta',
             'recoleccion_direccion'       => 'nullable|string|max:500',
             'recoleccion_cobro_membresia' => 'boolean',

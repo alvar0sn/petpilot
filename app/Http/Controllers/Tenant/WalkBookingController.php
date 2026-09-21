@@ -38,7 +38,7 @@ class WalkBookingController extends Controller
             'usar_paquete' => 'boolean',
             'notas' => 'nullable|string|max:500',
             'recoleccion'                 => 'boolean',
-            'recoleccion_rate_id'         => 'required_if:recoleccion,true|exists:collection_rates,id',
+            'recoleccion_rate_id'         => 'nullable|required_if:recoleccion,true|exists:collection_rates,id',
             'recoleccion_tipo_viaje'      => 'nullable|in:recoleccion,entrega,ida_y_vuelta',
             'recoleccion_direccion'       => 'nullable|string|max:500',
             'recoleccion_usar_paquete'    => 'boolean',
