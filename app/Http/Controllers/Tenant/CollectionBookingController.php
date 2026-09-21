@@ -152,6 +152,19 @@ class CollectionBookingController extends Controller
         return back()->with('success', 'Recolección cancelada.');
     }
 
+    public function noShow(Request $request, CollectionBooking $collectionBooking): RedirectResponse
+    {
+        abort_unless(in_array($collectionBooking->estado, ['programado', 'en_ruta']), 422, 'No se puede marcar como no show.');
+
+        $data = $request->validate([
+            'notas' => 'nullable|string|max:500',
+        ]);
+
+        DB::transaction(fn () => $this->collectionBookings->markNoShow($collectionBooking, $data['notas'] ?? null));
+
+        return back()->with('success', 'Recolección marcada como no show.');
+    }
+
     public function sendResponsiva(CollectionBooking $collectionBooking): RedirectResponse
     {
         if ($collectionBooking->responsiva_firmado_at) {

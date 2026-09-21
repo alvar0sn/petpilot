@@ -24,7 +24,7 @@ class CollectionSlotController extends Controller
         $slots = CollectionSlot::with([
                 'recolector:id,nombre,apellido',
                 'bookings' => fn($q) => $q->with(['pet:id,nombre', 'owner:id,nombre,apellidos'])
-                    ->whereIn('estado', ['programado', 'en_ruta', 'completado']),
+                    ->whereIn('estado', ['programado', 'en_ruta', 'completado', 'no_show']),
             ])
             ->whereBetween('fecha', [$weekStart->toDateString(), $weekEnd->toDateString()])
             ->when($request->recolector_id, fn($q, $r) => $q->where('recolector_id', $r))
@@ -91,7 +91,7 @@ class CollectionSlotController extends Controller
         $collectionSlot->load([
             'recolector:id,nombre,apellido',
             'createdBy:id,nombre,apellido',
-            'bookings' => fn($q) => $q->whereIn('estado', ['programado', 'en_ruta', 'completado', 'cancelado']),
+            'bookings' => fn($q) => $q->whereIn('estado', ['programado', 'en_ruta', 'completado', 'cancelado', 'no_show']),
             'bookings.pet.owner:id,nombre,apellidos',
             'bookings.owner:id,nombre,apellidos,direccion,ubicacion_url',
             'bookings.rate',
@@ -107,7 +107,7 @@ class CollectionSlotController extends Controller
         // Paradas: agrupar reservas activas por dueño para que el conductor vea un solo punto
         // aunque haya varias mascotas del mismo domicilio.
         $paradas = $collectionSlot->bookings
-            ->whereIn('estado', ['programado', 'en_ruta', 'completado'])
+            ->whereIn('estado', ['programado', 'en_ruta', 'completado', 'no_show'])
             ->groupBy('owner_id')
             ->map(function ($bookings) {
                 $first = $bookings->first();

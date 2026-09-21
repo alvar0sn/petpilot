@@ -65,6 +65,9 @@ class SettingsController extends Controller
                 'activo'     => (bool) ($tenant->getSetting('recordatorios.activo') ?? true),
                 'dias_antes' => (int) ($tenant->getSetting('recordatorios.dias_antes') ?? 0),
             ],
+            'recoleccionConfig' => [
+                'no_show_restaura_credito' => (bool) ($tenant->getSetting('recoleccion.no_show_restaura_credito') ?? true),
+            ],
             'responsivaConfig' => [
                 'texto'         => $tenant->getSetting('grooming.responsiva_texto') ?? '',
                 'texto_default' => \App\Support\ResponsivaTextos::default('grooming'),
@@ -574,6 +577,17 @@ class SettingsController extends Controller
         $tenant->setSetting('recordatorios.dias_antes', $data['dias_antes']);
 
         return back()->with('success', 'Configuración de recordatorios guardada.');
+    }
+
+    public function updateRecoleccionConfig(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'no_show_restaura_credito' => 'boolean',
+        ]);
+
+        app('current_tenant')->setSetting('recoleccion.no_show_restaura_credito', (bool) ($data['no_show_restaura_credito'] ?? false));
+
+        return back()->with('success', 'Configuración de recolección guardada.');
     }
 
     public function updateResponsivaConfig(Request $request): RedirectResponse

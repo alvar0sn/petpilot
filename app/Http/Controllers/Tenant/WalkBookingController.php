@@ -128,19 +128,7 @@ class WalkBookingController extends Controller
                 );
             }
 
-            $recoleccion = $this->collectionBookings->findForOrigin('walk_booking', $walkBooking->id);
-            if ($recoleccion && in_array($recoleccion->estado, ['programado', 'en_ruta'])) {
-                $recoleccion->update(['estado' => 'cancelado']);
-                if ($recoleccion->package_credit_id) {
-                    PackageCreditService::restore(
-                        $recoleccion->packageCredit,
-                        1,
-                        'collection_booking',
-                        $recoleccion->id,
-                        'Paseo cancelado (recolección vinculada)'
-                    );
-                }
-            }
+            $this->collectionBookings->cancelForOrigin('walk_booking', $walkBooking->id, 'Paseo cancelado.');
         });
 
         return back()->with('success', 'Reserva cancelada.');

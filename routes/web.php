@@ -224,6 +224,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
         Route::post('collection/{collectionSlot}/bookings', [CollectionBookingController::class, 'store'])->name('collection.bookings.store');
         Route::put('collection-bookings/{collectionBooking}/estado', [CollectionBookingController::class, 'updateEstado'])->name('collection.bookings.estado');
         Route::post('collection-bookings/{collectionBooking}/cancel', [CollectionBookingController::class, 'cancel'])->name('collection.bookings.cancel');
+        Route::post('collection-bookings/{collectionBooking}/no-show', [CollectionBookingController::class, 'noShow'])->name('collection.bookings.no-show');
         Route::post('collection/quick-request', [CollectionBookingController::class, 'quickRequest'])->name('collection.quick-request');
         Route::post('collection/quick-add', [CollectionBookingController::class, 'quickAdd'])->name('collection.quick-add');
         Route::post('collection-bookings/{collectionBooking}/responsiva/enviar', [CollectionBookingController::class, 'sendResponsiva'])->name('collection.bookings.responsiva.send');
@@ -303,6 +304,7 @@ Route::middleware(['auth', 'role:tenant_admin,colaborador'])->group(function () 
     Route::get('settings/receta/muestra', [SettingsController::class, 'recetaSample'])->name('settings.receta.sample');
     Route::post('settings/walk-config', [SettingsController::class, 'updateWalkConfig'])->name('settings.walk.update');
     Route::post('settings/recordatorios', [SettingsController::class, 'updateRecordatoriosConfig'])->name('settings.recordatorios.update');
+    Route::post('settings/recoleccion', [SettingsController::class, 'updateRecoleccionConfig'])->name('settings.recoleccion.update');
     Route::post('settings/responsiva', [SettingsController::class, 'updateResponsivaConfig'])->name('settings.responsiva.update');
 
     // Team management & razas — tenant_admin only

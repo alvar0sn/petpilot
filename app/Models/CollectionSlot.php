@@ -68,7 +68,7 @@ class CollectionSlot extends Model
     public function paradas()
     {
         return $this->bookings()
-            ->whereIn('estado', ['programado', 'en_ruta', 'completado'])
+            ->whereIn('estado', ['programado', 'en_ruta', 'completado', 'no_show'])
             ->with(['pet:id,nombre', 'owner:id,nombre,apellidos'])
             ->get()
             ->groupBy('owner_id');

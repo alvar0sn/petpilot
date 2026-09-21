@@ -740,19 +740,7 @@ class HotelController extends Controller
                 'motivo_cancelacion' => $data['motivo_cancelacion'],
             ]);
 
-            $recoleccion = $this->collectionBookings->findForOrigin('hotel_stay', $stay->id);
-            if ($recoleccion && in_array($recoleccion->estado, ['programado', 'en_ruta'])) {
-                $recoleccion->update(['estado' => 'cancelado']);
-                if ($recoleccion->package_credit_id) {
-                    PackageCreditService::restore(
-                        $recoleccion->packageCredit,
-                        1,
-                        'collection_booking',
-                        $recoleccion->id,
-                        'Reserva de hotel/guardería cancelada (recolección vinculada)'
-                    );
-                }
-            }
+            $this->collectionBookings->cancelForOrigin('hotel_stay', $stay->id, 'Reserva de hotel/guardería cancelada.');
         });
 
         return back()->with('success', 'Reserva cancelada.');

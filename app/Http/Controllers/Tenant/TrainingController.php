@@ -152,7 +152,7 @@ class TrainingController extends Controller
             }
 
             if ($quiereRecoleccion) {
-                $this->collectionBookings->createForOrigin([
+                $recoleccion = $this->collectionBookings->createForOrigin([
                     'pet_id' => $pet->id,
                     'owner_id' => $pet->owner_id,
                     'fecha' => $data['fecha'],
@@ -165,6 +165,20 @@ class TrainingController extends Controller
                     'origen_tipo' => 'appointment',
                     'origen_id' => $appointment->id,
                 ]);
+
+                $cargo = $this->collectionBookings->chargeItemForOrigin(
+                    $recoleccion instanceof \App\Models\CollectionBooking ? $recoleccion : null
+                );
+                if ($cargo) {
+                    AppointmentItem::create([
+                        'appointment_id' => $appointment->id,
+                        'catalog_item_id' => $cargo['catalog_item_id'],
+                        'package_credit_id' => $cargo['package_credit_id'],
+                        'nombre' => $cargo['nombre'],
+                        'precio' => $cargo['precio'],
+                        'cantidad' => 1,
+                    ]);
+                }
             }
         });
 
@@ -335,15 +349,14 @@ class TrainingController extends Controller
 
             // Crear ticket en POS si hay items (venta directa, sin membresía) —
             // los cubiertos por crédito de paquete ya se cobraron al venderlo.
+            // El cargo de recolección, si se solicitó, ya está entre los items
+            // (se agregó al agendar).
             $appointment->load('items');
             $itemsACobrar = $appointment->items->whereNull('package_credit_id');
 
-            $recoleccion = $this->collectionBookings->findForOrigin('appointment', $appointment->id);
-            $cargoRecoleccion = $this->collectionBookings->pendingChargeLine($recoleccion);
-
-            if ($itemsACobrar->isNotEmpty() || $cargoRecoleccion) {
+            if ($itemsACobrar->isNotEmpty()) {
                 $shift = PosShift::where('estado', 'abierto')->first();
-                $subtotal = $itemsACobrar->sum(fn($i) => $i->precio * $i->cantidad) + ($cargoRecoleccion['precio'] ?? 0);
+                $subtotal = $itemsACobrar->sum(fn($i) => $i->precio * $i->cantidad);
 
                 $ticket = PosTicket::create([
                     'folio' => $this->nextFolio(),
@@ -368,20 +381,12 @@ class TrainingController extends Controller
                     ]);
                 }
 
-                if ($cargoRecoleccion) {
-                    PosTicketLine::create([
-                        'ticket_id' => $ticket->id,
-                        'item_id' => $cargoRecoleccion['item_id'],
-                        'nombre_snapshot' => $cargoRecoleccion['nombre'],
-                        'precio_snapshot' => $cargoRecoleccion['precio'],
-                        'costo_snapshot' => 0,
-                        'cantidad' => 1,
-                        'subtotal' => $cargoRecoleccion['precio'],
-                    ]);
-                    $recoleccion->update(['pos_ticket_id' => $ticket->id]);
-                }
-
                 $appointment->update(['pos_ticket_id' => $ticket->id]);
+            }
+
+            $recoleccion = $this->collectionBookings->findForOrigin('appointment', $appointment->id);
+            if ($ticket && $this->collectionBookings->pendingChargeLine($recoleccion)) {
+                $recoleccion->update(['pos_ticket_id' => $ticket->id]);
             }
         });
 
@@ -420,24 +425,14 @@ class TrainingController extends Controller
     }
 
     /** Cancela la recolección vinculada a esta clase (si sigue pendiente) al cancelarse o no presentarse. */
+    /**
+     * No restaura el crédito de paquete aquí: la tarifa de la recolección también viaja
+     * como AppointmentItem, así que restorePackageCredits() de la clase ya lo restaura
+     * al recorrer sus items — restaurarlo también aquí lo duplicaría.
+     */
     private function cancelLinkedCollection(Appointment $appointment, string $motivo): void
     {
-        $recoleccion = $this->collectionBookings->findForOrigin('appointment', $appointment->id);
-        if (! $recoleccion || ! in_array($recoleccion->estado, ['programado', 'en_ruta'])) {
-            return;
-        }
-
-        $recoleccion->update(['estado' => 'cancelado']);
-
-        if ($recoleccion->package_credit_id) {
-            PackageCreditService::restore(
-                $recoleccion->packageCredit,
-                1,
-                'collection_booking',
-                $recoleccion->id,
-                "{$motivo} (recolección vinculada)"
-            );
-        }
+        $this->collectionBookings->cancelForOrigin('appointment', $appointment->id, $motivo, false);
     }
 
     private function createAppointmentItem(Appointment $appointment, array $item): AppointmentItem

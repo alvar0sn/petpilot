@@ -12,12 +12,13 @@ const estadoColor = {
     completado: 'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200',
     cancelado:  'bg-rose-50 text-rose-600 ring-1 ring-rose-200',
 };
-const bookingEstadoLabel = { programado: 'Programado', en_ruta: 'En ruta', completado: 'Completado', cancelado: 'Cancelado' };
+const bookingEstadoLabel = { programado: 'Programado', en_ruta: 'En ruta', completado: 'Completado', cancelado: 'Cancelado', no_show: 'No show' };
 const bookingEstadoColor = {
     programado: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
     en_ruta:    'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
     completado: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
     cancelado:  'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200',
+    no_show:    'bg-rose-50 text-rose-600 ring-1 ring-rose-200',
 };
 const tipoViajeLabel = { recoleccion: 'Recolección', entrega: 'Entrega', ida_y_vuelta: 'Ida y vuelta' };
 
@@ -228,6 +229,7 @@ function AddPetModal({ slot, rates, onClose }) {
 
 function BookingRow({ booking }) {
     const [cancelMode, setCancelMode] = useState(false);
+    const [noShowMode, setNoShowMode] = useState(false);
     const canAdvance = ['programado', 'en_ruta'].includes(booking.estado);
 
     return (
@@ -254,7 +256,10 @@ function BookingRow({ booking }) {
                             Completar
                         </button>
                     )}
-                    {canAdvance && !cancelMode && (
+                    {canAdvance && !cancelMode && !noShowMode && (
+                        <button onClick={() => setNoShowMode(true)} className="text-xs border border-amber-300 text-amber-700 rounded-lg px-2 py-1 hover:bg-amber-50 transition-colors">No show</button>
+                    )}
+                    {canAdvance && !cancelMode && !noShowMode && (
                         <button onClick={() => setCancelMode(true)} className="text-xs border border-red-300 text-red-600 rounded-lg px-2 py-1 hover:bg-red-50 transition-colors">Cancelar</button>
                     )}
                 </div>
@@ -278,6 +283,17 @@ function BookingRow({ booking }) {
                         <button onClick={() => setCancelMode(false)} className="text-xs border border-zinc-200 px-2 py-0.5 rounded-lg">No</button>
                         <button onClick={() => router.post(route('collection.bookings.cancel', booking.id))}
                             className="text-xs bg-rose-600 text-white px-2 py-0.5 rounded-lg">Sí</button>
+                    </div>
+                </div>
+            )}
+
+            {noShowMode && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 flex items-center justify-between gap-2">
+                    <span className="text-xs text-amber-700">¿Marcar a {booking.pet?.nombre} como no show? Queda registrado en su historial.</span>
+                    <div className="flex gap-2 shrink-0">
+                        <button onClick={() => setNoShowMode(false)} className="text-xs border border-zinc-200 px-2 py-0.5 rounded-lg">No</button>
+                        <button onClick={() => router.post(route('collection.bookings.no-show', booking.id))}
+                            className="text-xs bg-amber-600 text-white px-2 py-0.5 rounded-lg">Sí</button>
                     </div>
                 </div>
             )}
