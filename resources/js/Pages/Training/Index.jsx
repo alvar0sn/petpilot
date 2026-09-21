@@ -85,7 +85,7 @@ function NewClassModal({ entrenadores, catalogItems, collectionRates, defaultDat
         : null;
 
     function addItem() {
-        if (!itemDraft.nombre || itemDraft.precio === '') return;
+        if (!itemDraft.catalog_item_id) return;
         const tieneCredito = !!paqueteCreditoDraft;
         form.setData('items', [...form.data.items, {
             ...itemDraft,
@@ -98,7 +98,7 @@ function NewClassModal({ entrenadores, catalogItems, collectionRates, defaultDat
     function pickCatalogItem(e) {
         const id = e.target.value;
         const found = catalogItems.find(c => String(c.id) === id);
-        setItemDraft(d => ({ ...d, catalog_item_id: id, nombre: found?.nombre ?? d.nombre, precio: found ? String(found.precio) : d.precio, usar_paquete: true }));
+        setItemDraft(d => ({ ...d, catalog_item_id: id, nombre: found?.nombre ?? '', precio: found ? String(found.precio) : '', usar_paquete: true }));
     }
     function submit(e) { e.preventDefault(); form.post(route('training.store'), { onSuccess: onClose }); }
 
@@ -186,19 +186,12 @@ function NewClassModal({ entrenadores, catalogItems, collectionRates, defaultDat
                     )}
                     <div className="grid grid-cols-12 gap-1">
                         <select className="col-span-4 border-gray-300 rounded-lg text-xs" value={itemDraft.catalog_item_id} onChange={pickCatalogItem}>
-                            <option value="">Cargo manual...</option>
+                            <option value="">Seleccionar servicio...</option>
                             {catalogItems.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                         </select>
-                        {itemDraft.catalog_item_id ? (
-                            <div className="col-span-5 flex items-center px-2 text-xs text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-lg truncate">
-                                {itemDraft.nombre} — ${Number(itemDraft.precio || 0).toFixed(2)}
-                            </div>
-                        ) : (
-                            <>
-                                <input className="col-span-3 border-gray-300 rounded-lg text-xs" placeholder="Nombre *" value={itemDraft.nombre} onChange={e => setItemDraft(d => ({ ...d, nombre: e.target.value }))} />
-                                <input type="number" step="0.01" className="col-span-2 border-gray-300 rounded-lg text-xs" placeholder="Precio" value={itemDraft.precio} onChange={e => setItemDraft(d => ({ ...d, precio: e.target.value }))} />
-                            </>
-                        )}
+                        <div className="col-span-5 flex items-center px-2 text-xs text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-lg truncate">
+                            {itemDraft.catalog_item_id ? `${itemDraft.nombre} — $${Number(itemDraft.precio || 0).toFixed(2)}` : ''}
+                        </div>
                         <input type="number" step="0.01" min="0.01" className="col-span-2 border-gray-300 rounded-lg text-xs" placeholder="Cant." value={itemDraft.cantidad} onChange={e => setItemDraft(d => ({ ...d, cantidad: e.target.value }))} />
                         <button type="button" onClick={addItem} className="col-span-1 text-zinc-700 font-bold text-sm hover:text-zinc-900 transition-colors">+</button>
                     </div>
