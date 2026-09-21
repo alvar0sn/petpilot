@@ -1,3 +1,4 @@
+import RecoleccionFields, { recoleccionFormDefaults } from '@/Components/RecoleccionFields';
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -57,7 +58,7 @@ const estadoColor = {
     no_presento: 'bg-red-100 text-red-700',
 };
 
-function NewStayModal({ spaces, rates, onClose }) {
+function NewStayModal({ spaces, rates, collectionRates, onClose }) {
     const { version } = usePage();
     const tz = useTenantTimezone();
     const [step, setStep] = useState(1);
@@ -83,6 +84,7 @@ function NewStayModal({ spaces, rates, onClose }) {
         adelanto_rate_id: '',
         adelanto_monto: '',
         adelanto_notas: '',
+        ...recoleccionFormDefaults,
     });
 
     async function searchPet(q) {
@@ -316,6 +318,8 @@ function NewStayModal({ spaces, rates, onClose }) {
                             </label>
                         )}
 
+                        <RecoleccionFields form={form} collectionRates={collectionRates} />
+
                         <div>
                             <label className="block text-xs font-medium text-zinc-600 mb-1">Notas</label>
                             <textarea className="w-full border-gray-300 rounded-lg text-sm" rows={2} value={form.data.notas} onChange={e => form.setData('notas', e.target.value)} />
@@ -493,7 +497,7 @@ function OverdueCheckoutsAlert({ overdueCheckouts }) {
     );
 }
 
-export default function HotelIndex({ stays, spaces, rates, filters, availability, overdueCheckouts }) {
+export default function HotelIndex({ stays, spaces, rates, filters, availability, overdueCheckouts, collectionRates = [] }) {
     const tz = useTenantTimezone();
     const [showNew, setShowNew] = useState(false);
     const [search, setSearch] = useState(filters.search ?? '');
@@ -570,7 +574,7 @@ export default function HotelIndex({ stays, spaces, rates, filters, availability
                 </select>
             </div>
 
-            {showNew && <NewStayModal spaces={spaces} rates={rates} onClose={() => setShowNew(false)} />}
+            {showNew && <NewStayModal spaces={spaces} rates={rates} collectionRates={collectionRates} onClose={() => setShowNew(false)} />}
             {earlyCheckinStay && <EarlyCheckinModal stay={earlyCheckinStay} onClose={() => setEarlyCheckinStay(null)} />}
 
             <div className="bg-white border border-zinc-100 shadow-sm rounded-xl overflow-hidden">

@@ -1,4 +1,5 @@
 import AppointmentTimePicker from '@/Components/AppointmentTimePicker';
+import RecoleccionFields, { recoleccionFormDefaults } from '@/Components/RecoleccionFields';
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
@@ -41,13 +42,14 @@ function formatWeekRange(weekDays) {
 }
 function today() { return new Date().toLocaleDateString('sv-SE'); }
 
-function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, defaultDate, onClose }) {
+function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, collectionRates, defaultDate, onClose }) {
     const { version } = usePage();
     const form = useForm({
         pet_id: '', tipo_servicio_id: eventTypes[0]?.id ?? '', fecha: defaultDate,
         hora_inicio: '', hora_fin: '', groomer_id: '', station_id: '',
         notas_internas: '', cobro_membresia: false, membership_id: '', items: [],
         servicio_domicilio: false, direccion_entrega: '',
+        ...recoleccionFormDefaults,
     });
     const [duracion, setDuracion] = useState(null);
     const [petSearch, setPetSearch] = useState('');
@@ -244,6 +246,8 @@ function NewAppointmentModal({ groomers, stations, eventTypes, catalogItems, def
                     )}
                 </div>
 
+                <RecoleccionFields form={form} collectionRates={collectionRates} defaultDireccion={selectedPet?.owner_direccion} />
+
                 <div>
                     <label className="block text-xs font-medium text-zinc-600 mb-1">Notas internas</label>
                     <textarea className="w-full border-gray-300 rounded-lg text-sm resize-none" rows={2} value={form.data.notas_internas} onChange={e => form.setData('notas_internas', e.target.value)} />
@@ -406,7 +410,7 @@ function MobileAppointmentItem({ appt }) {
     );
 }
 
-export default function GroomingIndex({ appointments, weekStart, stations, eventTypes, groomers, catalogItems, pendingRequests = [] }) {
+export default function GroomingIndex({ appointments, weekStart, stations, eventTypes, groomers, catalogItems, pendingRequests = [], collectionRates = [] }) {
     const [showCreate, setShowCreate] = useState(false);
     const [createDate, setCreateDate] = useState(today());
     const [approving, setApproving] = useState(null);
@@ -436,7 +440,7 @@ export default function GroomingIndex({ appointments, weekStart, stations, event
         <TenantLayout title="Grooming">
             {showCreate && (
                 <NewAppointmentModal groomers={groomers} stations={stations} eventTypes={eventTypes}
-                    catalogItems={catalogItems} defaultDate={createDate} onClose={() => setShowCreate(false)} />
+                    catalogItems={catalogItems} collectionRates={collectionRates} defaultDate={createDate} onClose={() => setShowCreate(false)} />
             )}
 
             {approving && (

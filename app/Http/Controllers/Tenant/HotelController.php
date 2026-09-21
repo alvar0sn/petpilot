@@ -16,6 +16,7 @@ use App\Models\PosCategory;
 use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
+use App\Services\CollectionBookingService;
 use App\Services\GhlService;
 use App\Services\PackageCreditService;
 use App\Services\ResponsivaService;
@@ -30,6 +31,10 @@ use Inertia\Response;
 
 class HotelController extends Controller
 {
+    public function __construct(private readonly CollectionBookingService $collectionBookings)
+    {
+    }
+
     public function index(Request $request): Response
     {
         $fechaDisponibilidad = $request->input('fecha_disponibilidad') ?: now()->toDateString();
@@ -102,6 +107,8 @@ class HotelController extends Controller
                 'ocupacion' => $s->active_stays_count,
             ]),
             'rates' => HotelRate::where('activa', true)->orderBy('nombre')->get(['id', 'nombre', 'tipo', 'unidad', 'cantidad', 'precio', 'pos_item_id']),
+            'collectionRates' => \App\Models\CollectionRate::where('activa', true)->orderBy('nombre')
+                ->get(['id', 'nombre', 'precio', 'unidad']),
             'availability' => [
                 'fecha' => $fechaDisponibilidad,
                 'spaces' => $spaces->map(fn(HotelSpace $s) => [
@@ -308,7 +315,14 @@ class HotelController extends Controller
             'adelanto_rate_id' => 'nullable|exists:hotel_rates,id',
             'adelanto_monto' => 'nullable|numeric|min:0.01',
             'adelanto_notas' => 'nullable|string|max:255',
+            'recoleccion'                 => 'boolean',
+            'recoleccion_rate_id'         => 'required_if:recoleccion,true|exists:collection_rates,id',
+            'recoleccion_tipo_viaje'      => 'nullable|in:recoleccion,entrega,ida_y_vuelta',
+            'recoleccion_direccion'       => 'nullable|string|max:500',
+            'recoleccion_usar_paquete'    => 'boolean',
         ]);
+
+        $quiereRecoleccion = $request->boolean('recoleccion') && !empty($data['recoleccion_rate_id']);
 
         if ($this->hasOverlappingStay($data['pet_id'], $data['tipo'], $data['fecha_entrada'], $data['fecha_salida'] ?? null)) {
             $tipoLabel = $data['tipo'] === 'hotel' ? 'hotel' : 'guardería';
@@ -330,7 +344,7 @@ class HotelController extends Controller
 
         $rate = !empty($data['rate_id']) ? HotelRate::find($data['rate_id']) : null;
 
-        [$stay, $mensaje, $ticket] = DB::transaction(function () use ($request, $data, $rate) {
+        [$stay, $mensaje, $ticket] = DB::transaction(function () use ($request, $data, $rate, $quiereRecoleccion) {
             $stay = HotelStay::create([
                 ...$data,
                 'estado' => 'reservado',
@@ -358,6 +372,22 @@ class HotelController extends Controller
             $this->reconcilePackageCredits($stay, $noches);
             if ($stay->creditos_paquete_consumidos > 0) {
                 $mensaje .= " Se cubrieron {$stay->creditos_paquete_consumidos} noche(s) con crédito de paquete.";
+            }
+
+            if ($quiereRecoleccion) {
+                $this->collectionBookings->createForOrigin([
+                    'pet_id' => $stay->pet_id,
+                    'owner_id' => $stay->pet->owner_id,
+                    'fecha' => $data['fecha_entrada'],
+                    'direccion' => $data['recoleccion_direccion'] ?? null,
+                    'rate_id' => $data['recoleccion_rate_id'],
+                    'tipo_viaje' => $data['recoleccion_tipo_viaje'] ?? 'recoleccion',
+                    'cobro_membresia' => $stay->cobro_membresia,
+                    'membership_id' => $stay->membership_id,
+                    'usar_paquete' => $data['recoleccion_usar_paquete'] ?? true,
+                    'origen_tipo' => 'hotel_stay',
+                    'origen_id' => $stay->id,
+                ]);
             }
 
             $ticket = null;
@@ -420,10 +450,22 @@ class HotelController extends Controller
             'url' => media_url($p->url),
         ]));
 
+        $recoleccion = $this->collectionBookings->findForOrigin('hotel_stay', $stay->id);
+        $recoleccion?->load('rate:id,nombre,precio');
+
         return Inertia::render('Hotel/Show', [
             'stay' => $stay,
             'spaces' => HotelSpace::where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'capacidad']),
             'checkoutRates' => HotelRate::where('activa', true)->where('tipo', $stay->tipo)->orderBy('nombre')->get(['id', 'nombre', 'precio', 'unidad', 'pos_item_id']),
+            'collectionRates' => \App\Models\CollectionRate::where('activa', true)->orderBy('nombre')
+                ->get(['id', 'nombre', 'precio', 'unidad']),
+            'recoleccion' => $recoleccion ? [
+                'id' => $recoleccion->id,
+                'estado' => $recoleccion->estado,
+                'tipo_viaje' => $recoleccion->tipo_viaje,
+                'rate' => $recoleccion->rate ? ['nombre' => $recoleccion->rate->nombre, 'precio' => $recoleccion->rate->precio] : null,
+                'facturado' => (bool) $recoleccion->pos_ticket_id,
+            ] : null,
         ]);
     }
 
@@ -601,22 +643,14 @@ class HotelController extends Controller
             $totalPagado = (float) $stay->payments()->sum('monto');
             $saldoPendiente = max(0, round($bruto - $totalPagado, 2));
 
+            $recoleccion = $this->collectionBookings->findForOrigin('hotel_stay', $stay->id);
+            $cargoRecoleccion = $this->collectionBookings->pendingChargeLine($recoleccion);
+
             $ticket = null;
 
-            if ($nochesExtra > 0 && $saldoPendiente > 0) {
+            if (($nochesExtra > 0 && $saldoPendiente > 0) || $cargoRecoleccion) {
                 $shift = PosShift::where('estado', 'abierto')->first();
-
-                $itemId = $selectedRate?->pos_item_id
-                    ?? $this->ensureHotelRateCatalogItem($stay->tipo === 'hotel' ? 'Hotel' : 'Guardería', $precioNoche)->id;
-
-                $tipoLabel = $stay->tipo === 'hotel' ? 'Hotel' : 'Guardería';
-                $rateName = $selectedRate?->nombre ?? $tipoLabel;
-                $precioUnitario = $selectedRate?->precio ?? round($saldoPendiente / $nochesExtra, 2);
-                $unidadLabel = $selectedRate?->unidad === 'horas' ? 'hora(s)' : 'noche(s)';
-
-                $nombreSnapshot = $creditosAUsar > 0
-                    ? "{$rateName} — {$stay->pet?->nombre} ({$nochesExtra} {$unidadLabel} sin cobertura)"
-                    : "{$rateName} — {$stay->pet?->nombre} ({$nochesExtra} {$unidadLabel})";
+                $subtotalTicket = $saldoPendiente + ($cargoRecoleccion['precio'] ?? 0);
 
                 $ticket = PosTicket::create([
                     'folio' => $this->nextFolio(),
@@ -625,19 +659,46 @@ class HotelController extends Controller
                     'shift_open_id' => $shift?->id,
                     'user_open_id' => auth()->id(),
                     'user_last_edit_id' => auth()->id(),
-                    'subtotal' => $saldoPendiente,
-                    'total' => $saldoPendiente,
+                    'subtotal' => $subtotalTicket,
+                    'total' => $subtotalTicket,
                 ]);
 
-                PosTicketLine::create([
-                    'ticket_id' => $ticket->id,
-                    'item_id' => $itemId,
-                    'nombre_snapshot' => $nombreSnapshot,
-                    'precio_snapshot' => $precioUnitario,
-                    'costo_snapshot' => 0,
-                    'cantidad' => $nochesExtra,
-                    'subtotal' => $saldoPendiente,
-                ]);
+                if ($nochesExtra > 0 && $saldoPendiente > 0) {
+                    $itemId = $selectedRate?->pos_item_id
+                        ?? $this->ensureHotelRateCatalogItem($stay->tipo === 'hotel' ? 'Hotel' : 'Guardería', $precioNoche)->id;
+
+                    $tipoLabel = $stay->tipo === 'hotel' ? 'Hotel' : 'Guardería';
+                    $rateName = $selectedRate?->nombre ?? $tipoLabel;
+                    $precioUnitario = $selectedRate?->precio ?? round($saldoPendiente / $nochesExtra, 2);
+                    $unidadLabel = $selectedRate?->unidad === 'horas' ? 'hora(s)' : 'noche(s)';
+
+                    $nombreSnapshot = $creditosAUsar > 0
+                        ? "{$rateName} — {$stay->pet?->nombre} ({$nochesExtra} {$unidadLabel} sin cobertura)"
+                        : "{$rateName} — {$stay->pet?->nombre} ({$nochesExtra} {$unidadLabel})";
+
+                    PosTicketLine::create([
+                        'ticket_id' => $ticket->id,
+                        'item_id' => $itemId,
+                        'nombre_snapshot' => $nombreSnapshot,
+                        'precio_snapshot' => $precioUnitario,
+                        'costo_snapshot' => 0,
+                        'cantidad' => $nochesExtra,
+                        'subtotal' => $saldoPendiente,
+                    ]);
+                }
+
+                if ($cargoRecoleccion) {
+                    PosTicketLine::create([
+                        'ticket_id' => $ticket->id,
+                        'item_id' => $cargoRecoleccion['item_id'],
+                        'nombre_snapshot' => $cargoRecoleccion['nombre'],
+                        'precio_snapshot' => $cargoRecoleccion['precio'],
+                        'costo_snapshot' => 0,
+                        'cantidad' => 1,
+                        'subtotal' => $cargoRecoleccion['precio'],
+                    ]);
+                    $recoleccion->update(['pos_ticket_id' => $ticket->id]);
+                }
             }
 
             $stay->update([
@@ -678,6 +739,20 @@ class HotelController extends Controller
                 'estado' => 'cancelado',
                 'motivo_cancelacion' => $data['motivo_cancelacion'],
             ]);
+
+            $recoleccion = $this->collectionBookings->findForOrigin('hotel_stay', $stay->id);
+            if ($recoleccion && in_array($recoleccion->estado, ['programado', 'en_ruta'])) {
+                $recoleccion->update(['estado' => 'cancelado']);
+                if ($recoleccion->package_credit_id) {
+                    PackageCreditService::restore(
+                        $recoleccion->packageCredit,
+                        1,
+                        'collection_booking',
+                        $recoleccion->id,
+                        'Reserva de hotel/guardería cancelada (recolección vinculada)'
+                    );
+                }
+            }
         });
 
         return back()->with('success', 'Reserva cancelada.');

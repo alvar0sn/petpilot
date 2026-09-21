@@ -5,9 +5,7 @@ namespace App\Http\Controllers\Tenant;
 use App\Http\Controllers\Controller;
 use App\Models\CollectionBooking;
 use App\Models\CollectionSlot;
-use App\Models\Membership;
-use App\Models\MembershipCreditMovement;
-use App\Models\Owner;
+use App\Services\CollectionBookingService;
 use App\Services\PackageCreditService;
 use App\Services\ResponsivaService;
 use Illuminate\Http\RedirectResponse;
@@ -17,6 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class CollectionBookingController extends Controller
 {
+    public function __construct(private readonly CollectionBookingService $collectionBookings)
+    {
+    }
+
     /**
      * Atajo desde otros módulos (grooming, hotel, etc.): reutiliza la ruta abierta del día
      * o crea una nueva, y agrega la mascota con el origen trazado.
@@ -32,15 +34,9 @@ class CollectionBookingController extends Controller
             'origen_id' => 'required|integer',
         ]);
 
-        // Normaliza a 'Y-m-d': el origen puede mandar la fecha como string plano
-        // o como datetime serializado (ej. modelos Eloquent con cast 'date').
-        $fecha = \Carbon\Carbon::parse($data['fecha'])->toDateString();
+        $result = $this->collectionBookings->createForOrigin($data);
 
-        $slot = DB::transaction(function () use ($data, $fecha) {
-            $slot = $this->findOrCreateOpenSlot($fecha);
-            $this->addBookingToSlot($slot, $data);
-            return $slot;
-        });
+        $slot = $result instanceof CollectionBooking ? $result->slot : CollectionSlot::whereDate('fecha', $data['fecha'])->latest('id')->first();
 
         return redirect()->route('collection.show', $slot)->with('success', 'Recolección solicitada.');
     }
@@ -70,8 +66,8 @@ class CollectionBookingController extends Controller
         unset($data['fecha']);
 
         $slot = DB::transaction(function () use ($data, $fecha) {
-            $slot = $this->findOrCreateOpenSlot($fecha);
-            $result = $this->addBookingToSlot($slot, $data);
+            $slot = $this->collectionBookings->findOrCreateOpenSlot($fecha);
+            $result = $this->collectionBookings->addBookingToSlot($slot, $data);
 
             if ($result === 'duplicado') {
                 throw ValidationException::withMessages(['pet_id' => 'Esta mascota ya está en la ruta de ese día.']);
@@ -106,7 +102,7 @@ class CollectionBookingController extends Controller
         ]);
         $data['cobro_membresia'] = $request->boolean('cobro_membresia');
 
-        $result = DB::transaction(fn () => $this->addBookingToSlot($collectionSlot, $data));
+        $result = DB::transaction(fn () => $this->collectionBookings->addBookingToSlot($collectionSlot, $data));
 
         if ($result === 'duplicado') {
             return back()->withErrors(['pet_id' => 'Esta mascota ya está en esta ruta.']);
@@ -116,59 +112,6 @@ class CollectionBookingController extends Controller
         }
 
         return back()->with('success', 'Mascota agregada a la ruta.');
-    }
-
-    private function findOrCreateOpenSlot(string $fecha): CollectionSlot
-    {
-        return CollectionSlot::whereDate('fecha', $fecha)
-            ->where('estado', 'abierto')
-            ->whereNull('recolector_id')
-            ->first() ?? CollectionSlot::create([
-                'fecha' => $fecha,
-                'estado' => 'abierto',
-                'created_by' => auth()->id(),
-            ]);
-    }
-
-    /** @return CollectionBooking|'duplicado'|'lleno' */
-    private function addBookingToSlot(CollectionSlot $collectionSlot, array $data): CollectionBooking|string
-    {
-        $tipoViaje = $data['tipo_viaje'] ?? 'recoleccion';
-
-        if ($collectionSlot->bookings()->where('pet_id', $data['pet_id'])->where('tipo_viaje', $tipoViaje)
-            ->whereIn('estado', ['programado', 'en_ruta'])->exists()) {
-            return 'duplicado';
-        }
-
-        if ($collectionSlot->cupo_maximo && !$collectionSlot->tieneEspacio()) {
-            return 'lleno';
-        }
-
-        // Mismo domicilio: si el dueño ya tiene otra mascota en esta ruta, reutilizamos su
-        // dirección/tarifa para no volver a capturarla — la parada es la misma.
-        if (empty($data['direccion']) || empty($data['ubicacion_url'])) {
-            $existing = $collectionSlot->bookings()->where('owner_id', $data['owner_id'])
-                ->whereIn('estado', ['programado', 'en_ruta', 'completado'])->first();
-
-            $owner = $existing ?: Owner::find($data['owner_id']);
-            $data['direccion'] = $data['direccion'] ?? ($existing->direccion ?? $owner?->direccion);
-            $data['ubicacion_url'] = $data['ubicacion_url'] ?? ($existing->ubicacion_url ?? $owner?->ubicacion_url);
-            $data['rate_id'] = $data['rate_id'] ?? $existing?->rate_id;
-        }
-
-        $usarPaquete = $data['usar_paquete'] ?? true;
-
-        $booking = CollectionBooking::create([
-            ...$data,
-            'tipo_viaje' => $tipoViaje,
-            'slot_id' => $collectionSlot->id,
-            'estado' => 'programado',
-            'created_by' => auth()->id(),
-        ]);
-
-        $this->processPayment($booking, $usarPaquete);
-
-        return $booking;
     }
 
     public function updateEstado(Request $request, CollectionBooking $collectionBooking): RedirectResponse
@@ -223,53 +166,5 @@ class CollectionBookingController extends Controller
     public function downloadResponsiva(CollectionBooking $collectionBooking): \Symfony\Component\HttpFoundation\Response
     {
         return ResponsivaService::download($collectionBooking);
-    }
-
-    private function processPayment(CollectionBooking $booking, bool $usarPaquete = true): void
-    {
-        if ($booking->cobro_membresia && $booking->membership_id) {
-            $membership = Membership::with(['credits', 'renewals'])->find($booking->membership_id);
-            $credit = $membership?->getCredit('recoleccion');
-
-            if ($credit && $credit->saldo_actual > 0 && $membership->creditsUsable()) {
-                $saldoAntes = $credit->saldo_actual;
-                $saldoNuevo = $saldoAntes - 1;
-                $credit->update(['saldo_actual' => $saldoNuevo]);
-
-                MembershipCreditMovement::create([
-                    'membership_id' => $membership->id,
-                    'credit_id' => $credit->id,
-                    'servicio_tipo' => 'recoleccion',
-                    'tipo' => 'consumo',
-                    'cantidad' => -1,
-                    'saldo_antes' => $saldoAntes,
-                    'saldo_despues' => $saldoNuevo,
-                    'referencia_tipo' => 'collection',
-                    'referencia_id' => $booking->id,
-                    'user_id' => auth()->id(),
-                    'notas' => "Recolección — {$booking->pet?->nombre} (ruta #{$booking->slot_id})",
-                ]);
-
-                return;
-            }
-        }
-
-        // Sin membresía (o sin saldo) — ¿tiene crédito de paquete para esta tarifa exacta?
-        if (! $usarPaquete || ! $booking->rate_id) {
-            return;
-        }
-
-        $booking->loadMissing('rate');
-        if (! $booking->rate?->pos_item_id) {
-            return;
-        }
-
-        $credit = PackageCreditService::findCredit($booking->pet_id, $booking->rate->pos_item_id);
-        if (! $credit) {
-            return;
-        }
-
-        PackageCreditService::consume($credit, 1, 'collection_booking', $booking->id, "Recolección — {$booking->pet?->nombre} (ruta #{$booking->slot_id})");
-        $booking->update(['package_credit_id' => $credit->id]);
     }
 }

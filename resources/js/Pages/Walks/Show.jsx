@@ -1,5 +1,6 @@
 import TenantLayout from '@/Layouts/TenantLayout';
 import ResponsivaStatus from '@/Components/ResponsivaStatus';
+import RecoleccionFields, { recoleccionFormDefaults } from '@/Components/RecoleccionFields';
 import { Link, useForm, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import axios from 'axios';
@@ -25,14 +26,17 @@ const bookingEstadoColor = {
     cancelado:  'bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200',
 };
 
-function AddPetModal({ slot, walkers, rates, onClose }) {
+function AddPetModal({ slot, walkers, rates, collectionRates, onClose }) {
     const { version } = usePage();
     const [petSearch, setPetSearch] = useState('');
     const [petResults, setPetResults] = useState([]);
     const [selectedPet, setSelectedPet] = useState(null);
     const [memberships, setMemberships] = useState([]);
     const [paqueteCreditos, setPaqueteCreditos] = useState([]);
-    const form = useForm({ pet_id: '', owner_id: '', rate_id: '', cobro_membresia: false, membership_id: '', usar_paquete: true, notas: '' });
+    const form = useForm({
+        pet_id: '', owner_id: '', rate_id: '', cobro_membresia: false, membership_id: '', usar_paquete: true, notas: '',
+        ...recoleccionFormDefaults,
+    });
 
     async function searchPet(q) {
         setPetSearch(q);
@@ -153,6 +157,8 @@ function AddPetModal({ slot, walkers, rates, onClose }) {
                         </span>
                     </label>
                 )}
+
+                <RecoleccionFields form={form} collectionRates={collectionRates} />
 
                 <div>
                     <label className="block text-xs font-medium text-zinc-600 mb-1">Notas</label>
@@ -276,7 +282,7 @@ function ExtendRecurrencePanel({ recurrence }) {
     );
 }
 
-export default function WalksShow({ slot, walkers, recurrence, rates = [] }) {
+export default function WalksShow({ slot, walkers, recurrence, rates = [], collectionRates = [] }) {
     const tz = useTenantTimezone();
     const [showAddPet, setShowAddPet] = useState(false);
     const [cancelSlot, setCancelSlot] = useState(false);
@@ -296,7 +302,7 @@ export default function WalksShow({ slot, walkers, recurrence, rates = [] }) {
 
     return (
         <TenantLayout title="Slot de paseo">
-            {showAddPet && <AddPetModal slot={slot} walkers={walkers} rates={rates} onClose={() => setShowAddPet(false)} />}
+            {showAddPet && <AddPetModal slot={slot} walkers={walkers} rates={rates} collectionRates={collectionRates} onClose={() => setShowAddPet(false)} />}
 
             <div className="mb-4 flex items-center gap-2 text-sm text-zinc-500">
                 <Link href={route('walks.index')} className="hover:text-zinc-700 transition-colors">Paseos</Link>

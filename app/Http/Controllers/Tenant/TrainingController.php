@@ -16,6 +16,7 @@ use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
 use App\Models\User;
+use App\Services\CollectionBookingService;
 use App\Services\PackageCreditService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -26,6 +27,10 @@ use Inertia\Response;
 
 class TrainingController extends Controller
 {
+    public function __construct(private readonly CollectionBookingService $collectionBookings)
+    {
+    }
+
     public function index(Request $request): Response
     {
         $tenant = app('current_tenant');
@@ -65,6 +70,8 @@ class TrainingController extends Controller
             'weekStart'    => $weekStart->toDateString(),
             'entrenadores' => User::where('tenant_id', $tenant->id)->where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'apellido']),
             'catalogItems' => PosCatalogItem::where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'precio']),
+            'collectionRates' => \App\Models\CollectionRate::where('activa', true)->orderBy('nombre')
+                ->get(['id', 'nombre', 'precio', 'unidad']),
         ]);
     }
 
@@ -85,15 +92,21 @@ class TrainingController extends Controller
             'items.*.precio'   => 'required|numeric|min:0',
             'items.*.cantidad' => 'nullable|numeric|min:0.01',
             'items.*.usar_paquete' => 'boolean',
+            'recoleccion'                 => 'boolean',
+            'recoleccion_rate_id'         => 'required_if:recoleccion,true|exists:collection_rates,id',
+            'recoleccion_tipo_viaje'      => 'nullable|in:recoleccion,entrega,ida_y_vuelta',
+            'recoleccion_direccion'       => 'nullable|string|max:500',
+            'recoleccion_usar_paquete'    => 'boolean',
         ]);
 
         $pet = Pet::findOrFail($data['pet_id']);
         $entrenamientoType = EventType::where('nombre', 'Entrenamiento')->first();
         $usaMembresia = !empty($data['cobro_membresia']) && !empty($data['membership_id']);
+        $quiereRecoleccion = $request->boolean('recoleccion') && !empty($data['recoleccion_rate_id']);
 
         $mensaje = "Clase agendada para {$pet->nombre}.";
 
-        DB::transaction(function () use ($data, $pet, $entrenamientoType, $usaMembresia, &$mensaje) {
+        DB::transaction(function () use ($data, $pet, $entrenamientoType, $usaMembresia, $quiereRecoleccion, &$mensaje) {
             $appointment = Appointment::create([
                 'pet_id'           => $pet->id,
                 'owner_id'         => $pet->owner_id,
@@ -137,6 +150,22 @@ class TrainingController extends Controller
                     $mensaje = "Clase agendada para {$pet->nombre}. Se descontó 1 crédito de entrenamiento (saldo: " . ($saldoAntes - 1) . ").";
                 }
             }
+
+            if ($quiereRecoleccion) {
+                $this->collectionBookings->createForOrigin([
+                    'pet_id' => $pet->id,
+                    'owner_id' => $pet->owner_id,
+                    'fecha' => $data['fecha'],
+                    'direccion' => $data['recoleccion_direccion'] ?? null,
+                    'rate_id' => $data['recoleccion_rate_id'],
+                    'tipo_viaje' => $data['recoleccion_tipo_viaje'] ?? 'recoleccion',
+                    'cobro_membresia' => $usaMembresia,
+                    'membership_id' => $usaMembresia ? $data['membership_id'] : null,
+                    'usar_paquete' => $data['recoleccion_usar_paquete'] ?? true,
+                    'origen_tipo' => 'appointment',
+                    'origen_id' => $appointment->id,
+                ]);
+            }
         });
 
         return redirect()->route('training.index', ['week_start' => $data['fecha']])
@@ -156,6 +185,9 @@ class TrainingController extends Controller
             'membership.credits',
             'event:id,notas',
         ]);
+
+        $recoleccion = $this->collectionBookings->findForOrigin('appointment', $appointment->id);
+        $recoleccion?->load('rate:id,nombre,precio');
 
         return Inertia::render('Training/Show', [
             'appointment' => [
@@ -201,9 +233,18 @@ class TrainingController extends Controller
                 'cobro_membresia'           => $appointment->cobro_membresia,
                 'membership_id'             => $appointment->membership_id,
                 'creditos_entrenamiento_saldo' => $appointment->membership?->getCredit('entrenamiento')?->saldo_actual,
+                'recoleccion' => $recoleccion ? [
+                    'id' => $recoleccion->id,
+                    'estado' => $recoleccion->estado,
+                    'tipo_viaje' => $recoleccion->tipo_viaje,
+                    'rate' => $recoleccion->rate ? ['nombre' => $recoleccion->rate->nombre, 'precio' => $recoleccion->rate->precio] : null,
+                    'facturado' => (bool) $recoleccion->pos_ticket_id,
+                ] : null,
             ],
             'entrenadores' => User::where('tenant_id', $tenant->id)->where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'apellido']),
             'catalogItems' => PosCatalogItem::where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'precio']),
+            'collectionRates' => \App\Models\CollectionRate::where('activa', true)->orderBy('nombre')
+                ->get(['id', 'nombre', 'precio', 'unidad']),
         ]);
     }
 
@@ -296,9 +337,13 @@ class TrainingController extends Controller
             // los cubiertos por crédito de paquete ya se cobraron al venderlo.
             $appointment->load('items');
             $itemsACobrar = $appointment->items->whereNull('package_credit_id');
-            if ($itemsACobrar->isNotEmpty()) {
+
+            $recoleccion = $this->collectionBookings->findForOrigin('appointment', $appointment->id);
+            $cargoRecoleccion = $this->collectionBookings->pendingChargeLine($recoleccion);
+
+            if ($itemsACobrar->isNotEmpty() || $cargoRecoleccion) {
                 $shift = PosShift::where('estado', 'abierto')->first();
-                $subtotal = $itemsACobrar->sum(fn($i) => $i->precio * $i->cantidad);
+                $subtotal = $itemsACobrar->sum(fn($i) => $i->precio * $i->cantidad) + ($cargoRecoleccion['precio'] ?? 0);
 
                 $ticket = PosTicket::create([
                     'folio' => $this->nextFolio(),
@@ -323,6 +368,19 @@ class TrainingController extends Controller
                     ]);
                 }
 
+                if ($cargoRecoleccion) {
+                    PosTicketLine::create([
+                        'ticket_id' => $ticket->id,
+                        'item_id' => $cargoRecoleccion['item_id'],
+                        'nombre_snapshot' => $cargoRecoleccion['nombre'],
+                        'precio_snapshot' => $cargoRecoleccion['precio'],
+                        'costo_snapshot' => 0,
+                        'cantidad' => 1,
+                        'subtotal' => $cargoRecoleccion['precio'],
+                    ]);
+                    $recoleccion->update(['pos_ticket_id' => $ticket->id]);
+                }
+
                 $appointment->update(['pos_ticket_id' => $ticket->id]);
             }
         });
@@ -341,6 +399,7 @@ class TrainingController extends Controller
             $appointment->update(['estado' => 'cancelada']);
             $this->restoreMembershipCredit($appointment, 'Clase cancelada.');
             $this->restorePackageCredits($appointment, 'Clase cancelada.');
+            $this->cancelLinkedCollection($appointment, 'Clase cancelada.');
         });
 
         return back()->with('success', 'Clase cancelada.');
@@ -354,9 +413,31 @@ class TrainingController extends Controller
             $appointment->update(['estado' => 'no_show']);
             $this->restoreMembershipCredit($appointment, 'No se presentó.');
             $this->restorePackageCredits($appointment, 'No se presentó.');
+            $this->cancelLinkedCollection($appointment, 'Clase no presentada.');
         });
 
         return back()->with('success', 'Clase marcada como no presentado.');
+    }
+
+    /** Cancela la recolección vinculada a esta clase (si sigue pendiente) al cancelarse o no presentarse. */
+    private function cancelLinkedCollection(Appointment $appointment, string $motivo): void
+    {
+        $recoleccion = $this->collectionBookings->findForOrigin('appointment', $appointment->id);
+        if (! $recoleccion || ! in_array($recoleccion->estado, ['programado', 'en_ruta'])) {
+            return;
+        }
+
+        $recoleccion->update(['estado' => 'cancelado']);
+
+        if ($recoleccion->package_credit_id) {
+            PackageCreditService::restore(
+                $recoleccion->packageCredit,
+                1,
+                'collection_booking',
+                $recoleccion->id,
+                "{$motivo} (recolección vinculada)"
+            );
+        }
     }
 
     private function createAppointmentItem(Appointment $appointment, array $item): AppointmentItem

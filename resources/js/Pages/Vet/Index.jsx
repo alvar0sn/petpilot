@@ -1,4 +1,5 @@
 import AppointmentTimePicker from '@/Components/AppointmentTimePicker';
+import RecoleccionFields, { recoleccionFormDefaults } from '@/Components/RecoleccionFields';
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
@@ -37,11 +38,12 @@ function formatWeekRange(weekDays) {
 }
 function today() { return new Date().toLocaleDateString('sv-SE'); }
 
-function NewConsultaModal({ veterinarios, catalogItems, defaultDate, onClose }) {
+function NewConsultaModal({ veterinarios, catalogItems, collectionRates, defaultDate, onClose }) {
     const { version } = usePage();
     const form = useForm({
         pet_id: '', fecha: defaultDate, hora_inicio: '', hora_fin: '',
         veterinario_id: '', notas_internas: '', items: [],
+        ...recoleccionFormDefaults,
     });
     const [duracion, setDuracion] = useState(null);
     const [petSearch, setPetSearch] = useState('');
@@ -147,6 +149,8 @@ function NewConsultaModal({ veterinarios, catalogItems, defaultDate, onClose }) 
                         <button type="button" onClick={addItem} className="col-span-1 text-zinc-700 font-bold text-sm hover:text-zinc-900 transition-colors">+</button>
                     </div>
                 </div>
+
+                <RecoleccionFields form={form} collectionRates={collectionRates} />
 
                 <div>
                     <label className="block text-xs font-medium text-zinc-600 mb-1">Notas internas</label>
@@ -301,7 +305,7 @@ function MobileConsultaItem({ appt }) {
     );
 }
 
-export default function VetIndex({ appointments, weekStart, veterinarios, catalogItems, pendingRequests = [] }) {
+export default function VetIndex({ appointments, weekStart, veterinarios, catalogItems, pendingRequests = [], collectionRates = [] }) {
     const [showCreate, setShowCreate] = useState(false);
     const [createDate, setCreateDate] = useState(today());
     const [approving, setApproving] = useState(null);
@@ -323,7 +327,7 @@ export default function VetIndex({ appointments, weekStart, veterinarios, catalo
     return (
         <TenantLayout title="Veterinaria">
             {showCreate && (
-                <NewConsultaModal veterinarios={veterinarios} catalogItems={catalogItems}
+                <NewConsultaModal veterinarios={veterinarios} catalogItems={catalogItems} collectionRates={collectionRates}
                     defaultDate={createDate} onClose={() => setShowCreate(false)} />
             )}
 

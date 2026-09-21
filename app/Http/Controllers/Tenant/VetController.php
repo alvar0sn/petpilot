@@ -14,6 +14,8 @@ use App\Models\PosShift;
 use App\Models\PosTicket;
 use App\Models\PosTicketLine;
 use App\Models\User;
+use App\Services\CollectionBookingService;
+use App\Services\PackageCreditService;
 use App\Services\RecetaPdfService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -26,6 +28,10 @@ use Inertia\Response;
 
 class VetController extends Controller
 {
+    public function __construct(private readonly CollectionBookingService $collectionBookings)
+    {
+    }
+
     public function index(Request $request): Response
     {
         $tenant = app('current_tenant');
@@ -85,6 +91,8 @@ class VetController extends Controller
                 ->orderBy('nombre')
                 ->get(['id', 'nombre', 'precio']),
             'pendingRequests' => $pendingRequests,
+            'collectionRates' => \App\Models\CollectionRate::where('activa', true)->orderBy('nombre')
+                ->get(['id', 'nombre', 'precio', 'unidad']),
         ]);
     }
 
@@ -102,12 +110,20 @@ class VetController extends Controller
             'items.*.nombre'  => 'required|string|max:255',
             'items.*.precio'  => 'required|numeric|min:0',
             'items.*.cantidad' => 'nullable|numeric|min:0.01',
+            'recoleccion'                 => 'boolean',
+            'recoleccion_rate_id'         => 'required_if:recoleccion,true|exists:collection_rates,id',
+            'recoleccion_tipo_viaje'      => 'nullable|in:recoleccion,entrega,ida_y_vuelta',
+            'recoleccion_direccion'       => 'nullable|string|max:500',
+            'recoleccion_cobro_membresia' => 'boolean',
+            'recoleccion_membership_id'   => 'nullable|exists:memberships,id',
+            'recoleccion_usar_paquete'    => 'boolean',
         ]);
 
         $pet = Pet::findOrFail($data['pet_id']);
         $consultaType = EventType::where('nombre', 'Consulta')->first();
+        $quiereRecoleccion = $request->boolean('recoleccion') && !empty($data['recoleccion_rate_id']);
 
-        DB::transaction(function () use ($data, $pet, $consultaType) {
+        DB::transaction(function () use ($data, $pet, $consultaType, $quiereRecoleccion) {
             $appointment = Appointment::create([
                 'pet_id'           => $pet->id,
                 'owner_id'         => $pet->owner_id,
@@ -130,6 +146,24 @@ class VetController extends Controller
                     'nombre'          => $item['nombre'],
                     'precio'          => $item['precio'],
                     'cantidad'        => $item['cantidad'] ?? 1,
+                ]);
+            }
+
+            if ($quiereRecoleccion) {
+                $usaMembresia = !empty($data['recoleccion_cobro_membresia']) && !empty($data['recoleccion_membership_id']);
+
+                $this->collectionBookings->createForOrigin([
+                    'pet_id' => $pet->id,
+                    'owner_id' => $pet->owner_id,
+                    'fecha' => $data['fecha'],
+                    'direccion' => $data['recoleccion_direccion'] ?? null,
+                    'rate_id' => $data['recoleccion_rate_id'],
+                    'tipo_viaje' => $data['recoleccion_tipo_viaje'] ?? 'recoleccion',
+                    'cobro_membresia' => $usaMembresia,
+                    'membership_id' => $usaMembresia ? $data['recoleccion_membership_id'] : null,
+                    'usar_paquete' => $data['recoleccion_usar_paquete'] ?? true,
+                    'origen_tipo' => 'appointment',
+                    'origen_id' => $appointment->id,
                 ]);
             }
         });
@@ -162,6 +196,9 @@ class VetController extends Controller
                 'despa_producto' => $e->despa_producto,
                 'proximo_recordatorio' => $e->proximo_recordatorio?->toDateString(),
             ]);
+
+        $recoleccion = $this->collectionBookings->findForOrigin('appointment', $appointment->id);
+        $recoleccion?->load('rate:id,nombre,precio');
 
         return Inertia::render('Vet/Show', [
             'appointment' => [
@@ -214,12 +251,21 @@ class VetController extends Controller
                 'ticket_id'    => $appointment->pos_ticket_id,
                 'has_events'   => $linkedEvents->isNotEmpty(),
                 'linked_events' => $linkedEvents,
+                'recoleccion' => $recoleccion ? [
+                    'id' => $recoleccion->id,
+                    'estado' => $recoleccion->estado,
+                    'tipo_viaje' => $recoleccion->tipo_viaje,
+                    'rate' => $recoleccion->rate ? ['nombre' => $recoleccion->rate->nombre, 'precio' => $recoleccion->rate->precio] : null,
+                    'facturado' => (bool) $recoleccion->pos_ticket_id,
+                ] : null,
             ],
             'veterinarios' => User::where('tenant_id', $tenant->id)->where('activo', true)->orderBy('nombre')->get(['id', 'nombre', 'apellido']),
             'catalogItems' => \App\Models\PosCatalogItem::whereHas('categoria', fn($q) => $q->where('es_grooming', true))
                 ->where('activo', true)
                 ->orderBy('nombre')
                 ->get(['id', 'nombre', 'precio']),
+            'collectionRates' => \App\Models\CollectionRate::where('activa', true)->orderBy('nombre')
+                ->get(['id', 'nombre', 'precio', 'unidad']),
         ]);
     }
 
@@ -400,9 +446,13 @@ class VetController extends Controller
             }
 
             $appointment->load('items');
-            if ($appointment->items->isNotEmpty()) {
+
+            $recoleccion = $this->collectionBookings->findForOrigin('appointment', $appointment->id);
+            $cargoRecoleccion = $this->collectionBookings->pendingChargeLine($recoleccion);
+
+            if ($appointment->items->isNotEmpty() || $cargoRecoleccion) {
                 $shift = PosShift::where('estado', 'abierto')->first();
-                $subtotal = $appointment->items->sum(fn($i) => $i->precio * $i->cantidad);
+                $subtotal = $appointment->items->sum(fn($i) => $i->precio * $i->cantidad) + ($cargoRecoleccion['precio'] ?? 0);
 
                 $ticket = PosTicket::create([
                     'folio'             => $this->nextFolio(),
@@ -427,6 +477,19 @@ class VetController extends Controller
                     ]);
                 }
 
+                if ($cargoRecoleccion) {
+                    PosTicketLine::create([
+                        'ticket_id' => $ticket->id,
+                        'item_id' => $cargoRecoleccion['item_id'],
+                        'nombre_snapshot' => $cargoRecoleccion['nombre'],
+                        'precio_snapshot' => $cargoRecoleccion['precio'],
+                        'costo_snapshot' => 0,
+                        'cantidad' => 1,
+                        'subtotal' => $cargoRecoleccion['precio'],
+                    ]);
+                    $recoleccion->update(['pos_ticket_id' => $ticket->id]);
+                }
+
                 $appointment->update(['pos_ticket_id' => $ticket->id]);
             }
         });
@@ -441,6 +504,7 @@ class VetController extends Controller
     {
         abort_unless(in_array($appointment->estado, ['pendiente', 'confirmada']), 422, 'No se puede cancelar esta consulta.');
         $appointment->update(['estado' => 'cancelada']);
+        $this->cancelLinkedCollection($appointment, 'Consulta cancelada.');
         return back()->with('success', 'Consulta cancelada.');
     }
 
@@ -448,7 +512,29 @@ class VetController extends Controller
     {
         abort_unless(in_array($appointment->estado, ['pendiente', 'confirmada']), 422, 'No se puede marcar como no presentado.');
         $appointment->update(['estado' => 'no_show']);
+        $this->cancelLinkedCollection($appointment, 'Consulta no presentada.');
         return back()->with('success', 'Consulta marcada como no presentado.');
+    }
+
+    /** Cancela la recolección vinculada a esta consulta (si sigue pendiente) al cancelarse o no presentarse. */
+    private function cancelLinkedCollection(Appointment $appointment, string $motivo): void
+    {
+        $recoleccion = $this->collectionBookings->findForOrigin('appointment', $appointment->id);
+        if (! $recoleccion || ! in_array($recoleccion->estado, ['programado', 'en_ruta'])) {
+            return;
+        }
+
+        $recoleccion->update(['estado' => 'cancelado']);
+
+        if ($recoleccion->package_credit_id) {
+            PackageCreditService::restore(
+                $recoleccion->packageCredit,
+                1,
+                'collection_booking',
+                $recoleccion->id,
+                "{$motivo} (recolección vinculada)"
+            );
+        }
     }
 
     public function storePhoto(Request $request, Appointment $appointment): RedirectResponse

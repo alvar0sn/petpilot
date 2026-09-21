@@ -1,4 +1,5 @@
 import AppointmentTimePicker from '@/Components/AppointmentTimePicker';
+import RecoleccionFields, { recoleccionFormDefaults } from '@/Components/RecoleccionFields';
 import TenantLayout from '@/Layouts/TenantLayout';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
@@ -40,12 +41,13 @@ function fmtMxn(n) {
     return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 }
 
-function NewClassModal({ entrenadores, catalogItems, defaultDate, onClose }) {
+function NewClassModal({ entrenadores, catalogItems, collectionRates, defaultDate, onClose }) {
     const { version } = usePage();
     const form = useForm({
         pet_id: '', fecha: defaultDate,
         hora_inicio: '', hora_fin: '', entrenador_id: '',
         notas_internas: '', cobro_membresia: false, membership_id: '', items: [],
+        ...recoleccionFormDefaults,
     });
     const [duracion, setDuracion] = useState(null);
     const [petSearch, setPetSearch] = useState('');
@@ -207,6 +209,8 @@ function NewClassModal({ entrenadores, catalogItems, defaultDate, onClose }) {
                     )}
                 </div>
 
+                <RecoleccionFields form={form} collectionRates={collectionRates} />
+
                 <div>
                     <label className="block text-xs font-medium text-zinc-600 mb-1">Notas internas</label>
                     <textarea className="w-full border-gray-300 rounded-lg text-sm resize-none" rows={2} value={form.data.notas_internas} onChange={e => form.setData('notas_internas', e.target.value)} />
@@ -261,7 +265,7 @@ function MobileClassItem({ appt }) {
     );
 }
 
-export default function TrainingIndex({ appointments, weekStart, entrenadores, catalogItems }) {
+export default function TrainingIndex({ appointments, weekStart, entrenadores, catalogItems, collectionRates = [] }) {
     const [showCreate, setShowCreate] = useState(false);
     const [createDate, setCreateDate] = useState(today());
     const todayStr = today();
@@ -282,7 +286,7 @@ export default function TrainingIndex({ appointments, weekStart, entrenadores, c
     return (
         <TenantLayout title="Entrenamientos">
             {showCreate && (
-                <NewClassModal entrenadores={entrenadores} catalogItems={catalogItems}
+                <NewClassModal entrenadores={entrenadores} catalogItems={catalogItems} collectionRates={collectionRates}
                     defaultDate={createDate} onClose={() => setShowCreate(false)} />
             )}
 
